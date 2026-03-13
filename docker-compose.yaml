@@ -1,0 +1,88 @@
+services:
+  # Infrastructure
+  postgres:
+    build:
+      context: ./infrastructure/postgres
+      dockerfile: Dockerfile
+    container_name: quantara-postgres
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: quantara
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - quantara-network
+
+  jaeger:
+    build:
+      context: ./infrastructure/jaeger
+      dockerfile: Dockerfile
+    container_name: quantara-jaeger
+    ports:
+      - "16686:16686"  # Jaeger UI
+      - "4317:4317"    # OTLP gRPC
+      - "4318:4318"    # OTLP HTTP
+    environment:
+      - COLLECTOR_OTLP_ENABLED=true
+    networks:
+      - quantara-network
+
+  # Microservices
+  id-service:
+    build:
+      context: ./id-service
+      dockerfile: Dockerfile
+    container_name: quantara-id-service
+    ports:
+      - "50051:50051"
+    environment:
+      GRPC_PORT: "50051"
+      DATABASE_URL: "postgres://postgres:postgres@postgres:5432/quantara?sslmode=disable"
+      ID_POOL_SIZE: "1000"
+      JAEGER_ENDPOINT: "jaeger:4318"
+      SERVICE_NAME: "id-service"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      jaeger:
+        condition: service_started
+    networks:
+      - quantara-network
+    restart: unless-stopped
+
+  globalid-service:
+    build:
+      context: ./globalid-service
+      dockerfile: Dockerfile
+    container_name: quantara-globalid-service
+    ports:
+      - "50052:50052"
+    environment:
+      GRPC_PORT: "50052"
+      DATABASE_URL: "postgres://postgres:postgres@postgres:5432/quantara?sslmode=disable"
+      GLOBALID_POOL_SIZE: "1000"
+      JAEGER_ENDPOINT: "jaeger:4318"
+      SERVICE_NAME: "globalid-service"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      jaeger:
+        condition: service_started
+    networks:
+      - quantara-network
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+
+networks:
+  quantara-network:
+    driver: bridge
