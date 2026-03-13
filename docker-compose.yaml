@@ -80,6 +80,31 @@ services:
       - quantara-network
     restart: unless-stopped
 
+  # gRPC Web UI for testing
+  grpcui-id:
+    image: fullstorydev/grpcui:latest
+    container_name: quantara-grpcui-id
+    ports:
+      - "8080:8080"
+    command: ["-plaintext", "-bind", "0.0.0.0", "-port", "8080", "id-service:50051"]
+    depends_on:
+      - id-service
+    networks:
+      - quantara-network
+    restart: unless-stopped
+
+  grpcui-globalid:
+    image: fullstorydev/grpcui:latest
+    container_name: quantara-grpcui-globalid
+    ports:
+      - "8081:8080"
+    command: ["-plaintext", "-bind", "0.0.0.0", "-port", "8080", "globalid-service:50052"]
+    depends_on:
+      - globalid-service
+    networks:
+      - quantara-network
+    restart: unless-stopped
+
 volumes:
   postgres_data:
 
