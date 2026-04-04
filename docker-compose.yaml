@@ -161,6 +161,12 @@ services:
       OTEL_EXPORTER_OTLP_ENDPOINT: http://jaeger:4317
       OTEL_TRACES_EXPORTER: otlp
       OTEL_METRICS_EXPORTER: none
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/actuator/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
     depends_on:
       postgres:
         condition: service_healthy
@@ -169,6 +175,48 @@ services:
     networks:
       - quantara-network
     restart: unless-stopped
+
+  # DataDictionary seed loader (loads initial data if seed-data exists)
+  datadictionary-seed:
+    image: curlimages/curl:latest
+    container_name: quantara-datadictionary-seed
+    volumes:
+      - ./DataDictionary/seed-data:/seed-data:ro
+    depends_on:
+      datadictionary:
+        condition: service_healthy
+    entrypoint: >
+      sh -c '
+        if [ ! -f /seed-data/metamodel-seed.json ]; then
+          echo "No seed data found at /seed-data/metamodel-seed.json, skipping..."
+          exit 0
+        fi
+
+        echo "Checking if data already exists..."
+        RESPONSE=$$(curl -s http://datadictionary:8080/api/metamodel/export)
+        CLASS_COUNT=$$(echo "$$RESPONSE" | grep -o "\"className\"" | wc -l)
+
+        if [ "$$CLASS_COUNT" -gt 0 ]; then
+          echo "Data already exists ($$CLASS_COUNT classes), skipping import"
+        else
+          echo "Loading seed data..."
+          curl -X POST \
+            -H "Content-Type: application/json" \
+            -d @/seed-data/metamodel-seed.json \
+            "http://datadictionary:8080/api/metamodel/import?mode=REPLACE"
+          echo ""
+          echo "Seed data loaded!"
+        fi
+
+        echo ""
+        echo "Creating database tables from metamodel..."
+        curl -X POST http://datadictionary:8080/api/database/apply
+        echo ""
+        echo "Database tables created!"
+      '
+    networks:
+      - quantara-network
+    restart: "no"
 
   grpcui-datadictionary:
     image: fullstorydev/grpcui:latest

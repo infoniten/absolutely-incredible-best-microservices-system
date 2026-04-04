@@ -1,0 +1,99 @@
+syntax = "proto3";
+
+package lockservice;
+
+option go_package = "github.com/quantara/lock-service/proto;lockservice";
+
+import "google/protobuf/timestamp.proto";
+
+// LockService provides distributed locking functionality
+service LockService {
+  // Lock acquires a lock for the given global_id with default TTL (10000ms)
+  rpc Lock(LockRequest) returns (LockResponse);
+
+  // LockWithTTL acquires a lock for the given global_id with custom TTL
+  rpc LockWithTTL(LockWithTTLRequest) returns (LockResponse);
+
+  // Renew extends the lock expiration time
+  rpc Renew(RenewRequest) returns (RenewResponse);
+
+  // CheckLock checks if a lock exists for the given global_id
+  rpc CheckLock(CheckLockRequest) returns (CheckLockResponse);
+
+  // CheckLockByToken checks if a lock exists for the given global_id and token
+  rpc CheckLockByToken(CheckLockByTokenRequest) returns (CheckLockResponse);
+
+  // Unlock releases the lock for the given global_id and token
+  rpc Unlock(UnlockRequest) returns (UnlockResponse);
+}
+
+// Lock request without TTL (uses default 10000ms)
+message LockRequest {
+  int64 global_id = 1;
+}
+
+// Lock request with custom TTL
+message LockWithTTLRequest {
+  int64 global_id = 1;
+  int64 ttl_ms = 2; // TTL in milliseconds
+}
+
+// Lock response
+message LockResponse {
+  bool success = 1;
+  string token = 2;           // Lock token returned to the client
+  string error_message = 3;   // Error message if lock failed
+  google.protobuf.Timestamp expire_at = 4;
+}
+
+// Renew request
+message RenewRequest {
+  int64 global_id = 1;
+  string token = 2;
+  int64 ttl_ms = 3; // New TTL in milliseconds (optional, uses default if 0)
+}
+
+// Renew response
+message RenewResponse {
+  bool success = 1;
+  string error_message = 2;
+  google.protobuf.Timestamp expire_at = 3;
+}
+
+// Check lock by global_id
+message CheckLockRequest {
+  int64 global_id = 1;
+}
+
+// Check lock by global_id and token
+message CheckLockByTokenRequest {
+  int64 global_id = 1;
+  string token = 2;
+}
+
+// Check lock response
+message CheckLockResponse {
+  bool exists = 1;
+  LockStatus status = 2;
+  string token = 3;
+  google.protobuf.Timestamp expire_at = 4;
+  int64 ttl_remaining_ms = 5; // Remaining TTL in milliseconds
+}
+
+enum LockStatus {
+  LOCK_STATUS_UNSPECIFIED = 0;
+  LOCK_STATUS_FREE = 1;
+  LOCK_STATUS_ACQUIRED = 2;
+}
+
+// Unlock request
+message UnlockRequest {
+  int64 global_id = 1;
+  string token = 2;
+}
+
+// Unlock response
+message UnlockResponse {
+  bool success = 1;
+  string error_message = 2;
+}
