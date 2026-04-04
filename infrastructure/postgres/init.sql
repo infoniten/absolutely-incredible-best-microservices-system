@@ -51,7 +51,21 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+-- Create object_lock table for distributed locking
+CREATE TABLE IF NOT EXISTS murex.object_lock (
+    global_id BIGINT PRIMARY KEY,
+    token VARCHAR(36) NOT NULL,
+    expire TIMESTAMP WITH TIME ZONE NOT NULL
+);
+
+-- Create index for cleanup job (expired locks)
+CREATE INDEX IF NOT EXISTS idx_object_lock_expire ON murex.object_lock(expire);
+
+-- Create index for token lookups
+CREATE INDEX IF NOT EXISTS idx_object_lock_token ON murex.object_lock(global_id, token);
+
 -- Grant permissions
 GRANT USAGE ON SCHEMA murex TO postgres;
 GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA murex TO postgres;
+GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA murex TO postgres;
 GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA murex TO postgres;

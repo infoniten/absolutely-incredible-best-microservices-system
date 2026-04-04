@@ -80,6 +80,30 @@ services:
       - quantara-network
     restart: unless-stopped
 
+  lock-service:
+    build:
+      context: ./lock-service
+      dockerfile: Dockerfile
+    container_name: quantara-lock-service
+    ports:
+      - "50053:50053"
+    environment:
+      GRPC_PORT: "50053"
+      DATABASE_URL: "postgres://postgres:postgres@postgres:5432/quantara?sslmode=disable"
+      JAEGER_ENDPOINT: "jaeger:4318"
+      SERVICE_NAME: "lock-service"
+      DEFAULT_TTL_MS: "10000"
+      CLEANUP_INTERVAL: "3600000"  # 1 hour in ms
+      MAX_DB_CONNECTIONS: "50"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      jaeger:
+        condition: service_started
+    networks:
+      - quantara-network
+    restart: unless-stopped
+
   # gRPC Web UI for testing
   grpcui-id:
     image: fullstorydev/grpcui:latest
@@ -101,6 +125,18 @@ services:
     command: ["-plaintext", "-bind", "0.0.0.0", "-port", "8080", "globalid-service:50052"]
     depends_on:
       - globalid-service
+    networks:
+      - quantara-network
+    restart: unless-stopped
+
+  grpcui-lock:
+    image: fullstorydev/grpcui:latest
+    container_name: quantara-grpcui-lock
+    ports:
+      - "8082:8080"
+    command: ["-plaintext", "-bind", "0.0.0.0", "-port", "8080", "lock-service:50053"]
+    depends_on:
+      - lock-service
     networks:
       - quantara-network
     restart: unless-stopped
