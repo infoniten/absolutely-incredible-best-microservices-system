@@ -31,11 +31,17 @@ logs-id:
 logs-globalid:
 	docker-compose logs -f globalid-service
 
+logs-lock:
+	docker-compose logs -f lock-service
+
 logs-postgres:
 	docker-compose logs -f postgres
 
 logs-jaeger:
 	docker-compose logs -f jaeger
+
+logs-datadictionary:
+	docker-compose logs -f datadictionary
 
 # Clean up
 clean:
@@ -60,6 +66,8 @@ health:
 	@docker-compose exec postgres pg_isready -U postgres || echo "PostgreSQL is not ready"
 	@echo "Checking Jaeger..."
 	@curl -s http://localhost:16686 > /dev/null && echo "Jaeger is ready" || echo "Jaeger is not ready"
+	@echo "Checking DataDictionary..."
+	@curl -s http://localhost:8083/actuator/health > /dev/null && echo "DataDictionary is ready" || echo "DataDictionary is not ready"
 
 # Test connectivity to services
 test-grpc:
@@ -67,3 +75,7 @@ test-grpc:
 	@grpcurl -plaintext localhost:50051 list || echo "ID Service is not available"
 	@echo "Testing GlobalID Service..."
 	@grpcurl -plaintext localhost:50052 list || echo "GlobalID Service is not available"
+	@echo "Testing Lock Service..."
+	@grpcurl -plaintext localhost:50053 list || echo "Lock Service is not available"
+	@echo "Testing DataDictionary gRPC..."
+	@grpcurl -plaintext localhost:9090 list || echo "DataDictionary gRPC is not available"

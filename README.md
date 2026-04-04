@@ -16,6 +16,8 @@ docker-compose up -d --build
 - gRPC UI для ID Service: http://localhost:8080
 - gRPC UI для GlobalID Service: http://localhost:8081
 - gRPC UI для Lock Service: http://localhost:8082
+- DataDictionary HTTP API: http://localhost:8083
+- gRPC UI для DataDictionary: http://localhost:8084
 - Jaeger UI (трейсинг): http://localhost:16686
 
 ## Архитектура
@@ -53,6 +55,8 @@ docker-compose up -d --build
 Управление метаданными и схемами доменных объектов.
 - Регистрация и валидация схем
 - Запросы к метаданным
+- HTTP API: `localhost:8083`
+- gRPC API: `localhost:9090`
 
 ### Search Service
 Полнотекстовый и структурированный поиск.
