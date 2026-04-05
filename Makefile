@@ -46,6 +46,9 @@ logs-datadictionary:
 logs-transaction:
 	docker-compose logs -f transaction-service
 
+logs-search:
+	docker-compose logs -f search-service
+
 logs-redis:
 	docker-compose logs -f redis
 
@@ -58,6 +61,7 @@ proto:
 	cd id-service && make proto
 	cd globalid-service && make proto
 	cd transaction-service && make proto
+	cd search-service && make proto
 
 # Start infrastructure only
 infra-up:
@@ -88,5 +92,7 @@ test-grpc:
 	@grpcurl -plaintext localhost:50053 list || echo "Lock Service is not available"
 	@echo "Testing Transaction Service..."
 	@grpcurl -plaintext localhost:50054 list || echo "Transaction Service is not available"
+	@echo "Testing Search Service..."
+	@grpcurl -plaintext localhost:50055 list || echo "Search Service is not available"
 	@echo "Testing DataDictionary gRPC..."
 	@grpcurl -plaintext localhost:9090 list || echo "DataDictionary gRPC is not available"

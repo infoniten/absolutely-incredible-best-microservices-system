@@ -1,0 +1,5810 @@
+{
+  "classes": [
+    {
+      "name": "ALTERNATIVE_IDENTIFIER",
+      "sourceValue": "AlternativeIdentifier",
+      "rootType": "EMBEDDED_ENTITY",
+      "mainTable": "alternative_identifier_main",
+      "indexTable": "alternative_identifier_index",
+      "dataTable": null,
+      "abstract": true,
+      "isAbstract": true
+    },
+    {
+      "name": "ASSET",
+      "sourceValue": "Asset",
+      "rootType": "REVISIONED_ENTITY",
+      "mainTable": "asset_main",
+      "indexTable": "asset_index",
+      "dataTable": null,
+      "abstract": true,
+      "isAbstract": true
+    },
+    {
+      "name": "BEST_MATCHING_FORMULA",
+      "sourceValue": "BestMatchingFormula",
+      "rootType": "REVISIONED_ENTITY",
+      "mainTable": "formula_main",
+      "indexTable": null,
+      "dataTable": "best_matching_formula_data",
+      "abstract": false,
+      "isAbstract": false
+    },
+    {
+      "name": "BOARD",
+      "sourceValue": "Board",
+      "rootType": "REVISIONED_ENTITY",
+      "mainTable": "board_main",
+      "indexTable": "board_index",
+      "dataTable": "board_data",
+      "abstract": false,
+      "isAbstract": false
+    },
+    {
+      "name": "CALENDAR",
+      "sourceValue": "Calendar",
+      "rootType": "REVISIONED_ENTITY",
+      "mainTable": "draftable_revisioned_entity_main",
+      "indexTable": "calendar_index",
+      "dataTable": "calendar_data",
+      "abstract": false,
+      "isAbstract": false
+    },
+    {
+      "name": "CASHFLOW",
+      "sourceValue": "Cashflow",
+      "rootType": "EMBEDDED_ENTITY",
+      "mainTable": "cashflow_main",
+      "indexTable": "cashflow_index",
+      "dataTable": null,
+      "abstract": true,
+      "isAbstract": true
+    },
+    {
+      "name": "COMPOSIT_CALENDAR",
+      "sourceValue": "CompositCalendar",
+      "rootType": "REVISIONED_ENTITY",
+      "mainTable": "draftable_revisioned_entity_main",
+      "indexTable": null,
+      "dataTable": "composit_calendar_data",
+      "abstract": false,
+      "isAbstract": false
+    },
+    {
+      "name": "CONNPOSIT_CALENDAR",
+      "sourceValue": "ConnpositCalendar",
+      "rootType": "REVISIONED_ENTITY",
+      "mainTable": "draftable_revisioned_entity_main",
+      "indexTable": null,
+      "dataTable": "connposit_calendar_data",
+      "abstract": false,
+      "isAbstract": false
+    },
+    {
+      "name": "COUNTERPARTY",
+      "sourceValue": "Counterparty",
+      "rootType": "REVISIONED_ENTITY",
+      "mainTable": "counterparty_main",
+      "indexTable": "counterparty_index",
+      "dataTable": "counterparty_data",
+      "abstract": false,
+      "isAbstract": false
+    },
+    {
+      "name": "COUNTERPARTY_ALTERNATIVE_IDENTIFIER",
+      "sourceValue": "CounterpartyAlternativeIdentifier",
+      "rootType": "EMBEDDED_ENTITY",
+      "mainTable": "alternative_identifier_main",
+      "indexTable": null,
+      "dataTable": "counterparty_alternative_identifier_data",
+      "abstract": false,
+      "isAbstract": false
+    },
+    {
+      "name": "CURRENCY",
+      "sourceValue": "Currency",
+      "rootType": "REVISIONED_ENTITY",
+      "mainTable": "asset_main",
+      "indexTable": "currency_index",
+      "dataTable": "currency_data",
+      "abstract": false,
+      "isAbstract": false
+    },
+    {
+      "name": "DATE_BOUNDED_ENTITY",
+      "sourceValue": "DateBoundedEntity",
+      "rootType": "REVISIONED_ENTITY",
+      "mainTable": "date_bounded_entity_main",
+      "indexTable": null,
+      "dataTable": null,
+      "abstract": true,
+      "isAbstract": true
+    },
+    {
+      "name": "DATE_SHIFTER",
+      "sourceValue": "DateShifter",
+      "rootType": "REVISIONED_ENTITY",
+      "mainTable": "date_shifter_main",
+      "indexTable": "date_shifter_index",
+      "dataTable": "date_shifter_data",
+      "abstract": false,
+      "isAbstract": false
+    },
+    {
+      "name": "DAY_COUNT_CONVENTION",
+      "sourceValue": "DayCountConvention",
+      "rootType": null,
+      "mainTable": null,
+      "indexTable": null,
+      "dataTable": "day_count_convention_data",
+      "abstract": false,
+      "isAbstract": false
+    },
+    {
+      "name": "DESK",
+      "sourceValue": "Desk",
+      "rootType": "REVISIONED_ENTITY",
+      "mainTable": "desk_main",
+      "indexTable": "desk_index",
+      "dataTable": "desk_data",
+      "abstract": false,
+      "isAbstract": false
+    },
+    {
+      "name": "DRAFTABLE_DATE_BOUNDED_ENTITY",
+      "sourceValue": "DraftableDateBoundedEntity",
+      "rootType": "DRAFTABLE_DATE_BOUNDED_ENTITY",
+      "mainTable": null,
+      "indexTable": null,
+      "dataTable": null,
+      "abstract": true,
+      "isAbstract": true
+    },
+    {
+      "name": "DRAFTABLE_REVISIONED_ENTITY",
+      "sourceValue": "DraftableRevisionedEntity",
+      "rootType": "REVISIONED_ENTITY",
+      "mainTable": "draftable_revisioned_entity_main",
+      "indexTable": null,
+      "dataTable": null,
+      "abstract": true,
+      "isAbstract": true
+    },
+    {
+      "name": "EMBEDDED_ENTITY",
+      "sourceValue": "EmbeddedEntity",
+      "rootType": "EMBEDDED_ENTITY",
+      "mainTable": null,
+      "indexTable": null,
+      "dataTable": null,
+      "abstract": true,
+      "isAbstract": true
+    },
+    {
+      "name": "ENTITY",
+      "sourceValue": "Entity",
+      "rootType": null,
+      "mainTable": null,
+      "indexTable": null,
+      "dataTable": null,
+      "abstract": true,
+      "isAbstract": true
+    },
+    {
+      "name": "EXCHANGE_SECTION",
+      "sourceValue": "ExchangeSection",
+      "rootType": "REVISIONED_ENTITY",
+      "mainTable": "exchange_section_main",
+      "indexTable": "exchange_section_index",
+      "dataTable": "exchange_section_data",
+      "abstract": false,
+      "isAbstract": false
+    },
+    {
+      "name": "FIXED_TRADE_LEG",
+      "sourceValue": "FixedTradeLeg",
+      "rootType": "EMBEDDED_ENTITY",
+      "mainTable": "leg_main",
+      "indexTable": null,
+      "dataTable": "fixed_trade_leg_data",
+      "abstract": false,
+      "isAbstract": false
+    },
+    {
+      "name": "FIXING_SOURCE",
+      "sourceValue": "FixingSource",
+      "rootType": "DRAFTABLE_DATE_BOUNDED_ENTITY",
+      "mainTable": "fixing_source_main",
+      "indexTable": null,
+      "dataTable": "fixing_source_data",
+      "abstract": false,
+      "isAbstract": false
+    },
+    {
+      "name": "FIXING_VALUE",
+      "sourceValue": "FixingValue",
+      "rootType": "REVISIONED_ENTITY",
+      "mainTable": "fixing_value_main",
+      "indexTable": null,
+      "dataTable": "fixing_value_data",
+      "abstract": false,
+      "isAbstract": false
+    },
+    {
+      "name": "FLOATING_TRADE_LEG",
+      "sourceValue": "FloatingTradeLeg",
+      "rootType": "EMBEDDED_ENTITY",
+      "mainTable": "leg_main",
+      "indexTable": null,
+      "dataTable": "floating_trade_leg_data",
+      "abstract": false,
+      "isAbstract": false
+    },
+    {
+      "name": "FORMULA",
+      "sourceValue": "Formula",
+      "rootType": "REVISIONED_ENTITY",
+      "mainTable": "formula_main",
+      "indexTable": null,
+      "dataTable": null,
+      "abstract": true,
+      "isAbstract": true
+    },
+    {
+      "name": "FX_NONDELIVERABLE_FORWARD_ASIAN_TRADE",
+      "sourceValue": "FxNondeliverableForwardAsianTrade",
+      "rootType": "DRAFTABLE_DATE_BOUNDED_ENTITY",
+      "mainTable": "trade_main",
+      "indexTable": null,
+      "dataTable": "fx_nondeliverable_forward_asian_trade_data",
+      "abstract": false,
+      "isAbstract": false
+    },
+    {
+      "name": "FX_NONDELIVERABLE_FORWARD_TRADE",
+      "sourceValue": "FxNondeliverableForwardTrade",
+      "rootType": "DRAFTABLE_DATE_BOUNDED_ENTITY",
+      "mainTable": "trade_main",
+      "indexTable": null,
+      "dataTable": "fx_nondeliverable_forward_trade_data",
+      "abstract": false,
+      "isAbstract": false
+    },
+    {
+      "name": "FX_NONDELIVERABLE_OPEN_DATED_FORWARD_TRADE",
+      "sourceValue": "FxNondeliverableOpenDatedForwardTrade",
+      "rootType": "DRAFTABLE_DATE_BOUNDED_ENTITY",
+      "mainTable": "trade_main",
+      "indexTable": null,
+      "dataTable": "fx_nondeliverable_open_dated_forward_trade_data",
+      "abstract": false,
+      "isAbstract": false
+    },
+    {
+      "name": "FX_OPEN_DATED_FORWARD_TRADE",
+      "sourceValue": "FxOpenDatedForwardTrade",
+      "rootType": "DRAFTABLE_DATE_BOUNDED_ENTITY",
+      "mainTable": "trade_main",
+      "indexTable": null,
+      "dataTable": "fx_open_dated_forward_trade_data",
+      "abstract": false,
+      "isAbstract": false
+    },
+    {
+      "name": "FX_PAIR",
+      "sourceValue": "FxPair",
+      "rootType": "REVISIONED_ENTITY",
+      "mainTable": "draftable_revisioned_entity_main",
+      "indexTable": "fx_pair_index",
+      "dataTable": "fx_pair_data",
+      "abstract": false,
+      "isAbstract": false
+    },
+    {
+      "name": "FX_PREPAID_FORWARD_TRADE",
+      "sourceValue": "FxPrepaidForwardTrade",
+      "rootType": "DRAFTABLE_DATE_BOUNDED_ENTITY",
+      "mainTable": "trade_main",
+      "indexTable": null,
+      "dataTable": "fx_prepaid_forward_trade_data",
+      "abstract": false,
+      "isAbstract": false
+    },
+    {
+      "name": "FX_SPOT_EXCHANGE_PRODUCT",
+      "sourceValue": "FxSpotExchangeProduct",
+      "rootType": "REVISIONED_ENTITY",
+      "mainTable": "product_main",
+      "indexTable": null,
+      "dataTable": "fx_spot_exchange_product_data",
+      "abstract": false,
+      "isAbstract": false
+    },
+    {
+      "name": "FX_SPOT_FORWARD_TRADE",
+      "sourceValue": "FxSpotForwardTrade",
+      "rootType": "DRAFTABLE_DATE_BOUNDED_ENTITY",
+      "mainTable": "trade_main",
+      "indexTable": "fx_spot_forward_trade_index",
+      "dataTable": "fx_spot_forward_trade_data",
+      "abstract": false,
+      "isAbstract": false
+    },
+    {
+      "name": "GLOBAL_ENTITY",
+      "sourceValue": "GlobalEntity",
+      "rootType": null,
+      "mainTable": null,
+      "indexTable": null,
+      "dataTable": null,
+      "abstract": true,
+      "isAbstract": true
+    },
+    {
+      "name": "IMPORT_OBJECT_MAPPING",
+      "sourceValue": "ImportObjectMapping",
+      "rootType": null,
+      "mainTable": null,
+      "indexTable": null,
+      "dataTable": "import_object_mapping_data",
+      "abstract": false,
+      "isAbstract": false
+    },
+    {
+      "name": "INDEX",
+      "sourceValue": "Index",
+      "rootType": null,
+      "mainTable": null,
+      "indexTable": null,
+      "dataTable": "index_data",
+      "abstract": false,
+      "isAbstract": false
+    },
+    {
+      "name": "INSTRUMENT",
+      "sourceValue": "Instrument",
+      "rootType": "REVISIONED_ENTITY",
+      "mainTable": "draftable_revisioned_entity_main",
+      "indexTable": "instrument_index",
+      "dataTable": null,
+      "abstract": true,
+      "isAbstract": true
+    },
+    {
+      "name": "INTEREST_RATE_SWAP",
+      "sourceValue": "InterestRateSwap",
+      "rootType": "DRAFTABLE_DATE_BOUNDED_ENTITY",
+      "mainTable": "trade_main",
+      "indexTable": null,
+      "dataTable": "interest_rate_swap_data",
+      "abstract": false,
+      "isAbstract": false
+    },
+    {
+      "name": "INTEREST_RATE_SWAP_TRADE",
+      "sourceValue": "InterestRateSwapTrade",
+      "rootType": "DRAFTABLE_DATE_BOUNDED_ENTITY",
+      "mainTable": "trade_main",
+      "indexTable": null,
+      "dataTable": "interest_rate_swap_trade_data",
+      "abstract": false,
+      "isAbstract": false
+    },
+    {
+      "name": "LEG",
+      "sourceValue": "Leg",
+      "rootType": "EMBEDDED_ENTITY",
+      "mainTable": "leg_main",
+      "indexTable": null,
+      "dataTable": null,
+      "abstract": true,
+      "isAbstract": true
+    },
+    {
+      "name": "LEGAL_ENTITY",
+      "sourceValue": "LegalEntity",
+      "rootType": "REVISIONED_ENTITY",
+      "mainTable": "legal_entity_main",
+      "indexTable": "legal_entity_index",
+      "dataTable": "legal_entity_data",
+      "abstract": false,
+      "isAbstract": false
+    },
+    {
+      "name": "LEGAL_ENTITY_ALTERNATIVE_IDENTIFIER",
+      "sourceValue": "LegalEntityAlternativeIdentifier",
+      "rootType": "EMBEDDED_ENTITY",
+      "mainTable": "alternative_identifier_main",
+      "indexTable": null,
+      "dataTable": "legal_entity_alternative_identifier_data",
+      "abstract": false,
+      "isAbstract": false
+    },
+    {
+      "name": "LEGGED_TRADE",
+      "sourceValue": "LeggedTrade",
+      "rootType": "DRAFTABLE_DATE_BOUNDED_ENTITY",
+      "mainTable": "trade_main",
+      "indexTable": null,
+      "dataTable": null,
+      "abstract": true,
+      "isAbstract": true
+    },
+    {
+      "name": "OPEN_DATE_FORWARD_SCHEDULE_PERIOD",
+      "sourceValue": "OpenDateForwardSchedulePeriod",
+      "rootType": null,
+      "mainTable": null,
+      "indexTable": null,
+      "dataTable": "open_date_forward_schedule_period_data",
+      "abstract": false,
+      "isAbstract": false
+    },
+    {
+      "name": "PERIOD_SCHEDULE",
+      "sourceValue": "PeriodSchedule",
+      "rootType": null,
+      "mainTable": null,
+      "indexTable": null,
+      "dataTable": "period_schedule_data",
+      "abstract": false,
+      "isAbstract": false
+    },
+    {
+      "name": "PERIOD_SCHEDULE_RESULT",
+      "sourceValue": "PeriodScheduleResult",
+      "rootType": null,
+      "mainTable": null,
+      "indexTable": null,
+      "dataTable": "period_schedule_result_data",
+      "abstract": false,
+      "isAbstract": false
+    },
+    {
+      "name": "PERSON",
+      "sourceValue": "Person",
+      "rootType": "REVISIONED_ENTITY",
+      "mainTable": "person_main",
+      "indexTable": "person_index",
+      "dataTable": "person_data",
+      "abstract": false,
+      "isAbstract": false
+    },
+    {
+      "name": "PERSON_ALTERNATIVE_IDENTIFIER",
+      "sourceValue": "PersonAlternativeIdentifier",
+      "rootType": "EMBEDDED_ENTITY",
+      "mainTable": "alternative_identifier_main",
+      "indexTable": null,
+      "dataTable": "person_alternative_identifier_data",
+      "abstract": false,
+      "isAbstract": false
+    },
+    {
+      "name": "PHASE_LEG",
+      "sourceValue": "PhaseLeg",
+      "rootType": "EMBEDDED_ENTITY",
+      "mainTable": "leg_main",
+      "indexTable": null,
+      "dataTable": "phase_leg_data",
+      "abstract": false,
+      "isAbstract": false
+    },
+    {
+      "name": "PHASE_LEG_CASHFLOW",
+      "sourceValue": "PhaseLegCashflow",
+      "rootType": "EMBEDDED_ENTITY",
+      "mainTable": "cashflow_main",
+      "indexTable": null,
+      "dataTable": "phase_leg_cashflow_data",
+      "abstract": false,
+      "isAbstract": false
+    },
+    {
+      "name": "PHASED_TRADE",
+      "sourceValue": "PhasedTrade",
+      "rootType": "DRAFTABLE_DATE_BOUNDED_ENTITY",
+      "mainTable": "trade_main",
+      "indexTable": null,
+      "dataTable": null,
+      "abstract": true,
+      "isAbstract": true
+    },
+    {
+      "name": "PORTFOLIO",
+      "sourceValue": "Portfolio",
+      "rootType": "REVISIONED_ENTITY",
+      "mainTable": "portfolio_main",
+      "indexTable": "portfolio_index",
+      "dataTable": "portfolio_data",
+      "abstract": false,
+      "isAbstract": false
+    },
+    {
+      "name": "PRODUCT",
+      "sourceValue": "Product",
+      "rootType": "REVISIONED_ENTITY",
+      "mainTable": "product_main",
+      "indexTable": "product_index",
+      "dataTable": null,
+      "abstract": true,
+      "isAbstract": true
+    },
+    {
+      "name": "RATE_CONVENTION",
+      "sourceValue": "RateConvention",
+      "rootType": "REVISIONED_ENTITY",
+      "mainTable": "rate_convention_main",
+      "indexTable": "rate_convention_index",
+      "dataTable": "rate_convention_data",
+      "abstract": false,
+      "isAbstract": false
+    },
+    {
+      "name": "REVISIONED_ENTITY",
+      "sourceValue": "RevisionedEntity",
+      "rootType": "REVISIONED_ENTITY",
+      "mainTable": null,
+      "indexTable": null,
+      "dataTable": null,
+      "abstract": true,
+      "isAbstract": true
+    },
+    {
+      "name": "RISK_PORTFOLIO",
+      "sourceValue": "RiskPortfolio",
+      "rootType": "REVISIONED_ENTITY",
+      "mainTable": "risk_portfolio_main",
+      "indexTable": null,
+      "dataTable": "risk_portfolio_data",
+      "abstract": false,
+      "isAbstract": false
+    },
+    {
+      "name": "ROUNDING_CONVENTION",
+      "sourceValue": "RoundingConvention",
+      "rootType": null,
+      "mainTable": null,
+      "indexTable": null,
+      "dataTable": "rounding_convention_data",
+      "abstract": false,
+      "isAbstract": false
+    },
+    {
+      "name": "SCHEDULE_DEFINITION",
+      "sourceValue": "ScheduleDefinition",
+      "rootType": null,
+      "mainTable": null,
+      "indexTable": null,
+      "dataTable": "schedule_definition_data",
+      "abstract": false,
+      "isAbstract": false
+    },
+    {
+      "name": "SCHEDULE_GENERATOR",
+      "sourceValue": "ScheduleGenerator",
+      "rootType": "REVISIONED_ENTITY",
+      "mainTable": "schedule_generator_main",
+      "indexTable": null,
+      "dataTable": "schedule_generator_data",
+      "abstract": false,
+      "isAbstract": false
+    },
+    {
+      "name": "SIMPLE_ENTITY",
+      "sourceValue": "SimpleEntity",
+      "rootType": null,
+      "mainTable": null,
+      "indexTable": null,
+      "dataTable": null,
+      "abstract": true,
+      "isAbstract": true
+    },
+    {
+      "name": "SOURCE",
+      "sourceValue": "Source",
+      "rootType": "REVISIONED_ENTITY",
+      "mainTable": "source_main",
+      "indexTable": "source_index",
+      "dataTable": "source_data",
+      "abstract": false,
+      "isAbstract": false
+    },
+    {
+      "name": "SPECIFIC_ENTITY",
+      "sourceValue": "SpecificEntity",
+      "rootType": null,
+      "mainTable": null,
+      "indexTable": null,
+      "dataTable": null,
+      "abstract": true,
+      "isAbstract": true
+    },
+    {
+      "name": "SYSTEM",
+      "sourceValue": "System",
+      "rootType": "REVISIONED_ENTITY",
+      "mainTable": "system_main",
+      "indexTable": "system_index",
+      "dataTable": "system_data",
+      "abstract": false,
+      "isAbstract": false
+    },
+    {
+      "name": "TRADE",
+      "sourceValue": "Trade",
+      "rootType": "DRAFTABLE_DATE_BOUNDED_ENTITY",
+      "mainTable": "trade_main",
+      "indexTable": "trade_index",
+      "dataTable": null,
+      "abstract": true,
+      "isAbstract": true
+    },
+    {
+      "name": "TRADE_CASHFLOW",
+      "sourceValue": "TradeCashflow",
+      "rootType": "EMBEDDED_ENTITY",
+      "mainTable": "cashflow_main",
+      "indexTable": null,
+      "dataTable": "trade_cashflow_data",
+      "abstract": false,
+      "isAbstract": false
+    },
+    {
+      "name": "TRADE_LEG",
+      "sourceValue": "TradeLeg",
+      "rootType": "EMBEDDED_ENTITY",
+      "mainTable": "leg_main",
+      "indexTable": null,
+      "dataTable": "trade_leg_data",
+      "abstract": false,
+      "isAbstract": false
+    },
+    {
+      "name": "TRADE_LEG_CASHFLOW",
+      "sourceValue": "TradeLegCashflow",
+      "rootType": "EMBEDDED_ENTITY",
+      "mainTable": "cashflow_main",
+      "indexTable": null,
+      "dataTable": "trade_leg_cashflow_data",
+      "abstract": false,
+      "isAbstract": false
+    },
+    {
+      "name": "TRADE_PHASE",
+      "sourceValue": "TradePhase",
+      "rootType": "EMBEDDED_ENTITY",
+      "mainTable": "trade_phase_main",
+      "indexTable": "trade_phase_index",
+      "dataTable": "trade_phase_data",
+      "abstract": false,
+      "isAbstract": false
+    },
+    {
+      "name": "USER",
+      "sourceValue": "User",
+      "rootType": "REVISIONED_ENTITY",
+      "mainTable": "user_main",
+      "indexTable": "user_index",
+      "dataTable": "user_data",
+      "abstract": false,
+      "isAbstract": false
+    },
+    {
+      "name": "VENUE",
+      "sourceValue": "Venue",
+      "rootType": "REVISIONED_ENTITY",
+      "mainTable": "venue_main",
+      "indexTable": "venue_index",
+      "dataTable": "venue_data",
+      "abstract": false,
+      "isAbstract": false
+    }
+  ],
+  "fields": {
+    "ALTERNATIVE_IDENTIFIER": {
+      "mainFields": [
+        {
+          "name": "created_at",
+          "db": "created_at",
+          "type": "DATETIME"
+        },
+        {
+          "name": "id",
+          "db": "id",
+          "type": "LONG"
+        },
+        {
+          "name": "objectClass",
+          "db": "object_class",
+          "type": "STRING"
+        },
+        {
+          "name": "parentId",
+          "db": "parent_id",
+          "type": "LONG"
+        }
+      ],
+      "indexFields": [
+        {
+          "name": "sourceId",
+          "db": "source_id",
+          "type": "LONG"
+        },
+        {
+          "name": "value",
+          "db": "value",
+          "type": "STRING"
+        }
+      ],
+      "jsonFields": [
+        {
+          "name": "sourceId",
+          "type": "LONG"
+        },
+        {
+          "name": "value",
+          "type": "STRING"
+        }
+      ]
+    },
+    "ASSET": {
+      "mainFields": [
+        {
+          "name": "closedAt",
+          "db": "closed_at",
+          "type": "DATETIME"
+        },
+        {
+          "name": "globalId",
+          "db": "global_id",
+          "type": "LONG"
+        },
+        {
+          "name": "id",
+          "db": "id",
+          "type": "LONG"
+        },
+        {
+          "name": "objectClass",
+          "db": "object_class",
+          "type": "STRING"
+        },
+        {
+          "name": "revision",
+          "db": "revision",
+          "type": "INTEGER"
+        },
+        {
+          "name": "savedAt",
+          "db": "saved_at",
+          "type": "DATETIME"
+        },
+        {
+          "name": "version",
+          "db": "version",
+          "type": "INTEGER"
+        }
+      ],
+      "indexFields": [
+        {
+          "name": "code",
+          "db": "code",
+          "type": "STRING"
+        }
+      ],
+      "jsonFields": [
+        {
+          "name": "code",
+          "type": "STRING"
+        },
+        {
+          "name": "name",
+          "type": "STRING"
+        }
+      ]
+    },
+    "BEST_MATCHING_FORMULA": {
+      "mainFields": [
+        {
+          "name": "closedAt",
+          "db": "closed_at",
+          "type": "DATETIME"
+        },
+        {
+          "name": "globalId",
+          "db": "global_id",
+          "type": "LONG"
+        },
+        {
+          "name": "id",
+          "db": "id",
+          "type": "LONG"
+        },
+        {
+          "name": "objectClass",
+          "db": "object_class",
+          "type": "STRING"
+        },
+        {
+          "name": "revision",
+          "db": "revision",
+          "type": "INTEGER"
+        },
+        {
+          "name": "savedAt",
+          "db": "saved_at",
+          "type": "DATETIME"
+        },
+        {
+          "name": "version",
+          "db": "version",
+          "type": "INTEGER"
+        }
+      ],
+      "indexFields": [
+
+      ],
+      "jsonFields": [
+
+      ]
+    },
+    "BOARD": {
+      "mainFields": [
+        {
+          "name": "closedAt",
+          "db": "closed_at",
+          "type": "DATETIME"
+        },
+        {
+          "name": "globalId",
+          "db": "global_id",
+          "type": "LONG"
+        },
+        {
+          "name": "id",
+          "db": "id",
+          "type": "LONG"
+        },
+        {
+          "name": "objectClass",
+          "db": "object_class",
+          "type": "STRING"
+        },
+        {
+          "name": "revision",
+          "db": "revision",
+          "type": "INTEGER"
+        },
+        {
+          "name": "savedAt",
+          "db": "saved_at",
+          "type": "DATETIME"
+        },
+        {
+          "name": "version",
+          "db": "version",
+          "type": "INTEGER"
+        }
+      ],
+      "indexFields": [
+        {
+          "name": "code",
+          "db": "code",
+          "type": "STRING"
+        },
+        {
+          "name": "venueId",
+          "db": "venue_id",
+          "type": "LONG"
+        }
+      ],
+      "jsonFields": [
+        {
+          "name": "code",
+          "type": "STRING"
+        },
+        {
+          "name": "name",
+          "type": "STRING"
+        },
+        {
+          "name": "venueId",
+          "type": "LONG"
+        }
+      ]
+    },
+    "CALENDAR": {
+      "mainFields": [
+        {
+          "name": "closedAt",
+          "db": "closed_at",
+          "type": "DATETIME"
+        },
+        {
+          "name": "globalId",
+          "db": "global_id",
+          "type": "LONG"
+        },
+        {
+          "name": "id",
+          "db": "id",
+          "type": "LONG"
+        },
+        {
+          "name": "objectClass",
+          "db": "object_class",
+          "type": "STRING"
+        },
+        {
+          "name": "revision",
+          "db": "revision",
+          "type": "INTEGER"
+        },
+        {
+          "name": "savedAt",
+          "db": "saved_at",
+          "type": "DATETIME"
+        },
+        {
+          "name": "version",
+          "db": "version",
+          "type": "INTEGER"
+        }
+      ],
+      "indexFields": [
+        {
+          "name": "code",
+          "db": "code",
+          "type": "STRING"
+        },
+        {
+          "name": "holidays",
+          "db": "holidays",
+          "type": "STRING"
+        },
+        {
+          "name": "isActive",
+          "db": "is_active",
+          "type": "BOOLEAN"
+        },
+        {
+          "name": "specialHolidays",
+          "db": "special_holidays",
+          "type": "STRING"
+        },
+        {
+          "name": "specialWorkingDays",
+          "db": "special_working_days",
+          "type": "STRING"
+        }
+      ],
+      "jsonFields": [
+        {
+          "name": "code",
+          "type": "STRING"
+        },
+        {
+          "name": "holidays",
+          "type": "STRING"
+        },
+        {
+          "name": "isActive",
+          "type": "BOOLEAN"
+        },
+        {
+          "name": "name",
+          "type": "STRING"
+        },
+        {
+          "name": "specialHolidays",
+          "type": "STRING"
+        },
+        {
+          "name": "specialWorkingDays",
+          "type": "STRING"
+        }
+      ]
+    },
+    "CASHFLOW": {
+      "mainFields": [
+        {
+          "name": "created_at",
+          "db": "created_at",
+          "type": "DATETIME"
+        },
+        {
+          "name": "id",
+          "db": "id",
+          "type": "LONG"
+        },
+        {
+          "name": "objectClass",
+          "db": "object_class",
+          "type": "STRING"
+        },
+        {
+          "name": "parentId",
+          "db": "parent_id",
+          "type": "LONG"
+        }
+      ],
+      "indexFields": [
+        {
+          "name": "direction",
+          "db": "direction",
+          "type": "STRING"
+        },
+        {
+          "name": "paymentAmount",
+          "db": "payment_amount",
+          "type": "DECIMAL"
+        },
+        {
+          "name": "paymentCurrencyId",
+          "db": "payment_currency_id",
+          "type": "LONG"
+        },
+        {
+          "name": "paymentDate",
+          "db": "payment_date",
+          "type": "DATE"
+        },
+        {
+          "name": "type",
+          "db": "type",
+          "type": "STRING"
+        }
+      ],
+      "jsonFields": [
+        {
+          "name": "conversionDate",
+          "type": "DATE"
+        },
+        {
+          "name": "conversionRate",
+          "type": "DECIMAL"
+        },
+        {
+          "name": "conversionSourceId",
+          "type": "LONG"
+        },
+        {
+          "name": "counterpartyId",
+          "type": "LONG"
+        },
+        {
+          "name": "direction",
+          "type": "STRING"
+        },
+        {
+          "name": "isSettled",
+          "type": "BOOLEAN"
+        },
+        {
+          "name": "originalAmount",
+          "type": "DECIMAL"
+        },
+        {
+          "name": "originalCurrencyId",
+          "type": "LONG"
+        },
+        {
+          "name": "paymentAmount",
+          "type": "DECIMAL"
+        },
+        {
+          "name": "paymentCurrencyId",
+          "type": "LONG"
+        },
+        {
+          "name": "paymentDate",
+          "type": "DATE"
+        },
+        {
+          "name": "type",
+          "type": "STRING"
+        }
+      ]
+    },
+    "COMPOSIT_CALENDAR": {
+      "mainFields": [
+        {
+          "name": "closedAt",
+          "db": "closed_at",
+          "type": "DATETIME"
+        },
+        {
+          "name": "globalId",
+          "db": "global_id",
+          "type": "LONG"
+        },
+        {
+          "name": "id",
+          "db": "id",
+          "type": "LONG"
+        },
+        {
+          "name": "objectClass",
+          "db": "object_class",
+          "type": "STRING"
+        },
+        {
+          "name": "revision",
+          "db": "revision",
+          "type": "INTEGER"
+        },
+        {
+          "name": "savedAt",
+          "db": "saved_at",
+          "type": "DATETIME"
+        },
+        {
+          "name": "version",
+          "db": "version",
+          "type": "INTEGER"
+        }
+      ],
+      "indexFields": [
+
+      ],
+      "jsonFields": [
+        {
+          "name": "calendars",
+          "type": "STRING"
+        }
+      ]
+    },
+    "CONNPOSIT_CALENDAR": {
+      "mainFields": [
+        {
+          "name": "closedAt",
+          "db": "closed_at",
+          "type": "DATETIME"
+        },
+        {
+          "name": "globalId",
+          "db": "global_id",
+          "type": "LONG"
+        },
+        {
+          "name": "id",
+          "db": "id",
+          "type": "LONG"
+        },
+        {
+          "name": "objectClass",
+          "db": "object_class",
+          "type": "STRING"
+        },
+        {
+          "name": "revision",
+          "db": "revision",
+          "type": "INTEGER"
+        },
+        {
+          "name": "savedAt",
+          "db": "saved_at",
+          "type": "DATETIME"
+        },
+        {
+          "name": "version",
+          "db": "version",
+          "type": "INTEGER"
+        }
+      ],
+      "indexFields": [
+
+      ],
+      "jsonFields": [
+
+      ]
+    },
+    "COUNTERPARTY": {
+      "mainFields": [
+        {
+          "name": "closedAt",
+          "db": "closed_at",
+          "type": "DATETIME"
+        },
+        {
+          "name": "globalId",
+          "db": "global_id",
+          "type": "LONG"
+        },
+        {
+          "name": "id",
+          "db": "id",
+          "type": "LONG"
+        },
+        {
+          "name": "objectClass",
+          "db": "object_class",
+          "type": "STRING"
+        },
+        {
+          "name": "revision",
+          "db": "revision",
+          "type": "INTEGER"
+        },
+        {
+          "name": "savedAt",
+          "db": "saved_at",
+          "type": "DATETIME"
+        },
+        {
+          "name": "version",
+          "db": "version",
+          "type": "INTEGER"
+        }
+      ],
+      "indexFields": [
+        {
+          "name": "code",
+          "db": "code",
+          "type": "STRING"
+        }
+      ],
+      "jsonFields": [
+        {
+          "name": "code",
+          "type": "STRING"
+        },
+        {
+          "name": "inn",
+          "type": "STRING"
+        },
+        {
+          "name": "lei",
+          "type": "STRING"
+        },
+        {
+          "name": "name",
+          "type": "STRING"
+        }
+      ]
+    },
+    "COUNTERPARTY_ALTERNATIVE_IDENTIFIER": {
+      "mainFields": [
+        {
+          "name": "created_at",
+          "db": "created_at",
+          "type": "DATETIME"
+        },
+        {
+          "name": "id",
+          "db": "id",
+          "type": "LONG"
+        },
+        {
+          "name": "objectClass",
+          "db": "object_class",
+          "type": "STRING"
+        },
+        {
+          "name": "parentId",
+          "db": "parent_id",
+          "type": "LONG"
+        }
+      ],
+      "indexFields": [
+
+      ],
+      "jsonFields": [
+
+      ]
+    },
+    "CURRENCY": {
+      "mainFields": [
+        {
+          "name": "closedAt",
+          "db": "closed_at",
+          "type": "DATETIME"
+        },
+        {
+          "name": "globalId",
+          "db": "global_id",
+          "type": "LONG"
+        },
+        {
+          "name": "id",
+          "db": "id",
+          "type": "LONG"
+        },
+        {
+          "name": "objectClass",
+          "db": "object_class",
+          "type": "STRING"
+        },
+        {
+          "name": "revision",
+          "db": "revision",
+          "type": "INTEGER"
+        },
+        {
+          "name": "savedAt",
+          "db": "saved_at",
+          "type": "DATETIME"
+        },
+        {
+          "name": "version",
+          "db": "version",
+          "type": "INTEGER"
+        }
+      ],
+      "indexFields": [
+        {
+          "name": "calendarId",
+          "db": "calendar_id",
+          "type": "LONG"
+        },
+        {
+          "name": "precision",
+          "db": "precision",
+          "type": "INTEGER"
+        },
+        {
+          "name": "rateConventionId",
+          "db": "rate_convention_id",
+          "type": "LONG"
+        },
+        {
+          "name": "spotShifterId",
+          "db": "spot_shifter_id",
+          "type": "LONG"
+        }
+      ],
+      "jsonFields": [
+        {
+          "name": "calendarId",
+          "type": "LONG"
+        },
+        {
+          "name": "isoCode",
+          "type": "STRING"
+        },
+        {
+          "name": "precision",
+          "type": "INTEGER"
+        },
+        {
+          "name": "rateConventionId",
+          "type": "LONG"
+        },
+        {
+          "name": "spotShifterId",
+          "type": "LONG"
+        }
+      ]
+    },
+    "DATE_BOUNDED_ENTITY": {
+      "mainFields": [
+        {
+          "name": "closedAt",
+          "db": "closed_at",
+          "type": "DATETIME"
+        },
+        {
+          "name": "globalId",
+          "db": "global_id",
+          "type": "LONG"
+        },
+        {
+          "name": "id",
+          "db": "id",
+          "type": "LONG"
+        },
+        {
+          "name": "objectClass",
+          "db": "object_class",
+          "type": "STRING"
+        },
+        {
+          "name": "revision",
+          "db": "revision",
+          "type": "INTEGER"
+        },
+        {
+          "name": "savedAt",
+          "db": "saved_at",
+          "type": "DATETIME"
+        },
+        {
+          "name": "version",
+          "db": "version",
+          "type": "INTEGER"
+        }
+      ],
+      "indexFields": [
+
+      ],
+      "jsonFields": [
+        {
+          "name": "actualFrom",
+          "type": "DATE"
+        },
+        {
+          "name": "actualTo",
+          "type": "DATE"
+        }
+      ]
+    },
+    "DATE_SHIFTER": {
+      "mainFields": [
+        {
+          "name": "closedAt",
+          "db": "closed_at",
+          "type": "DATETIME"
+        },
+        {
+          "name": "globalId",
+          "db": "global_id",
+          "type": "LONG"
+        },
+        {
+          "name": "id",
+          "db": "id",
+          "type": "LONG"
+        },
+        {
+          "name": "objectClass",
+          "db": "object_class",
+          "type": "STRING"
+        },
+        {
+          "name": "revision",
+          "db": "revision",
+          "type": "INTEGER"
+        },
+        {
+          "name": "savedAt",
+          "db": "saved_at",
+          "type": "DATETIME"
+        },
+        {
+          "name": "version",
+          "db": "version",
+          "type": "INTEGER"
+        }
+      ],
+      "indexFields": [
+        {
+          "name": "code",
+          "db": "code",
+          "type": "STRING"
+        },
+        {
+          "name": "direction",
+          "db": "direction",
+          "type": "STRING"
+        },
+        {
+          "name": "isActive",
+          "db": "is_active",
+          "type": "BOOLEAN"
+        },
+        {
+          "name": "shift",
+          "db": "shift",
+          "type": "INTEGER"
+        },
+        {
+          "name": "type",
+          "db": "type",
+          "type": "STRING"
+        },
+        {
+          "name": "unit",
+          "db": "unit",
+          "type": "STRING"
+        }
+      ],
+      "jsonFields": [
+        {
+          "name": "code",
+          "type": "STRING"
+        },
+        {
+          "name": "direction",
+          "type": "STRING"
+        },
+        {
+          "name": "isActive",
+          "type": "BOOLEAN"
+        },
+        {
+          "name": "name",
+          "type": "STRING"
+        },
+        {
+          "name": "shift",
+          "type": "INTEGER"
+        },
+        {
+          "name": "type",
+          "type": "STRING"
+        },
+        {
+          "name": "unit",
+          "type": "STRING"
+        }
+      ]
+    },
+    "DAY_COUNT_CONVENTION": {
+      "mainFields": [
+
+      ],
+      "indexFields": [
+
+      ],
+      "jsonFields": [
+
+      ]
+    },
+    "DESK": {
+      "mainFields": [
+        {
+          "name": "closedAt",
+          "db": "closed_at",
+          "type": "DATETIME"
+        },
+        {
+          "name": "globalId",
+          "db": "global_id",
+          "type": "LONG"
+        },
+        {
+          "name": "id",
+          "db": "id",
+          "type": "LONG"
+        },
+        {
+          "name": "objectClass",
+          "db": "object_class",
+          "type": "STRING"
+        },
+        {
+          "name": "revision",
+          "db": "revision",
+          "type": "INTEGER"
+        },
+        {
+          "name": "savedAt",
+          "db": "saved_at",
+          "type": "DATETIME"
+        },
+        {
+          "name": "version",
+          "db": "version",
+          "type": "INTEGER"
+        }
+      ],
+      "indexFields": [
+        {
+          "name": "code",
+          "db": "code",
+          "type": "STRING"
+        }
+      ],
+      "jsonFields": [
+        {
+          "name": "code",
+          "type": "STRING"
+        },
+        {
+          "name": "name",
+          "type": "STRING"
+        }
+      ]
+    },
+    "DRAFTABLE_DATE_BOUNDED_ENTITY": {
+      "mainFields": [
+
+      ],
+      "indexFields": [
+
+      ],
+      "jsonFields": [
+        {
+          "name": "draftStatus",
+          "type": "BOOLEAN"
+        }
+      ]
+    },
+    "DRAFTABLE_REVISIONED_ENTITY": {
+      "mainFields": [
+        {
+          "name": "closedAt",
+          "db": "closed_at",
+          "type": "DATETIME"
+        },
+        {
+          "name": "globalId",
+          "db": "global_id",
+          "type": "LONG"
+        },
+        {
+          "name": "id",
+          "db": "id",
+          "type": "LONG"
+        },
+        {
+          "name": "objectClass",
+          "db": "object_class",
+          "type": "STRING"
+        },
+        {
+          "name": "revision",
+          "db": "revision",
+          "type": "INTEGER"
+        },
+        {
+          "name": "savedAt",
+          "db": "saved_at",
+          "type": "DATETIME"
+        },
+        {
+          "name": "version",
+          "db": "version",
+          "type": "INTEGER"
+        }
+      ],
+      "indexFields": [
+
+      ],
+      "jsonFields": [
+        {
+          "name": "draftStatus",
+          "type": "STRING"
+        }
+      ]
+    },
+    "EMBEDDED_ENTITY": {
+      "mainFields": [
+
+      ],
+      "indexFields": [
+
+      ],
+      "jsonFields": [
+        {
+          "name": "parentId",
+          "type": "LONG"
+        }
+      ]
+    },
+    "ENTITY": {
+      "mainFields": [
+
+      ],
+      "indexFields": [
+
+      ],
+      "jsonFields": [
+        {
+          "name": "id",
+          "type": "LONG"
+        }
+      ]
+    },
+    "EXCHANGE_SECTION": {
+      "mainFields": [
+        {
+          "name": "closedAt",
+          "db": "closed_at",
+          "type": "DATETIME"
+        },
+        {
+          "name": "globalId",
+          "db": "global_id",
+          "type": "LONG"
+        },
+        {
+          "name": "id",
+          "db": "id",
+          "type": "LONG"
+        },
+        {
+          "name": "objectClass",
+          "db": "object_class",
+          "type": "STRING"
+        },
+        {
+          "name": "revision",
+          "db": "revision",
+          "type": "INTEGER"
+        },
+        {
+          "name": "savedAt",
+          "db": "saved_at",
+          "type": "DATETIME"
+        },
+        {
+          "name": "version",
+          "db": "version",
+          "type": "INTEGER"
+        }
+      ],
+      "indexFields": [
+        {
+          "name": "code",
+          "db": "code",
+          "type": "STRING"
+        },
+        {
+          "name": "venueId",
+          "db": "venue_id",
+          "type": "LONG"
+        }
+      ],
+      "jsonFields": [
+        {
+          "name": "code",
+          "type": "STRING"
+        },
+        {
+          "name": "name",
+          "type": "STRING"
+        },
+        {
+          "name": "venueId",
+          "type": "LONG"
+        }
+      ]
+    },
+    "FIXED_TRADE_LEG": {
+      "mainFields": [
+        {
+          "name": "created_at",
+          "db": "created_at",
+          "type": "DATETIME"
+        },
+        {
+          "name": "id",
+          "db": "id",
+          "type": "LONG"
+        },
+        {
+          "name": "objectClass",
+          "db": "object_class",
+          "type": "STRING"
+        },
+        {
+          "name": "parentId",
+          "db": "parent_id",
+          "type": "LONG"
+        }
+      ],
+      "indexFields": [
+
+      ],
+      "jsonFields": [
+        {
+          "name": "currency",
+          "type": "STRING"
+        }
+      ]
+    },
+    "FIXING_SOURCE": {
+      "mainFields": [
+        {
+          "name": "ActualFrom",
+          "db": "actual_from",
+          "type": "DATE"
+        },
+        {
+          "name": "actual_to",
+          "db": "actual_to",
+          "type": "DATE"
+        },
+        {
+          "name": "closed_at",
+          "db": "closed_at",
+          "type": "DATETIME"
+        },
+        {
+          "name": "draftStatus",
+          "db": "draft_status",
+          "type": "BOOLEAN"
+        },
+        {
+          "name": "globalId",
+          "db": "global_id",
+          "type": "DECIMAL"
+        },
+        {
+          "name": "id",
+          "db": "id",
+          "type": "DECIMAL"
+        },
+        {
+          "name": "objectClass",
+          "db": "object_class",
+          "type": "STRING"
+        },
+        {
+          "name": "revision",
+          "db": "revision",
+          "type": "INTEGER"
+        },
+        {
+          "name": "savedAt",
+          "db": "saved_at",
+          "type": "DATETIME"
+        },
+        {
+          "name": "version",
+          "db": "version",
+          "type": "INTEGER"
+        }
+      ],
+      "indexFields": [
+
+      ],
+      "jsonFields": [
+        {
+          "name": "calendarId",
+          "type": "STRING"
+        },
+        {
+          "name": "code",
+          "type": "STRING"
+        },
+        {
+          "name": "instrumentId",
+          "type": "STRING"
+        },
+        {
+          "name": "name",
+          "type": "STRING"
+        },
+        {
+          "name": "schedules",
+          "type": "STRING"
+        }
+      ]
+    },
+    "FIXING_VALUE": {
+      "mainFields": [
+        {
+          "name": "closedAt",
+          "db": "closed_at",
+          "type": "DATETIME"
+        },
+        {
+          "name": "globalId",
+          "db": "global_id",
+          "type": "LONG"
+        },
+        {
+          "name": "id",
+          "db": "id",
+          "type": "LONG"
+        },
+        {
+          "name": "objectClass",
+          "db": "object_class",
+          "type": "STRING"
+        },
+        {
+          "name": "revision",
+          "db": "revision",
+          "type": "INTEGER"
+        },
+        {
+          "name": "savedAt",
+          "db": "saved_at",
+          "type": "DATETIME"
+        },
+        {
+          "name": "version",
+          "db": "version",
+          "type": "INTEGER"
+        }
+      ],
+      "indexFields": [
+
+      ],
+      "jsonFields": [
+        {
+          "name": "effectiveFromDate",
+          "type": "DATE"
+        },
+        {
+          "name": "publicationDateTime",
+          "type": "DATETIME"
+        },
+        {
+          "name": "value",
+          "type": "DECIMAL"
+        }
+      ]
+    },
+    "FLOATING_TRADE_LEG": {
+      "mainFields": [
+        {
+          "name": "created_at",
+          "db": "created_at",
+          "type": "DATETIME"
+        },
+        {
+          "name": "id",
+          "db": "id",
+          "type": "LONG"
+        },
+        {
+          "name": "objectClass",
+          "db": "object_class",
+          "type": "STRING"
+        },
+        {
+          "name": "parentId",
+          "db": "parent_id",
+          "type": "LONG"
+        }
+      ],
+      "indexFields": [
+
+      ],
+      "jsonFields": [
+        {
+          "name": "firstFixingRate",
+          "type": "DECIMAL"
+        },
+        {
+          "name": "index",
+          "type": "STRING"
+        }
+      ]
+    },
+    "FORMULA": {
+      "mainFields": [
+        {
+          "name": "closedAt",
+          "db": "closed_at",
+          "type": "DATETIME"
+        },
+        {
+          "name": "globalId",
+          "db": "global_id",
+          "type": "LONG"
+        },
+        {
+          "name": "id",
+          "db": "id",
+          "type": "LONG"
+        },
+        {
+          "name": "objectClass",
+          "db": "object_class",
+          "type": "STRING"
+        },
+        {
+          "name": "revision",
+          "db": "revision",
+          "type": "INTEGER"
+        },
+        {
+          "name": "savedAt",
+          "db": "saved_at",
+          "type": "DATETIME"
+        },
+        {
+          "name": "version",
+          "db": "version",
+          "type": "INTEGER"
+        }
+      ],
+      "indexFields": [
+
+      ],
+      "jsonFields": [
+        {
+          "name": "body",
+          "type": "STRING"
+        },
+        {
+          "name": "code",
+          "type": "STRING"
+        },
+        {
+          "name": "description",
+          "type": "STRING"
+        }
+      ]
+    },
+    "FX_NONDELIVERABLE_FORWARD_ASIAN_TRADE": {
+      "mainFields": [
+        {
+          "name": "ActualFrom",
+          "db": "actual_from",
+          "type": "DATE"
+        },
+        {
+          "name": "actual_to",
+          "db": "actual_to",
+          "type": "DATE"
+        },
+        {
+          "name": "closed_at",
+          "db": "closed_at",
+          "type": "DATETIME"
+        },
+        {
+          "name": "draftStatus",
+          "db": "draft_status",
+          "type": "BOOLEAN"
+        },
+        {
+          "name": "globalId",
+          "db": "global_id",
+          "type": "DECIMAL"
+        },
+        {
+          "name": "id",
+          "db": "id",
+          "type": "DECIMAL"
+        },
+        {
+          "name": "objectClass",
+          "db": "object_class",
+          "type": "STRING"
+        },
+        {
+          "name": "revision",
+          "db": "revision",
+          "type": "INTEGER"
+        },
+        {
+          "name": "savedAt",
+          "db": "saved_at",
+          "type": "DATETIME"
+        },
+        {
+          "name": "version",
+          "db": "version",
+          "type": "INTEGER"
+        }
+      ],
+      "indexFields": [
+
+      ],
+      "jsonFields": [
+        {
+          "name": "fixingStartDate",
+          "type": "DATE"
+        },
+        {
+          "name": "roundingConvention",
+          "type": "STRING"
+        }
+      ]
+    },
+    "FX_NONDELIVERABLE_FORWARD_TRADE": {
+      "mainFields": [
+        {
+          "name": "ActualFrom",
+          "db": "actual_from",
+          "type": "DATE"
+        },
+        {
+          "name": "actual_to",
+          "db": "actual_to",
+          "type": "DATE"
+        },
+        {
+          "name": "closed_at",
+          "db": "closed_at",
+          "type": "DATETIME"
+        },
+        {
+          "name": "draftStatus",
+          "db": "draft_status",
+          "type": "BOOLEAN"
+        },
+        {
+          "name": "globalId",
+          "db": "global_id",
+          "type": "DECIMAL"
+        },
+        {
+          "name": "id",
+          "db": "id",
+          "type": "DECIMAL"
+        },
+        {
+          "name": "objectClass",
+          "db": "object_class",
+          "type": "STRING"
+        },
+        {
+          "name": "revision",
+          "db": "revision",
+          "type": "INTEGER"
+        },
+        {
+          "name": "savedAt",
+          "db": "saved_at",
+          "type": "DATETIME"
+        },
+        {
+          "name": "version",
+          "db": "version",
+          "type": "INTEGER"
+        }
+      ],
+      "indexFields": [
+
+      ],
+      "jsonFields": [
+        {
+          "name": "fixingDate",
+          "type": "DATE"
+        },
+        {
+          "name": "fixingRate",
+          "type": "DECIMAL"
+        },
+        {
+          "name": "fixingSourceId",
+          "type": "LONG"
+        },
+        {
+          "name": "settleCurrencyId",
+          "type": "LONG"
+        }
+      ]
+    },
+    "FX_NONDELIVERABLE_OPEN_DATED_FORWARD_TRADE": {
+      "mainFields": [
+        {
+          "name": "ActualFrom",
+          "db": "actual_from",
+          "type": "DATE"
+        },
+        {
+          "name": "actual_to",
+          "db": "actual_to",
+          "type": "DATE"
+        },
+        {
+          "name": "closed_at",
+          "db": "closed_at",
+          "type": "DATETIME"
+        },
+        {
+          "name": "draftStatus",
+          "db": "draft_status",
+          "type": "BOOLEAN"
+        },
+        {
+          "name": "globalId",
+          "db": "global_id",
+          "type": "DECIMAL"
+        },
+        {
+          "name": "id",
+          "db": "id",
+          "type": "DECIMAL"
+        },
+        {
+          "name": "objectClass",
+          "db": "object_class",
+          "type": "STRING"
+        },
+        {
+          "name": "revision",
+          "db": "revision",
+          "type": "INTEGER"
+        },
+        {
+          "name": "savedAt",
+          "db": "saved_at",
+          "type": "DATETIME"
+        },
+        {
+          "name": "version",
+          "db": "version",
+          "type": "INTEGER"
+        }
+      ],
+      "indexFields": [
+
+      ],
+      "jsonFields": [
+        {
+          "name": "fixingDate",
+          "type": "DATE"
+        },
+        {
+          "name": "fixingRate",
+          "type": "DECIMAL"
+        },
+        {
+          "name": "fixingShifter",
+          "type": "STRING"
+        },
+        {
+          "name": "fixingSourceId",
+          "type": "LONG"
+        },
+        {
+          "name": "settleCurrencyId",
+          "type": "LONG"
+        }
+      ]
+    },
+    "FX_OPEN_DATED_FORWARD_TRADE": {
+      "mainFields": [
+        {
+          "name": "ActualFrom",
+          "db": "actual_from",
+          "type": "DATE"
+        },
+        {
+          "name": "actual_to",
+          "db": "actual_to",
+          "type": "DATE"
+        },
+        {
+          "name": "closed_at",
+          "db": "closed_at",
+          "type": "DATETIME"
+        },
+        {
+          "name": "draftStatus",
+          "db": "draft_status",
+          "type": "BOOLEAN"
+        },
+        {
+          "name": "globalId",
+          "db": "global_id",
+          "type": "DECIMAL"
+        },
+        {
+          "name": "id",
+          "db": "id",
+          "type": "DECIMAL"
+        },
+        {
+          "name": "objectClass",
+          "db": "object_class",
+          "type": "STRING"
+        },
+        {
+          "name": "revision",
+          "db": "revision",
+          "type": "INTEGER"
+        },
+        {
+          "name": "savedAt",
+          "db": "saved_at",
+          "type": "DATETIME"
+        },
+        {
+          "name": "version",
+          "db": "version",
+          "type": "INTEGER"
+        }
+      ],
+      "indexFields": [
+
+      ],
+      "jsonFields": [
+        {
+          "name": "calendarId",
+          "type": "LONG"
+        },
+        {
+          "name": "schedule",
+          "type": "STRING"
+        }
+      ]
+    },
+    "FX_PAIR": {
+      "mainFields": [
+        {
+          "name": "closedAt",
+          "db": "closed_at",
+          "type": "DATETIME"
+        },
+        {
+          "name": "globalId",
+          "db": "global_id",
+          "type": "LONG"
+        },
+        {
+          "name": "id",
+          "db": "id",
+          "type": "LONG"
+        },
+        {
+          "name": "objectClass",
+          "db": "object_class",
+          "type": "STRING"
+        },
+        {
+          "name": "revision",
+          "db": "revision",
+          "type": "INTEGER"
+        },
+        {
+          "name": "savedAt",
+          "db": "saved_at",
+          "type": "DATETIME"
+        },
+        {
+          "name": "version",
+          "db": "version",
+          "type": "INTEGER"
+        }
+      ],
+      "indexFields": [
+        {
+          "name": "backwardCalendarId",
+          "db": "backward_calendar_id",
+          "type": "LONG"
+        },
+        {
+          "name": "backwardSpotShifterId",
+          "db": "backward_spot_shifter_id",
+          "type": "LONG"
+        },
+        {
+          "name": "baseCurrencyId",
+          "db": "base_currency_id",
+          "type": "LONG"
+        },
+        {
+          "name": "defaultQuotation",
+          "db": "default_quotation",
+          "type": "STRING"
+        },
+        {
+          "name": "forwardCalendarId",
+          "db": "forward_calendar_id",
+          "type": "LONG"
+        },
+        {
+          "name": "forwardSpotShifterId",
+          "db": "forward_spot_shifter_id",
+          "type": "LONG"
+        },
+        {
+          "name": "notionalCurrencyId",
+          "db": "notional_currency_id",
+          "type": "LONG"
+        },
+        {
+          "name": "quotationFactor",
+          "db": "quotation_factor",
+          "type": "DECIMAL"
+        },
+        {
+          "name": "reversedQuotationFactor",
+          "db": "reversed_quotation_factor",
+          "type": "DECIMAL"
+        },
+        {
+          "name": "reversedSwapFactor",
+          "db": "reversed_swap_factor",
+          "type": "DECIMAL"
+        },
+        {
+          "name": "swapFactor",
+          "db": "swap_factor",
+          "type": "DECIMAL"
+        }
+      ],
+      "jsonFields": [
+        {
+          "name": "backwardCalendarId",
+          "type": "LONG"
+        },
+        {
+          "name": "backwardSpotShifterId",
+          "type": "LONG"
+        },
+        {
+          "name": "baseCurrencyId",
+          "type": "LONG"
+        },
+        {
+          "name": "defaultQuotation",
+          "type": "STRING"
+        },
+        {
+          "name": "forwardCalendarId",
+          "type": "LONG"
+        },
+        {
+          "name": "forwardSpotShifterId",
+          "type": "LONG"
+        },
+        {
+          "name": "notionalCurrencyId",
+          "type": "LONG"
+        },
+        {
+          "name": "quotationFactor",
+          "type": "DECIMAL"
+        },
+        {
+          "name": "reversedQuotationFactor",
+          "type": "DECIMAL"
+        },
+        {
+          "name": "reversedSwapFactor",
+          "type": "DECIMAL"
+        },
+        {
+          "name": "swapFactor",
+          "type": "DECIMAL"
+        }
+      ]
+    },
+    "FX_PREPAID_FORWARD_TRADE": {
+      "mainFields": [
+        {
+          "name": "ActualFrom",
+          "db": "actual_from",
+          "type": "DATE"
+        },
+        {
+          "name": "actual_to",
+          "db": "actual_to",
+          "type": "DATE"
+        },
+        {
+          "name": "closed_at",
+          "db": "closed_at",
+          "type": "DATETIME"
+        },
+        {
+          "name": "draftStatus",
+          "db": "draft_status",
+          "type": "BOOLEAN"
+        },
+        {
+          "name": "globalId",
+          "db": "global_id",
+          "type": "DECIMAL"
+        },
+        {
+          "name": "id",
+          "db": "id",
+          "type": "DECIMAL"
+        },
+        {
+          "name": "objectClass",
+          "db": "object_class",
+          "type": "STRING"
+        },
+        {
+          "name": "revision",
+          "db": "revision",
+          "type": "INTEGER"
+        },
+        {
+          "name": "savedAt",
+          "db": "saved_at",
+          "type": "DATETIME"
+        },
+        {
+          "name": "version",
+          "db": "version",
+          "type": "INTEGER"
+        }
+      ],
+      "indexFields": [
+
+      ],
+      "jsonFields": [
+        {
+          "name": "prepayAmount",
+          "type": "DECIMAL"
+        },
+        {
+          "name": "prepayCurrencyId",
+          "type": "LONG"
+        },
+        {
+          "name": "prepayDate",
+          "type": "DATE"
+        },
+        {
+          "name": "prepayDepositRate",
+          "type": "DECIMAL"
+        },
+        {
+          "name": "prepayRatio",
+          "type": "DECIMAL"
+        }
+      ]
+    },
+    "FX_SPOT_EXCHANGE_PRODUCT": {
+      "mainFields": [
+        {
+          "name": "closedAt",
+          "db": "closed_at",
+          "type": "DATETIME"
+        },
+        {
+          "name": "globalId",
+          "db": "global_id",
+          "type": "LONG"
+        },
+        {
+          "name": "id",
+          "db": "id",
+          "type": "LONG"
+        },
+        {
+          "name": "objectClass",
+          "db": "object_class",
+          "type": "STRING"
+        },
+        {
+          "name": "revision",
+          "db": "revision",
+          "type": "INTEGER"
+        },
+        {
+          "name": "savedAt",
+          "db": "saved_at",
+          "type": "DATETIME"
+        },
+        {
+          "name": "version",
+          "db": "version",
+          "type": "INTEGER"
+        }
+      ],
+      "indexFields": [
+
+      ],
+      "jsonFields": [
+        {
+          "name": "fxSpotTrade",
+          "type": "STRING"
+        }
+      ]
+    },
+    "FX_SPOT_FORWARD_TRADE": {
+      "mainFields": [
+        {
+          "name": "ActualFrom",
+          "db": "actual_from",
+          "type": "DATE"
+        },
+        {
+          "name": "actual_to",
+          "db": "actual_to",
+          "type": "DATE"
+        },
+        {
+          "name": "closed_at",
+          "db": "closed_at",
+          "type": "DATETIME"
+        },
+        {
+          "name": "draftStatus",
+          "db": "draft_status",
+          "type": "BOOLEAN"
+        },
+        {
+          "name": "globalId",
+          "db": "global_id",
+          "type": "DECIMAL"
+        },
+        {
+          "name": "id",
+          "db": "id",
+          "type": "DECIMAL"
+        },
+        {
+          "name": "objectClass",
+          "db": "object_class",
+          "type": "STRING"
+        },
+        {
+          "name": "revision",
+          "db": "revision",
+          "type": "INTEGER"
+        },
+        {
+          "name": "savedAt",
+          "db": "saved_at",
+          "type": "DATETIME"
+        },
+        {
+          "name": "version",
+          "db": "version",
+          "type": "INTEGER"
+        }
+      ],
+      "indexFields": [
+        {
+          "name": "baseAmount",
+          "db": "base_amount",
+          "type": "DECIMAL"
+        },
+        {
+          "name": "baseCurrencyId",
+          "db": "base_currency_id",
+          "type": "LONG"
+        },
+        {
+          "name": "baseValueDate",
+          "db": "base_value_date",
+          "type": "DATE"
+        },
+        {
+          "name": "fxRate",
+          "db": "fx_rate",
+          "type": "DECIMAL"
+        },
+        {
+          "name": "fxSubtype",
+          "db": "fx_subtype",
+          "type": "STRING"
+        },
+        {
+          "name": "notionalAmount",
+          "db": "notional_amount",
+          "type": "DECIMAL"
+        },
+        {
+          "name": "notionalCurrencyId",
+          "db": "notional_currency_id",
+          "type": "LONG"
+        }
+      ],
+      "jsonFields": [
+        {
+          "name": "baseAmount",
+          "type": "DECIMAL"
+        },
+        {
+          "name": "baseCurrencyId",
+          "type": "LONG"
+        },
+        {
+          "name": "baseValueDate",
+          "type": "DATE"
+        },
+        {
+          "name": "fxRate",
+          "type": "DECIMAL"
+        },
+        {
+          "name": "fxSubtype",
+          "type": "STRING"
+        },
+        {
+          "name": "notionalAmount",
+          "type": "DECIMAL"
+        },
+        {
+          "name": "notionalCurrencyId",
+          "type": "LONG"
+        },
+        {
+          "name": "notionalValueDate",
+          "type": "DATE"
+        }
+      ]
+    },
+    "GLOBAL_ENTITY": {
+      "mainFields": [
+
+      ],
+      "indexFields": [
+
+      ],
+      "jsonFields": [
+        {
+          "name": "globalId",
+          "type": "LONG"
+        }
+      ]
+    },
+    "IMPORT_OBJECT_MAPPING": {
+      "mainFields": [
+
+      ],
+      "indexFields": [
+
+      ],
+      "jsonFields": [
+        {
+          "name": "globalId",
+          "type": "LONG"
+        },
+        {
+          "name": "sourceAlias",
+          "type": "STRING"
+        },
+        {
+          "name": "sourceObjectId",
+          "type": "STRING"
+        },
+        {
+          "name": "sourceObjectType",
+          "type": "STRING"
+        }
+      ]
+    },
+    "INDEX": {
+      "mainFields": [
+
+      ],
+      "indexFields": [
+
+      ],
+      "jsonFields": [
+
+      ]
+    },
+    "INSTRUMENT": {
+      "mainFields": [
+        {
+          "name": "closedAt",
+          "db": "closed_at",
+          "type": "DATETIME"
+        },
+        {
+          "name": "globalId",
+          "db": "global_id",
+          "type": "LONG"
+        },
+        {
+          "name": "id",
+          "db": "id",
+          "type": "LONG"
+        },
+        {
+          "name": "objectClass",
+          "db": "object_class",
+          "type": "STRING"
+        },
+        {
+          "name": "revision",
+          "db": "revision",
+          "type": "INTEGER"
+        },
+        {
+          "name": "savedAt",
+          "db": "saved_at",
+          "type": "DATETIME"
+        },
+        {
+          "name": "version",
+          "db": "version",
+          "type": "INTEGER"
+        }
+      ],
+      "indexFields": [
+        {
+          "name": "code",
+          "db": "code",
+          "type": "STRING"
+        },
+        {
+          "name": "isActive",
+          "db": "is_active",
+          "type": "BOOLEAN"
+        }
+      ],
+      "jsonFields": [
+        {
+          "name": "code",
+          "type": "STRING"
+        },
+        {
+          "name": "isActive",
+          "type": "BOOLEAN"
+        },
+        {
+          "name": "name",
+          "type": "STRING"
+        }
+      ]
+    },
+    "INTEREST_RATE_SWAP": {
+      "mainFields": [
+        {
+          "name": "ActualFrom",
+          "db": "actual_from",
+          "type": "DATE"
+        },
+        {
+          "name": "actual_to",
+          "db": "actual_to",
+          "type": "DATE"
+        },
+        {
+          "name": "closed_at",
+          "db": "closed_at",
+          "type": "DATETIME"
+        },
+        {
+          "name": "draftStatus",
+          "db": "draft_status",
+          "type": "BOOLEAN"
+        },
+        {
+          "name": "globalId",
+          "db": "global_id",
+          "type": "DECIMAL"
+        },
+        {
+          "name": "id",
+          "db": "id",
+          "type": "DECIMAL"
+        },
+        {
+          "name": "objectClass",
+          "db": "object_class",
+          "type": "STRING"
+        },
+        {
+          "name": "revision",
+          "db": "revision",
+          "type": "INTEGER"
+        },
+        {
+          "name": "savedAt",
+          "db": "saved_at",
+          "type": "DATETIME"
+        },
+        {
+          "name": "version",
+          "db": "version",
+          "type": "INTEGER"
+        }
+      ],
+      "indexFields": [
+
+      ],
+      "jsonFields": [
+
+      ]
+    },
+    "INTEREST_RATE_SWAP_TRADE": {
+      "mainFields": [
+        {
+          "name": "ActualFrom",
+          "db": "actual_from",
+          "type": "DATE"
+        },
+        {
+          "name": "actual_to",
+          "db": "actual_to",
+          "type": "DATE"
+        },
+        {
+          "name": "closed_at",
+          "db": "closed_at",
+          "type": "DATETIME"
+        },
+        {
+          "name": "draftStatus",
+          "db": "draft_status",
+          "type": "BOOLEAN"
+        },
+        {
+          "name": "globalId",
+          "db": "global_id",
+          "type": "DECIMAL"
+        },
+        {
+          "name": "id",
+          "db": "id",
+          "type": "DECIMAL"
+        },
+        {
+          "name": "objectClass",
+          "db": "object_class",
+          "type": "STRING"
+        },
+        {
+          "name": "revision",
+          "db": "revision",
+          "type": "INTEGER"
+        },
+        {
+          "name": "savedAt",
+          "db": "saved_at",
+          "type": "DATETIME"
+        },
+        {
+          "name": "version",
+          "db": "version",
+          "type": "INTEGER"
+        }
+      ],
+      "indexFields": [
+
+      ],
+      "jsonFields": [
+
+      ]
+    },
+    "LEG": {
+      "mainFields": [
+        {
+          "name": "created_at",
+          "db": "created_at",
+          "type": "DATETIME"
+        },
+        {
+          "name": "id",
+          "db": "id",
+          "type": "LONG"
+        },
+        {
+          "name": "objectClass",
+          "db": "object_class",
+          "type": "STRING"
+        },
+        {
+          "name": "parentId",
+          "db": "parent_id",
+          "type": "LONG"
+        }
+      ],
+      "indexFields": [
+
+      ],
+      "jsonFields": [
+        {
+          "name": "currencyId",
+          "type": "LONG"
+        },
+        {
+          "name": "dayCountConvention",
+          "type": "STRING"
+        },
+        {
+          "name": "direction",
+          "type": "STRING"
+        },
+        {
+          "name": "endDate",
+          "type": "DATE"
+        },
+        {
+          "name": "nominal",
+          "type": "DECIMAL"
+        },
+        {
+          "name": "paymentCurrencyId",
+          "type": "LONG"
+        },
+        {
+          "name": "rate",
+          "type": "DECIMAL"
+        },
+        {
+          "name": "scheduleDefinition",
+          "type": "STRING"
+        },
+        {
+          "name": "startDate",
+          "type": "DATE"
+        }
+      ]
+    },
+    "LEGAL_ENTITY": {
+      "mainFields": [
+        {
+          "name": "closedAt",
+          "db": "closed_at",
+          "type": "DATETIME"
+        },
+        {
+          "name": "globalId",
+          "db": "global_id",
+          "type": "LONG"
+        },
+        {
+          "name": "id",
+          "db": "id",
+          "type": "LONG"
+        },
+        {
+          "name": "objectClass",
+          "db": "object_class",
+          "type": "STRING"
+        },
+        {
+          "name": "revision",
+          "db": "revision",
+          "type": "INTEGER"
+        },
+        {
+          "name": "savedAt",
+          "db": "saved_at",
+          "type": "DATETIME"
+        },
+        {
+          "name": "version",
+          "db": "version",
+          "type": "INTEGER"
+        }
+      ],
+      "indexFields": [
+        {
+          "name": "code",
+          "db": "code",
+          "type": "STRING"
+        },
+        {
+          "name": "counterpartyId",
+          "db": "counterparty_id",
+          "type": "LONG"
+        }
+      ],
+      "jsonFields": [
+        {
+          "name": "alternativeIdentifiers",
+          "type": "STRING"
+        },
+        {
+          "name": "code",
+          "type": "STRING"
+        },
+        {
+          "name": "counterpartyId",
+          "type": "LONG"
+        },
+        {
+          "name": "name",
+          "type": "STRING"
+        }
+      ]
+    },
+    "LEGAL_ENTITY_ALTERNATIVE_IDENTIFIER": {
+      "mainFields": [
+        {
+          "name": "created_at",
+          "db": "created_at",
+          "type": "DATETIME"
+        },
+        {
+          "name": "id",
+          "db": "id",
+          "type": "LONG"
+        },
+        {
+          "name": "objectClass",
+          "db": "object_class",
+          "type": "STRING"
+        },
+        {
+          "name": "parentId",
+          "db": "parent_id",
+          "type": "LONG"
+        }
+      ],
+      "indexFields": [
+
+      ],
+      "jsonFields": [
+
+      ]
+    },
+    "LEGGED_TRADE": {
+      "mainFields": [
+        {
+          "name": "ActualFrom",
+          "db": "actual_from",
+          "type": "DATE"
+        },
+        {
+          "name": "actual_to",
+          "db": "actual_to",
+          "type": "DATE"
+        },
+        {
+          "name": "closed_at",
+          "db": "closed_at",
+          "type": "DATETIME"
+        },
+        {
+          "name": "draftStatus",
+          "db": "draft_status",
+          "type": "BOOLEAN"
+        },
+        {
+          "name": "globalId",
+          "db": "global_id",
+          "type": "DECIMAL"
+        },
+        {
+          "name": "id",
+          "db": "id",
+          "type": "DECIMAL"
+        },
+        {
+          "name": "objectClass",
+          "db": "object_class",
+          "type": "STRING"
+        },
+        {
+          "name": "revision",
+          "db": "revision",
+          "type": "INTEGER"
+        },
+        {
+          "name": "savedAt",
+          "db": "saved_at",
+          "type": "DATETIME"
+        },
+        {
+          "name": "version",
+          "db": "version",
+          "type": "INTEGER"
+        }
+      ],
+      "indexFields": [
+
+      ],
+      "jsonFields": [
+        {
+          "name": "legs",
+          "type": "STRING"
+        }
+      ]
+    },
+    "OPEN_DATE_FORWARD_SCHEDULE_PERIOD": {
+      "mainFields": [
+
+      ],
+      "indexFields": [
+
+      ],
+      "jsonFields": [
+        {
+          "name": "endDate",
+          "type": "DATE"
+        },
+        {
+          "name": "formula",
+          "type": "STRING"
+        },
+        {
+          "name": "startDate",
+          "type": "DATE"
+        }
+      ]
+    },
+    "PERIOD_SCHEDULE": {
+      "mainFields": [
+
+      ],
+      "indexFields": [
+
+      ],
+      "jsonFields": [
+
+      ]
+    },
+    "PERIOD_SCHEDULE_RESULT": {
+      "mainFields": [
+
+      ],
+      "indexFields": [
+
+      ],
+      "jsonFields": [
+        {
+          "name": "fixingDate",
+          "type": "DATE"
+        },
+        {
+          "name": "id",
+          "type": "STRING"
+        },
+        {
+          "name": "nominal",
+          "type": "DECIMAL"
+        },
+        {
+          "name": "nominalCurrency",
+          "type": "STRING"
+        },
+        {
+          "name": "paymentDate",
+          "type": "DATE"
+        },
+        {
+          "name": "periodEnd",
+          "type": "DATE"
+        },
+        {
+          "name": "periodStart",
+          "type": "DATE"
+        },
+        {
+          "name": "rate",
+          "type": "DECIMAL"
+        },
+        {
+          "name": "ruleId",
+          "type": "STRING"
+        },
+        {
+          "name": "spread",
+          "type": "DECIMAL"
+        },
+        {
+          "name": "strike",
+          "type": "DECIMAL"
+        },
+        {
+          "name": "unadjustedPaymentDate",
+          "type": "DATE"
+        },
+        {
+          "name": "unadjustedPeriodEnd",
+          "type": "DATE"
+        },
+        {
+          "name": "unadjustedPeriodStart",
+          "type": "DATE"
+        }
+      ]
+    },
+    "PERSON": {
+      "mainFields": [
+        {
+          "name": "closedAt",
+          "db": "closed_at",
+          "type": "DATETIME"
+        },
+        {
+          "name": "globalId",
+          "db": "global_id",
+          "type": "LONG"
+        },
+        {
+          "name": "id",
+          "db": "id",
+          "type": "LONG"
+        },
+        {
+          "name": "objectClass",
+          "db": "object_class",
+          "type": "STRING"
+        },
+        {
+          "name": "revision",
+          "db": "revision",
+          "type": "INTEGER"
+        },
+        {
+          "name": "savedAt",
+          "db": "saved_at",
+          "type": "DATETIME"
+        },
+        {
+          "name": "version",
+          "db": "version",
+          "type": "INTEGER"
+        }
+      ],
+      "indexFields": [
+        {
+          "name": "personalNumber",
+          "db": "personal_number",
+          "type": "STRING"
+        }
+      ],
+      "jsonFields": [
+        {
+          "name": "alternativeIdentifiers",
+          "type": "STRING"
+        },
+        {
+          "name": "firstName",
+          "type": "STRING"
+        },
+        {
+          "name": "lastName",
+          "type": "STRING"
+        },
+        {
+          "name": "middleName",
+          "type": "STRING"
+        },
+        {
+          "name": "personalNumber",
+          "type": "STRING"
+        }
+      ]
+    },
+    "PERSON_ALTERNATIVE_IDENTIFIER": {
+      "mainFields": [
+        {
+          "name": "created_at",
+          "db": "created_at",
+          "type": "DATETIME"
+        },
+        {
+          "name": "id",
+          "db": "id",
+          "type": "LONG"
+        },
+        {
+          "name": "objectClass",
+          "db": "object_class",
+          "type": "STRING"
+        },
+        {
+          "name": "parentId",
+          "db": "parent_id",
+          "type": "LONG"
+        }
+      ],
+      "indexFields": [
+
+      ],
+      "jsonFields": [
+
+      ]
+    },
+    "PHASE_LEG": {
+      "mainFields": [
+        {
+          "name": "created_at",
+          "db": "created_at",
+          "type": "DATETIME"
+        },
+        {
+          "name": "id",
+          "db": "id",
+          "type": "LONG"
+        },
+        {
+          "name": "objectClass",
+          "db": "object_class",
+          "type": "STRING"
+        },
+        {
+          "name": "parentId",
+          "db": "parent_id",
+          "type": "LONG"
+        }
+      ],
+      "indexFields": [
+
+      ],
+      "jsonFields": [
+        {
+          "name": "cashflows",
+          "type": "STRING"
+        }
+      ]
+    },
+    "PHASE_LEG_CASHFLOW": {
+      "mainFields": [
+        {
+          "name": "created_at",
+          "db": "created_at",
+          "type": "DATETIME"
+        },
+        {
+          "name": "id",
+          "db": "id",
+          "type": "LONG"
+        },
+        {
+          "name": "objectClass",
+          "db": "object_class",
+          "type": "STRING"
+        },
+        {
+          "name": "parentId",
+          "db": "parent_id",
+          "type": "LONG"
+        }
+      ],
+      "indexFields": [
+
+      ],
+      "jsonFields": [
+
+      ]
+    },
+    "PHASED_TRADE": {
+      "mainFields": [
+        {
+          "name": "ActualFrom",
+          "db": "actual_from",
+          "type": "DATE"
+        },
+        {
+          "name": "actual_to",
+          "db": "actual_to",
+          "type": "DATE"
+        },
+        {
+          "name": "closed_at",
+          "db": "closed_at",
+          "type": "DATETIME"
+        },
+        {
+          "name": "draftStatus",
+          "db": "draft_status",
+          "type": "BOOLEAN"
+        },
+        {
+          "name": "globalId",
+          "db": "global_id",
+          "type": "DECIMAL"
+        },
+        {
+          "name": "id",
+          "db": "id",
+          "type": "DECIMAL"
+        },
+        {
+          "name": "objectClass",
+          "db": "object_class",
+          "type": "STRING"
+        },
+        {
+          "name": "revision",
+          "db": "revision",
+          "type": "INTEGER"
+        },
+        {
+          "name": "savedAt",
+          "db": "saved_at",
+          "type": "DATETIME"
+        },
+        {
+          "name": "version",
+          "db": "version",
+          "type": "INTEGER"
+        }
+      ],
+      "indexFields": [
+
+      ],
+      "jsonFields": [
+        {
+          "name": "phases",
+          "type": "STRING"
+        }
+      ]
+    },
+    "PORTFOLIO": {
+      "mainFields": [
+        {
+          "name": "closedAt",
+          "db": "closed_at",
+          "type": "DATETIME"
+        },
+        {
+          "name": "globalId",
+          "db": "global_id",
+          "type": "LONG"
+        },
+        {
+          "name": "id",
+          "db": "id",
+          "type": "LONG"
+        },
+        {
+          "name": "objectClass",
+          "db": "object_class",
+          "type": "STRING"
+        },
+        {
+          "name": "revision",
+          "db": "revision",
+          "type": "INTEGER"
+        },
+        {
+          "name": "savedAt",
+          "db": "saved_at",
+          "type": "DATETIME"
+        },
+        {
+          "name": "version",
+          "db": "version",
+          "type": "INTEGER"
+        }
+      ],
+      "indexFields": [
+        {
+          "name": "code",
+          "db": "code",
+          "type": "STRING"
+        },
+        {
+          "name": "legalEntityId",
+          "db": "legal_entity_id",
+          "type": "LONG"
+        },
+        {
+          "name": "status",
+          "db": "status",
+          "type": "STRING"
+        }
+      ],
+      "jsonFields": [
+        {
+          "name": "businessModel",
+          "type": "STRING"
+        },
+        {
+          "name": "code",
+          "type": "STRING"
+        },
+        {
+          "name": "deskId",
+          "type": "LONG"
+        },
+        {
+          "name": "isTechnical",
+          "type": "BOOLEAN"
+        },
+        {
+          "name": "legalEntityId",
+          "type": "LONG"
+        },
+        {
+          "name": "name",
+          "type": "STRING"
+        },
+        {
+          "name": "ownerId",
+          "type": "LONG"
+        },
+        {
+          "name": "riskPortfolioId",
+          "type": "LONG"
+        },
+        {
+          "name": "status",
+          "type": "STRING"
+        }
+      ]
+    },
+    "PRODUCT": {
+      "mainFields": [
+        {
+          "name": "closedAt",
+          "db": "closed_at",
+          "type": "DATETIME"
+        },
+        {
+          "name": "globalId",
+          "db": "global_id",
+          "type": "LONG"
+        },
+        {
+          "name": "id",
+          "db": "id",
+          "type": "LONG"
+        },
+        {
+          "name": "objectClass",
+          "db": "object_class",
+          "type": "STRING"
+        },
+        {
+          "name": "revision",
+          "db": "revision",
+          "type": "INTEGER"
+        },
+        {
+          "name": "savedAt",
+          "db": "saved_at",
+          "type": "DATETIME"
+        },
+        {
+          "name": "version",
+          "db": "version",
+          "type": "INTEGER"
+        }
+      ],
+      "indexFields": [
+        {
+          "name": "number",
+          "db": "number",
+          "type": "STRING"
+        },
+        {
+          "name": "parentProductId",
+          "db": "parent_product_id",
+          "type": "LONG"
+        }
+      ],
+      "jsonFields": [
+        {
+          "name": "number",
+          "type": "STRING"
+        },
+        {
+          "name": "parentProductId",
+          "type": "LONG"
+        }
+      ]
+    },
+    "RATE_CONVENTION": {
+      "mainFields": [
+        {
+          "name": "closedAt",
+          "db": "closed_at",
+          "type": "DATETIME"
+        },
+        {
+          "name": "globalId",
+          "db": "global_id",
+          "type": "LONG"
+        },
+        {
+          "name": "id",
+          "db": "id",
+          "type": "LONG"
+        },
+        {
+          "name": "objectClass",
+          "db": "object_class",
+          "type": "STRING"
+        },
+        {
+          "name": "revision",
+          "db": "revision",
+          "type": "INTEGER"
+        },
+        {
+          "name": "savedAt",
+          "db": "saved_at",
+          "type": "DATETIME"
+        },
+        {
+          "name": "version",
+          "db": "version",
+          "type": "INTEGER"
+        }
+      ],
+      "indexFields": [
+        {
+          "name": "code",
+          "db": "code",
+          "type": "STRING"
+        }
+      ],
+      "jsonFields": [
+        {
+          "name": "code",
+          "type": "STRING"
+        },
+        {
+          "name": "name",
+          "type": "STRING"
+        }
+      ]
+    },
+    "REVISIONED_ENTITY": {
+      "mainFields": [
+
+      ],
+      "indexFields": [
+
+      ],
+      "jsonFields": [
+        {
+          "name": "closedAt",
+          "type": "DATETIME"
+        },
+        {
+          "name": "closedBy",
+          "type": "LONG"
+        },
+        {
+          "name": "revision",
+          "type": "INTEGER"
+        },
+        {
+          "name": "savedAt",
+          "type": "DATETIME"
+        },
+        {
+          "name": "savedBy",
+          "type": "LONG"
+        },
+        {
+          "name": "version",
+          "type": "INTEGER"
+        }
+      ]
+    },
+    "RISK_PORTFOLIO": {
+      "mainFields": [
+        {
+          "name": "closedAt",
+          "db": "closed_at",
+          "type": "DATETIME"
+        },
+        {
+          "name": "globalId",
+          "db": "global_id",
+          "type": "LONG"
+        },
+        {
+          "name": "id",
+          "db": "id",
+          "type": "LONG"
+        },
+        {
+          "name": "objectClass",
+          "db": "object_class",
+          "type": "STRING"
+        },
+        {
+          "name": "revision",
+          "db": "revision",
+          "type": "INTEGER"
+        },
+        {
+          "name": "savedAt",
+          "db": "saved_at",
+          "type": "DATETIME"
+        },
+        {
+          "name": "version",
+          "db": "version",
+          "type": "INTEGER"
+        }
+      ],
+      "indexFields": [
+
+      ],
+      "jsonFields": [
+        {
+          "name": "code",
+          "type": "STRING"
+        },
+        {
+          "name": "name",
+          "type": "STRING"
+        }
+      ]
+    },
+    "ROUNDING_CONVENTION": {
+      "mainFields": [
+
+      ],
+      "indexFields": [
+
+      ],
+      "jsonFields": [
+        {
+          "name": "digits",
+          "type": "INTEGER"
+        },
+        {
+          "name": "mode",
+          "type": "STRING"
+        },
+        {
+          "name": "name",
+          "type": "STRING"
+        }
+      ]
+    },
+    "SCHEDULE_DEFINITION": {
+      "mainFields": [
+
+      ],
+      "indexFields": [
+
+      ],
+      "jsonFields": [
+        {
+          "name": "fixingCalendar",
+          "type": "STRING"
+        },
+        {
+          "name": "fixingPosition",
+          "type": "STRING"
+        },
+        {
+          "name": "paymentCalendar",
+          "type": "STRING"
+        },
+        {
+          "name": "paymentPosition",
+          "type": "STRING"
+        },
+        {
+          "name": "scheduleCalendar",
+          "type": "STRING"
+        }
+      ]
+    },
+    "SCHEDULE_GENERATOR": {
+      "mainFields": [
+        {
+          "name": "closedAt",
+          "db": "closed_at",
+          "type": "DATETIME"
+        },
+        {
+          "name": "globalId",
+          "db": "global_id",
+          "type": "LONG"
+        },
+        {
+          "name": "id",
+          "db": "id",
+          "type": "LONG"
+        },
+        {
+          "name": "objectClass",
+          "db": "object_class",
+          "type": "STRING"
+        },
+        {
+          "name": "revision",
+          "db": "revision",
+          "type": "INTEGER"
+        },
+        {
+          "name": "savedAt",
+          "db": "saved_at",
+          "type": "DATETIME"
+        },
+        {
+          "name": "version",
+          "db": "version",
+          "type": "INTEGER"
+        }
+      ],
+      "indexFields": [
+
+      ],
+      "jsonFields": [
+        {
+          "name": "name",
+          "type": "STRING"
+        }
+      ]
+    },
+    "SIMPLE_ENTITY": {
+      "mainFields": [
+
+      ],
+      "indexFields": [
+
+      ],
+      "jsonFields": [
+        {
+          "name": "createdAt",
+          "type": "DATETIME"
+        },
+        {
+          "name": "createdBy",
+          "type": "LONG"
+        },
+        {
+          "name": "deleted",
+          "type": "BOOLEAN"
+        },
+        {
+          "name": "updatedAt",
+          "type": "DATETIME"
+        },
+        {
+          "name": "updatedBy",
+          "type": "LONG"
+        }
+      ]
+    },
+    "SOURCE": {
+      "mainFields": [
+        {
+          "name": "closedAt",
+          "db": "closed_at",
+          "type": "DATETIME"
+        },
+        {
+          "name": "globalId",
+          "db": "global_id",
+          "type": "LONG"
+        },
+        {
+          "name": "id",
+          "db": "id",
+          "type": "LONG"
+        },
+        {
+          "name": "objectClass",
+          "db": "object_class",
+          "type": "STRING"
+        },
+        {
+          "name": "revision",
+          "db": "revision",
+          "type": "INTEGER"
+        },
+        {
+          "name": "savedAt",
+          "db": "saved_at",
+          "type": "DATETIME"
+        },
+        {
+          "name": "version",
+          "db": "version",
+          "type": "INTEGER"
+        }
+      ],
+      "indexFields": [
+        {
+          "name": "alias",
+          "db": "alias",
+          "type": "STRING"
+        },
+        {
+          "name": "systemId",
+          "db": "system_id",
+          "type": "LONG"
+        },
+        {
+          "name": "venueId",
+          "db": "venue_id",
+          "type": "LONG"
+        }
+      ],
+      "jsonFields": [
+        {
+          "name": "alias",
+          "type": "STRING"
+        },
+        {
+          "name": "exchangeSectionId",
+          "type": "LONG"
+        },
+        {
+          "name": "systemId",
+          "type": "LONG"
+        },
+        {
+          "name": "venueId",
+          "type": "LONG"
+        }
+      ]
+    },
+    "SPECIFIC_ENTITY": {
+      "mainFields": [
+
+      ],
+      "indexFields": [
+
+      ],
+      "jsonFields": [
+
+      ]
+    },
+    "SYSTEM": {
+      "mainFields": [
+        {
+          "name": "closedAt",
+          "db": "closed_at",
+          "type": "DATETIME"
+        },
+        {
+          "name": "globalId",
+          "db": "global_id",
+          "type": "LONG"
+        },
+        {
+          "name": "id",
+          "db": "id",
+          "type": "LONG"
+        },
+        {
+          "name": "objectClass",
+          "db": "object_class",
+          "type": "STRING"
+        },
+        {
+          "name": "revision",
+          "db": "revision",
+          "type": "INTEGER"
+        },
+        {
+          "name": "savedAt",
+          "db": "saved_at",
+          "type": "DATETIME"
+        },
+        {
+          "name": "version",
+          "db": "version",
+          "type": "INTEGER"
+        }
+      ],
+      "indexFields": [
+        {
+          "name": "code",
+          "db": "code",
+          "type": "STRING"
+        }
+      ],
+      "jsonFields": [
+        {
+          "name": "code",
+          "type": "STRING"
+        },
+        {
+          "name": "name",
+          "type": "STRING"
+        }
+      ]
+    },
+    "TRADE": {
+      "mainFields": [
+        {
+          "name": "ActualFrom",
+          "db": "actual_from",
+          "type": "DATE"
+        },
+        {
+          "name": "actual_to",
+          "db": "actual_to",
+          "type": "DATE"
+        },
+        {
+          "name": "closed_at",
+          "db": "closed_at",
+          "type": "DATETIME"
+        },
+        {
+          "name": "draftStatus",
+          "db": "draft_status",
+          "type": "BOOLEAN"
+        },
+        {
+          "name": "globalId",
+          "db": "global_id",
+          "type": "DECIMAL"
+        },
+        {
+          "name": "id",
+          "db": "id",
+          "type": "DECIMAL"
+        },
+        {
+          "name": "objectClass",
+          "db": "object_class",
+          "type": "STRING"
+        },
+        {
+          "name": "revision",
+          "db": "revision",
+          "type": "INTEGER"
+        },
+        {
+          "name": "savedAt",
+          "db": "saved_at",
+          "type": "DATETIME"
+        },
+        {
+          "name": "version",
+          "db": "version",
+          "type": "INTEGER"
+        }
+      ],
+      "indexFields": [
+        {
+          "name": "counterpartyId",
+          "db": "counterparty_id",
+          "type": "LONG"
+        },
+        {
+          "name": "externalId",
+          "db": "external_id",
+          "type": "STRING"
+        },
+        {
+          "name": "instrumentId",
+          "db": "instrument_id",
+          "type": "LONG"
+        },
+        {
+          "name": "legalEntityId",
+          "db": "legal_entity_id",
+          "type": "LONG"
+        },
+        {
+          "name": "orderId",
+          "db": "order_id",
+          "type": "STRING"
+        },
+        {
+          "name": "portfolioId",
+          "db": "portfolio_id",
+          "type": "LONG"
+        },
+        {
+          "name": "productId",
+          "db": "product_id",
+          "type": "LONG"
+        },
+        {
+          "name": "side",
+          "db": "side",
+          "type": "STRING"
+        },
+        {
+          "name": "sourceSystemId",
+          "db": "source_system_id",
+          "type": "LONG"
+        },
+        {
+          "name": "status",
+          "db": "status",
+          "type": "STRING"
+        },
+        {
+          "name": "tradeDate",
+          "db": "trade_date",
+          "type": "DATE"
+        },
+        {
+          "name": "venueId",
+          "db": "venue_id",
+          "type": "LONG"
+        }
+      ],
+      "jsonFields": [
+        {
+          "name": "authorizedById",
+          "type": "LONG"
+        },
+        {
+          "name": "boardId",
+          "type": "LONG"
+        },
+        {
+          "name": "cashflows",
+          "type": "STRING"
+        },
+        {
+          "name": "channel",
+          "type": "STRING"
+        },
+        {
+          "name": "clearingFee",
+          "type": "DECIMAL"
+        },
+        {
+          "name": "comment",
+          "type": "STRING"
+        },
+        {
+          "name": "confirmedAt",
+          "type": "DATETIME"
+        },
+        {
+          "name": "confirmedById",
+          "type": "LONG"
+        },
+        {
+          "name": "counterpartyId",
+          "type": "LONG"
+        },
+        {
+          "name": "exchangeFee",
+          "type": "DECIMAL"
+        },
+        {
+          "name": "exchangeSectionId",
+          "type": "LONG"
+        },
+        {
+          "name": "externalId",
+          "type": "STRING"
+        },
+        {
+          "name": "externalVersion",
+          "type": "STRING"
+        },
+        {
+          "name": "instrumentId",
+          "type": "LONG"
+        },
+        {
+          "name": "interbookTradeId",
+          "type": "LONG"
+        },
+        {
+          "name": "isClient",
+          "type": "BOOLEAN"
+        },
+        {
+          "name": "legalEntityId",
+          "type": "LONG"
+        },
+        {
+          "name": "orderId",
+          "type": "STRING"
+        },
+        {
+          "name": "portfolioId",
+          "type": "LONG"
+        },
+        {
+          "name": "productId",
+          "type": "LONG"
+        },
+        {
+          "name": "realCounterparty",
+          "type": "STRING"
+        },
+        {
+          "name": "side",
+          "type": "STRING"
+        },
+        {
+          "name": "sourceDetailedInstrument",
+          "type": "STRING"
+        },
+        {
+          "name": "sourceSystemId",
+          "type": "LONG"
+        },
+        {
+          "name": "status",
+          "type": "STRING"
+        },
+        {
+          "name": "tradeDate",
+          "type": "DATE"
+        },
+        {
+          "name": "tradeDateTime",
+          "type": "DATETIME"
+        },
+        {
+          "name": "traderId",
+          "type": "LONG"
+        },
+        {
+          "name": "venueId",
+          "type": "LONG"
+        }
+      ]
+    },
+    "TRADE_CASHFLOW": {
+      "mainFields": [
+        {
+          "name": "created_at",
+          "db": "created_at",
+          "type": "DATETIME"
+        },
+        {
+          "name": "id",
+          "db": "id",
+          "type": "LONG"
+        },
+        {
+          "name": "objectClass",
+          "db": "object_class",
+          "type": "STRING"
+        },
+        {
+          "name": "parentId",
+          "db": "parent_id",
+          "type": "LONG"
+        }
+      ],
+      "indexFields": [
+
+      ],
+      "jsonFields": [
+
+      ]
+    },
+    "TRADE_LEG": {
+      "mainFields": [
+        {
+          "name": "created_at",
+          "db": "created_at",
+          "type": "DATETIME"
+        },
+        {
+          "name": "id",
+          "db": "id",
+          "type": "LONG"
+        },
+        {
+          "name": "objectClass",
+          "db": "object_class",
+          "type": "STRING"
+        },
+        {
+          "name": "parentId",
+          "db": "parent_id",
+          "type": "LONG"
+        }
+      ],
+      "indexFields": [
+
+      ],
+      "jsonFields": [
+        {
+          "name": "cashflows",
+          "type": "STRING"
+        }
+      ]
+    },
+    "TRADE_LEG_CASHFLOW": {
+      "mainFields": [
+        {
+          "name": "created_at",
+          "db": "created_at",
+          "type": "DATETIME"
+        },
+        {
+          "name": "id",
+          "db": "id",
+          "type": "LONG"
+        },
+        {
+          "name": "objectClass",
+          "db": "object_class",
+          "type": "STRING"
+        },
+        {
+          "name": "parentId",
+          "db": "parent_id",
+          "type": "LONG"
+        }
+      ],
+      "indexFields": [
+
+      ],
+      "jsonFields": [
+
+      ]
+    },
+    "TRADE_PHASE": {
+      "mainFields": [
+        {
+          "name": "created_at",
+          "db": "created_at",
+          "type": "DATETIME"
+        },
+        {
+          "name": "id",
+          "db": "id",
+          "type": "LONG"
+        },
+        {
+          "name": "objectClass",
+          "db": "object_class",
+          "type": "STRING"
+        },
+        {
+          "name": "parentId",
+          "db": "parent_id",
+          "type": "LONG"
+        }
+      ],
+      "indexFields": [
+        {
+          "name": "from",
+          "db": "from",
+          "type": "DATE"
+        },
+        {
+          "name": "to",
+          "db": "to",
+          "type": "DATE"
+        }
+      ],
+      "jsonFields": [
+        {
+          "name": "from",
+          "type": "DATE"
+        },
+        {
+          "name": "legs",
+          "type": "STRING"
+        },
+        {
+          "name": "to",
+          "type": "DATE"
+        }
+      ]
+    },
+    "USER": {
+      "mainFields": [
+        {
+          "name": "closedAt",
+          "db": "closed_at",
+          "type": "DATETIME"
+        },
+        {
+          "name": "globalId",
+          "db": "global_id",
+          "type": "LONG"
+        },
+        {
+          "name": "id",
+          "db": "id",
+          "type": "LONG"
+        },
+        {
+          "name": "objectClass",
+          "db": "object_class",
+          "type": "STRING"
+        },
+        {
+          "name": "revision",
+          "db": "revision",
+          "type": "INTEGER"
+        },
+        {
+          "name": "savedAt",
+          "db": "saved_at",
+          "type": "DATETIME"
+        },
+        {
+          "name": "version",
+          "db": "version",
+          "type": "INTEGER"
+        }
+      ],
+      "indexFields": [
+        {
+          "name": "login",
+          "db": "login",
+          "type": "STRING"
+        },
+        {
+          "name": "personId",
+          "db": "person_id",
+          "type": "LONG"
+        }
+      ],
+      "jsonFields": [
+        {
+          "name": "login",
+          "type": "STRING"
+        },
+        {
+          "name": "personId",
+          "type": "LONG"
+        }
+      ]
+    },
+    "VENUE": {
+      "mainFields": [
+        {
+          "name": "closedAt",
+          "db": "closed_at",
+          "type": "DATETIME"
+        },
+        {
+          "name": "globalId",
+          "db": "global_id",
+          "type": "LONG"
+        },
+        {
+          "name": "id",
+          "db": "id",
+          "type": "LONG"
+        },
+        {
+          "name": "objectClass",
+          "db": "object_class",
+          "type": "STRING"
+        },
+        {
+          "name": "revision",
+          "db": "revision",
+          "type": "INTEGER"
+        },
+        {
+          "name": "savedAt",
+          "db": "saved_at",
+          "type": "DATETIME"
+        },
+        {
+          "name": "version",
+          "db": "version",
+          "type": "INTEGER"
+        }
+      ],
+      "indexFields": [
+        {
+          "name": "code",
+          "db": "code",
+          "type": "STRING"
+        }
+      ],
+      "jsonFields": [
+        {
+          "name": "code",
+          "type": "STRING"
+        },
+        {
+          "name": "name",
+          "type": "STRING"
+        },
+        {
+          "name": "type",
+          "type": "STRING"
+        }
+      ]
+    }
+  },
+  "hierarchy": {
+    "parentsOrSelf": {
+      "ALTERNATIVE_IDENTIFIER": [
+        "ALTERNATIVE_IDENTIFIER",
+        "EMBEDDED_ENTITY",
+        "ENTITY"
+      ],
+      "ASSET": [
+        "ASSET",
+        "REVISIONED_ENTITY",
+        "GLOBAL_ENTITY",
+        "ENTITY"
+      ],
+      "BEST_MATCHING_FORMULA": [
+        "BEST_MATCHING_FORMULA",
+        "FORMULA",
+        "REVISIONED_ENTITY",
+        "GLOBAL_ENTITY",
+        "ENTITY"
+      ],
+      "BOARD": [
+        "BOARD",
+        "REVISIONED_ENTITY",
+        "GLOBAL_ENTITY",
+        "ENTITY"
+      ],
+      "CALENDAR": [
+        "CALENDAR",
+        "DRAFTABLE_REVISIONED_ENTITY",
+        "REVISIONED_ENTITY",
+        "GLOBAL_ENTITY",
+        "ENTITY"
+      ],
+      "CASHFLOW": [
+        "CASHFLOW",
+        "EMBEDDED_ENTITY",
+        "ENTITY"
+      ],
+      "COMPOSIT_CALENDAR": [
+        "COMPOSIT_CALENDAR",
+        "CALENDAR",
+        "DRAFTABLE_REVISIONED_ENTITY",
+        "REVISIONED_ENTITY",
+        "GLOBAL_ENTITY",
+        "ENTITY"
+      ],
+      "CONNPOSIT_CALENDAR": [
+        "CONNPOSIT_CALENDAR",
+        "CALENDAR",
+        "DRAFTABLE_REVISIONED_ENTITY",
+        "REVISIONED_ENTITY",
+        "GLOBAL_ENTITY",
+        "ENTITY"
+      ],
+      "COUNTERPARTY": [
+        "COUNTERPARTY",
+        "REVISIONED_ENTITY",
+        "GLOBAL_ENTITY",
+        "ENTITY"
+      ],
+      "COUNTERPARTY_ALTERNATIVE_IDENTIFIER": [
+        "COUNTERPARTY_ALTERNATIVE_IDENTIFIER",
+        "ALTERNATIVE_IDENTIFIER",
+        "EMBEDDED_ENTITY",
+        "ENTITY"
+      ],
+      "CURRENCY": [
+        "CURRENCY",
+        "ASSET",
+        "REVISIONED_ENTITY",
+        "GLOBAL_ENTITY",
+        "ENTITY"
+      ],
+      "DATE_BOUNDED_ENTITY": [
+        "DATE_BOUNDED_ENTITY",
+        "REVISIONED_ENTITY",
+        "GLOBAL_ENTITY",
+        "ENTITY"
+      ],
+      "DATE_SHIFTER": [
+        "DATE_SHIFTER",
+        "REVISIONED_ENTITY",
+        "GLOBAL_ENTITY",
+        "ENTITY"
+      ],
+      "DAY_COUNT_CONVENTION": [
+        "DAY_COUNT_CONVENTION"
+      ],
+      "DESK": [
+        "DESK",
+        "REVISIONED_ENTITY",
+        "GLOBAL_ENTITY",
+        "ENTITY"
+      ],
+      "DRAFTABLE_DATE_BOUNDED_ENTITY": [
+        "DRAFTABLE_DATE_BOUNDED_ENTITY",
+        "DATE_BOUNDED_ENTITY",
+        "REVISIONED_ENTITY",
+        "GLOBAL_ENTITY",
+        "ENTITY"
+      ],
+      "DRAFTABLE_REVISIONED_ENTITY": [
+        "DRAFTABLE_REVISIONED_ENTITY",
+        "REVISIONED_ENTITY",
+        "GLOBAL_ENTITY",
+        "ENTITY"
+      ],
+      "EMBEDDED_ENTITY": [
+        "EMBEDDED_ENTITY",
+        "ENTITY"
+      ],
+      "ENTITY": [
+        "ENTITY"
+      ],
+      "EXCHANGE_SECTION": [
+        "EXCHANGE_SECTION",
+        "REVISIONED_ENTITY",
+        "GLOBAL_ENTITY",
+        "ENTITY"
+      ],
+      "FIXED_TRADE_LEG": [
+        "FIXED_TRADE_LEG",
+        "TRADE_LEG",
+        "LEG",
+        "EMBEDDED_ENTITY",
+        "ENTITY"
+      ],
+      "FIXING_SOURCE": [
+        "FIXING_SOURCE",
+        "DRAFTABLE_DATE_BOUNDED_ENTITY",
+        "DATE_BOUNDED_ENTITY",
+        "REVISIONED_ENTITY",
+        "GLOBAL_ENTITY",
+        "ENTITY"
+      ],
+      "FIXING_VALUE": [
+        "FIXING_VALUE",
+        "REVISIONED_ENTITY",
+        "GLOBAL_ENTITY",
+        "ENTITY"
+      ],
+      "FLOATING_TRADE_LEG": [
+        "FLOATING_TRADE_LEG",
+        "TRADE_LEG",
+        "LEG",
+        "EMBEDDED_ENTITY",
+        "ENTITY"
+      ],
+      "FORMULA": [
+        "FORMULA",
+        "REVISIONED_ENTITY",
+        "GLOBAL_ENTITY",
+        "ENTITY"
+      ],
+      "FX_NONDELIVERABLE_FORWARD_ASIAN_TRADE": [
+        "FX_NONDELIVERABLE_FORWARD_ASIAN_TRADE",
+        "FX_NONDELIVERABLE_FORWARD_TRADE",
+        "FX_SPOT_FORWARD_TRADE",
+        "TRADE",
+        "DRAFTABLE_DATE_BOUNDED_ENTITY",
+        "DATE_BOUNDED_ENTITY",
+        "REVISIONED_ENTITY",
+        "GLOBAL_ENTITY",
+        "ENTITY"
+      ],
+      "FX_NONDELIVERABLE_FORWARD_TRADE": [
+        "FX_NONDELIVERABLE_FORWARD_TRADE",
+        "FX_SPOT_FORWARD_TRADE",
+        "TRADE",
+        "DRAFTABLE_DATE_BOUNDED_ENTITY",
+        "DATE_BOUNDED_ENTITY",
+        "REVISIONED_ENTITY",
+        "GLOBAL_ENTITY",
+        "ENTITY"
+      ],
+      "FX_NONDELIVERABLE_OPEN_DATED_FORWARD_TRADE": [
+        "FX_NONDELIVERABLE_OPEN_DATED_FORWARD_TRADE",
+        "FX_OPEN_DATED_FORWARD_TRADE",
+        "FX_SPOT_FORWARD_TRADE",
+        "TRADE",
+        "DRAFTABLE_DATE_BOUNDED_ENTITY",
+        "DATE_BOUNDED_ENTITY",
+        "REVISIONED_ENTITY",
+        "GLOBAL_ENTITY",
+        "ENTITY"
+      ],
+      "FX_OPEN_DATED_FORWARD_TRADE": [
+        "FX_OPEN_DATED_FORWARD_TRADE",
+        "FX_SPOT_FORWARD_TRADE",
+        "TRADE",
+        "DRAFTABLE_DATE_BOUNDED_ENTITY",
+        "DATE_BOUNDED_ENTITY",
+        "REVISIONED_ENTITY",
+        "GLOBAL_ENTITY",
+        "ENTITY"
+      ],
+      "FX_PAIR": [
+        "FX_PAIR",
+        "INSTRUMENT",
+        "DRAFTABLE_REVISIONED_ENTITY",
+        "REVISIONED_ENTITY",
+        "GLOBAL_ENTITY",
+        "ENTITY"
+      ],
+      "FX_PREPAID_FORWARD_TRADE": [
+        "FX_PREPAID_FORWARD_TRADE",
+        "FX_SPOT_FORWARD_TRADE",
+        "TRADE",
+        "DRAFTABLE_DATE_BOUNDED_ENTITY",
+        "DATE_BOUNDED_ENTITY",
+        "REVISIONED_ENTITY",
+        "GLOBAL_ENTITY",
+        "ENTITY"
+      ],
+      "FX_SPOT_EXCHANGE_PRODUCT": [
+        "FX_SPOT_EXCHANGE_PRODUCT",
+        "PRODUCT",
+        "REVISIONED_ENTITY",
+        "GLOBAL_ENTITY",
+        "ENTITY"
+      ],
+      "FX_SPOT_FORWARD_TRADE": [
+        "FX_SPOT_FORWARD_TRADE",
+        "TRADE",
+        "DRAFTABLE_DATE_BOUNDED_ENTITY",
+        "DATE_BOUNDED_ENTITY",
+        "REVISIONED_ENTITY",
+        "GLOBAL_ENTITY",
+        "ENTITY"
+      ],
+      "GLOBAL_ENTITY": [
+        "GLOBAL_ENTITY",
+        "ENTITY"
+      ],
+      "IMPORT_OBJECT_MAPPING": [
+        "IMPORT_OBJECT_MAPPING",
+        "SPECIFIC_ENTITY",
+        "ENTITY"
+      ],
+      "INDEX": [
+        "INDEX"
+      ],
+      "INSTRUMENT": [
+        "INSTRUMENT",
+        "DRAFTABLE_REVISIONED_ENTITY",
+        "REVISIONED_ENTITY",
+        "GLOBAL_ENTITY",
+        "ENTITY"
+      ],
+      "INTEREST_RATE_SWAP": [
+        "INTEREST_RATE_SWAP",
+        "PHASED_TRADE",
+        "TRADE",
+        "DRAFTABLE_DATE_BOUNDED_ENTITY",
+        "DATE_BOUNDED_ENTITY",
+        "REVISIONED_ENTITY",
+        "GLOBAL_ENTITY",
+        "ENTITY"
+      ],
+      "INTEREST_RATE_SWAP_TRADE": [
+        "INTEREST_RATE_SWAP_TRADE",
+        "PHASED_TRADE",
+        "TRADE",
+        "DRAFTABLE_DATE_BOUNDED_ENTITY",
+        "DATE_BOUNDED_ENTITY",
+        "REVISIONED_ENTITY",
+        "GLOBAL_ENTITY",
+        "ENTITY"
+      ],
+      "LEG": [
+        "LEG",
+        "EMBEDDED_ENTITY",
+        "ENTITY"
+      ],
+      "LEGAL_ENTITY": [
+        "LEGAL_ENTITY",
+        "REVISIONED_ENTITY",
+        "GLOBAL_ENTITY",
+        "ENTITY"
+      ],
+      "LEGAL_ENTITY_ALTERNATIVE_IDENTIFIER": [
+        "LEGAL_ENTITY_ALTERNATIVE_IDENTIFIER",
+        "ALTERNATIVE_IDENTIFIER",
+        "EMBEDDED_ENTITY",
+        "ENTITY"
+      ],
+      "LEGGED_TRADE": [
+        "LEGGED_TRADE",
+        "TRADE",
+        "DRAFTABLE_DATE_BOUNDED_ENTITY",
+        "DATE_BOUNDED_ENTITY",
+        "REVISIONED_ENTITY",
+        "GLOBAL_ENTITY",
+        "ENTITY"
+      ],
+      "OPEN_DATE_FORWARD_SCHEDULE_PERIOD": [
+        "OPEN_DATE_FORWARD_SCHEDULE_PERIOD"
+      ],
+      "PERIOD_SCHEDULE": [
+        "PERIOD_SCHEDULE"
+      ],
+      "PERIOD_SCHEDULE_RESULT": [
+        "PERIOD_SCHEDULE_RESULT"
+      ],
+      "PERSON": [
+        "PERSON",
+        "REVISIONED_ENTITY",
+        "GLOBAL_ENTITY",
+        "ENTITY"
+      ],
+      "PERSON_ALTERNATIVE_IDENTIFIER": [
+        "PERSON_ALTERNATIVE_IDENTIFIER",
+        "ALTERNATIVE_IDENTIFIER",
+        "EMBEDDED_ENTITY",
+        "ENTITY"
+      ],
+      "PHASE_LEG": [
+        "PHASE_LEG",
+        "LEG",
+        "EMBEDDED_ENTITY",
+        "ENTITY"
+      ],
+      "PHASE_LEG_CASHFLOW": [
+        "PHASE_LEG_CASHFLOW",
+        "CASHFLOW",
+        "EMBEDDED_ENTITY",
+        "ENTITY"
+      ],
+      "PHASED_TRADE": [
+        "PHASED_TRADE",
+        "TRADE",
+        "DRAFTABLE_DATE_BOUNDED_ENTITY",
+        "DATE_BOUNDED_ENTITY",
+        "REVISIONED_ENTITY",
+        "GLOBAL_ENTITY",
+        "ENTITY"
+      ],
+      "PORTFOLIO": [
+        "PORTFOLIO",
+        "REVISIONED_ENTITY",
+        "GLOBAL_ENTITY",
+        "ENTITY"
+      ],
+      "PRODUCT": [
+        "PRODUCT",
+        "REVISIONED_ENTITY",
+        "GLOBAL_ENTITY",
+        "ENTITY"
+      ],
+      "RATE_CONVENTION": [
+        "RATE_CONVENTION",
+        "REVISIONED_ENTITY",
+        "GLOBAL_ENTITY",
+        "ENTITY"
+      ],
+      "REVISIONED_ENTITY": [
+        "REVISIONED_ENTITY",
+        "GLOBAL_ENTITY",
+        "ENTITY"
+      ],
+      "RISK_PORTFOLIO": [
+        "RISK_PORTFOLIO",
+        "REVISIONED_ENTITY",
+        "GLOBAL_ENTITY",
+        "ENTITY"
+      ],
+      "ROUNDING_CONVENTION": [
+        "ROUNDING_CONVENTION"
+      ],
+      "SCHEDULE_DEFINITION": [
+        "SCHEDULE_DEFINITION"
+      ],
+      "SCHEDULE_GENERATOR": [
+        "SCHEDULE_GENERATOR",
+        "REVISIONED_ENTITY",
+        "GLOBAL_ENTITY",
+        "ENTITY"
+      ],
+      "SIMPLE_ENTITY": [
+        "SIMPLE_ENTITY",
+        "GLOBAL_ENTITY",
+        "ENTITY"
+      ],
+      "SOURCE": [
+        "SOURCE",
+        "REVISIONED_ENTITY",
+        "GLOBAL_ENTITY",
+        "ENTITY"
+      ],
+      "SPECIFIC_ENTITY": [
+        "SPECIFIC_ENTITY",
+        "ENTITY"
+      ],
+      "SYSTEM": [
+        "SYSTEM",
+        "REVISIONED_ENTITY",
+        "GLOBAL_ENTITY",
+        "ENTITY"
+      ],
+      "TRADE": [
+        "TRADE",
+        "DRAFTABLE_DATE_BOUNDED_ENTITY",
+        "DATE_BOUNDED_ENTITY",
+        "REVISIONED_ENTITY",
+        "GLOBAL_ENTITY",
+        "ENTITY"
+      ],
+      "TRADE_CASHFLOW": [
+        "TRADE_CASHFLOW",
+        "CASHFLOW",
+        "EMBEDDED_ENTITY",
+        "ENTITY"
+      ],
+      "TRADE_LEG": [
+        "TRADE_LEG",
+        "LEG",
+        "EMBEDDED_ENTITY",
+        "ENTITY"
+      ],
+      "TRADE_LEG_CASHFLOW": [
+        "TRADE_LEG_CASHFLOW",
+        "CASHFLOW",
+        "EMBEDDED_ENTITY",
+        "ENTITY"
+      ],
+      "TRADE_PHASE": [
+        "TRADE_PHASE",
+        "EMBEDDED_ENTITY",
+        "ENTITY"
+      ],
+      "USER": [
+        "USER",
+        "REVISIONED_ENTITY",
+        "GLOBAL_ENTITY",
+        "ENTITY"
+      ],
+      "VENUE": [
+        "VENUE",
+        "REVISIONED_ENTITY",
+        "GLOBAL_ENTITY",
+        "ENTITY"
+      ]
+    },
+    "rootUnderBase": {
+      "ALTERNATIVE_IDENTIFIER": "ALTERNATIVE_IDENTIFIER",
+      "ASSET": "ASSET",
+      "BEST_MATCHING_FORMULA": "FORMULA",
+      "BOARD": "BOARD",
+      "CALENDAR": "DRAFTABLE_REVISIONED_ENTITY",
+      "CASHFLOW": "CASHFLOW",
+      "COMPOSIT_CALENDAR": "DRAFTABLE_REVISIONED_ENTITY",
+      "CONNPOSIT_CALENDAR": "DRAFTABLE_REVISIONED_ENTITY",
+      "COUNTERPARTY": "COUNTERPARTY",
+      "COUNTERPARTY_ALTERNATIVE_IDENTIFIER": "ALTERNATIVE_IDENTIFIER",
+      "CURRENCY": "ASSET",
+      "DATE_BOUNDED_ENTITY": "DATE_BOUNDED_ENTITY",
+      "DATE_SHIFTER": "DATE_SHIFTER",
+      "DESK": "DESK",
+      "DRAFTABLE_REVISIONED_ENTITY": "DRAFTABLE_REVISIONED_ENTITY",
+      "EXCHANGE_SECTION": "EXCHANGE_SECTION",
+      "FIXED_TRADE_LEG": "LEG",
+      "FIXING_SOURCE": "FIXING_SOURCE",
+      "FIXING_VALUE": "FIXING_VALUE",
+      "FLOATING_TRADE_LEG": "LEG",
+      "FORMULA": "FORMULA",
+      "FX_NONDELIVERABLE_FORWARD_ASIAN_TRADE": "TRADE",
+      "FX_NONDELIVERABLE_FORWARD_TRADE": "TRADE",
+      "FX_NONDELIVERABLE_OPEN_DATED_FORWARD_TRADE": "TRADE",
+      "FX_OPEN_DATED_FORWARD_TRADE": "TRADE",
+      "FX_PAIR": "DRAFTABLE_REVISIONED_ENTITY",
+      "FX_PREPAID_FORWARD_TRADE": "TRADE",
+      "FX_SPOT_EXCHANGE_PRODUCT": "PRODUCT",
+      "FX_SPOT_FORWARD_TRADE": "TRADE",
+      "INSTRUMENT": "DRAFTABLE_REVISIONED_ENTITY",
+      "INTEREST_RATE_SWAP": "TRADE",
+      "INTEREST_RATE_SWAP_TRADE": "TRADE",
+      "LEG": "LEG",
+      "LEGAL_ENTITY": "LEGAL_ENTITY",
+      "LEGAL_ENTITY_ALTERNATIVE_IDENTIFIER": "ALTERNATIVE_IDENTIFIER",
+      "LEGGED_TRADE": "TRADE",
+      "PERSON": "PERSON",
+      "PERSON_ALTERNATIVE_IDENTIFIER": "ALTERNATIVE_IDENTIFIER",
+      "PHASE_LEG": "LEG",
+      "PHASE_LEG_CASHFLOW": "CASHFLOW",
+      "PHASED_TRADE": "TRADE",
+      "PORTFOLIO": "PORTFOLIO",
+      "PRODUCT": "PRODUCT",
+      "RATE_CONVENTION": "RATE_CONVENTION",
+      "RISK_PORTFOLIO": "RISK_PORTFOLIO",
+      "SCHEDULE_GENERATOR": "SCHEDULE_GENERATOR",
+      "SOURCE": "SOURCE",
+      "SYSTEM": "SYSTEM",
+      "TRADE": "TRADE",
+      "TRADE_CASHFLOW": "CASHFLOW",
+      "TRADE_LEG": "LEG",
+      "TRADE_LEG_CASHFLOW": "CASHFLOW",
+      "TRADE_PHASE": "TRADE_PHASE",
+      "USER": "USER",
+      "VENUE": "VENUE"
+    },
+    "actualClassesForRoot": {
+      "ALTERNATIVE_IDENTIFIER": [
+        "COUNTERPARTY_ALTERNATIVE_IDENTIFIER",
+        "LEGAL_ENTITY_ALTERNATIVE_IDENTIFIER",
+        "PERSON_ALTERNATIVE_IDENTIFIER"
+      ],
+      "ASSET": [
+        "CURRENCY"
+      ],
+      "BEST_MATCHING_FORMULA": [
+        "BEST_MATCHING_FORMULA"
+      ],
+      "BOARD": [
+        "BOARD"
+      ],
+      "CALENDAR": [
+        "CALENDAR",
+        "COMPOSIT_CALENDAR",
+        "CONNPOSIT_CALENDAR",
+        "FX_PAIR"
+      ],
+      "CASHFLOW": [
+        "PHASE_LEG_CASHFLOW",
+        "TRADE_CASHFLOW",
+        "TRADE_LEG_CASHFLOW"
+      ],
+      "COMPOSIT_CALENDAR": [
+        "CALENDAR",
+        "COMPOSIT_CALENDAR",
+        "CONNPOSIT_CALENDAR",
+        "FX_PAIR"
+      ],
+      "CONNPOSIT_CALENDAR": [
+        "CALENDAR",
+        "COMPOSIT_CALENDAR",
+        "CONNPOSIT_CALENDAR",
+        "FX_PAIR"
+      ],
+      "COUNTERPARTY": [
+        "COUNTERPARTY"
+      ],
+      "COUNTERPARTY_ALTERNATIVE_IDENTIFIER": [
+        "COUNTERPARTY_ALTERNATIVE_IDENTIFIER",
+        "LEGAL_ENTITY_ALTERNATIVE_IDENTIFIER",
+        "PERSON_ALTERNATIVE_IDENTIFIER"
+      ],
+      "CURRENCY": [
+        "CURRENCY"
+      ],
+      "DATE_BOUNDED_ENTITY": [
+
+      ],
+      "DATE_SHIFTER": [
+        "DATE_SHIFTER"
+      ],
+      "DAY_COUNT_CONVENTION": [
+
+      ],
+      "DESK": [
+        "DESK"
+      ],
+      "DRAFTABLE_DATE_BOUNDED_ENTITY": [
+
+      ],
+      "DRAFTABLE_REVISIONED_ENTITY": [
+        "CALENDAR",
+        "COMPOSIT_CALENDAR",
+        "CONNPOSIT_CALENDAR",
+        "FX_PAIR"
+      ],
+      "EMBEDDED_ENTITY": [
+
+      ],
+      "ENTITY": [
+
+      ],
+      "EXCHANGE_SECTION": [
+        "EXCHANGE_SECTION"
+      ],
+      "FIXED_TRADE_LEG": [
+        "FIXED_TRADE_LEG",
+        "FLOATING_TRADE_LEG",
+        "PHASE_LEG",
+        "TRADE_LEG"
+      ],
+      "FIXING_SOURCE": [
+        "FIXING_SOURCE"
+      ],
+      "FIXING_VALUE": [
+        "FIXING_VALUE"
+      ],
+      "FLOATING_TRADE_LEG": [
+        "FIXED_TRADE_LEG",
+        "FLOATING_TRADE_LEG",
+        "PHASE_LEG",
+        "TRADE_LEG"
+      ],
+      "FORMULA": [
+        "BEST_MATCHING_FORMULA"
+      ],
+      "FX_NONDELIVERABLE_FORWARD_ASIAN_TRADE": [
+        "FX_NONDELIVERABLE_FORWARD_ASIAN_TRADE",
+        "FX_NONDELIVERABLE_FORWARD_TRADE",
+        "FX_NONDELIVERABLE_OPEN_DATED_FORWARD_TRADE",
+        "FX_OPEN_DATED_FORWARD_TRADE",
+        "FX_PREPAID_FORWARD_TRADE",
+        "FX_SPOT_FORWARD_TRADE",
+        "INTEREST_RATE_SWAP",
+        "INTEREST_RATE_SWAP_TRADE"
+      ],
+      "FX_NONDELIVERABLE_FORWARD_TRADE": [
+        "FX_NONDELIVERABLE_FORWARD_ASIAN_TRADE",
+        "FX_NONDELIVERABLE_FORWARD_TRADE",
+        "FX_NONDELIVERABLE_OPEN_DATED_FORWARD_TRADE",
+        "FX_OPEN_DATED_FORWARD_TRADE",
+        "FX_PREPAID_FORWARD_TRADE",
+        "FX_SPOT_FORWARD_TRADE",
+        "INTEREST_RATE_SWAP",
+        "INTEREST_RATE_SWAP_TRADE"
+      ],
+      "FX_NONDELIVERABLE_OPEN_DATED_FORWARD_TRADE": [
+        "FX_NONDELIVERABLE_FORWARD_ASIAN_TRADE",
+        "FX_NONDELIVERABLE_FORWARD_TRADE",
+        "FX_NONDELIVERABLE_OPEN_DATED_FORWARD_TRADE",
+        "FX_OPEN_DATED_FORWARD_TRADE",
+        "FX_PREPAID_FORWARD_TRADE",
+        "FX_SPOT_FORWARD_TRADE",
+        "INTEREST_RATE_SWAP",
+        "INTEREST_RATE_SWAP_TRADE"
+      ],
+      "FX_OPEN_DATED_FORWARD_TRADE": [
+        "FX_NONDELIVERABLE_FORWARD_ASIAN_TRADE",
+        "FX_NONDELIVERABLE_FORWARD_TRADE",
+        "FX_NONDELIVERABLE_OPEN_DATED_FORWARD_TRADE",
+        "FX_OPEN_DATED_FORWARD_TRADE",
+        "FX_PREPAID_FORWARD_TRADE",
+        "FX_SPOT_FORWARD_TRADE",
+        "INTEREST_RATE_SWAP",
+        "INTEREST_RATE_SWAP_TRADE"
+      ],
+      "FX_PAIR": [
+        "CALENDAR",
+        "COMPOSIT_CALENDAR",
+        "CONNPOSIT_CALENDAR",
+        "FX_PAIR"
+      ],
+      "FX_PREPAID_FORWARD_TRADE": [
+        "FX_NONDELIVERABLE_FORWARD_ASIAN_TRADE",
+        "FX_NONDELIVERABLE_FORWARD_TRADE",
+        "FX_NONDELIVERABLE_OPEN_DATED_FORWARD_TRADE",
+        "FX_OPEN_DATED_FORWARD_TRADE",
+        "FX_PREPAID_FORWARD_TRADE",
+        "FX_SPOT_FORWARD_TRADE",
+        "INTEREST_RATE_SWAP",
+        "INTEREST_RATE_SWAP_TRADE"
+      ],
+      "FX_SPOT_EXCHANGE_PRODUCT": [
+        "FX_SPOT_EXCHANGE_PRODUCT"
+      ],
+      "FX_SPOT_FORWARD_TRADE": [
+        "FX_NONDELIVERABLE_FORWARD_ASIAN_TRADE",
+        "FX_NONDELIVERABLE_FORWARD_TRADE",
+        "FX_NONDELIVERABLE_OPEN_DATED_FORWARD_TRADE",
+        "FX_OPEN_DATED_FORWARD_TRADE",
+        "FX_PREPAID_FORWARD_TRADE",
+        "FX_SPOT_FORWARD_TRADE",
+        "INTEREST_RATE_SWAP",
+        "INTEREST_RATE_SWAP_TRADE"
+      ],
+      "GLOBAL_ENTITY": [
+
+      ],
+      "IMPORT_OBJECT_MAPPING": [
+
+      ],
+      "INDEX": [
+
+      ],
+      "INSTRUMENT": [
+        "CALENDAR",
+        "COMPOSIT_CALENDAR",
+        "CONNPOSIT_CALENDAR",
+        "FX_PAIR"
+      ],
+      "INTEREST_RATE_SWAP": [
+        "FX_NONDELIVERABLE_FORWARD_ASIAN_TRADE",
+        "FX_NONDELIVERABLE_FORWARD_TRADE",
+        "FX_NONDELIVERABLE_OPEN_DATED_FORWARD_TRADE",
+        "FX_OPEN_DATED_FORWARD_TRADE",
+        "FX_PREPAID_FORWARD_TRADE",
+        "FX_SPOT_FORWARD_TRADE",
+        "INTEREST_RATE_SWAP",
+        "INTEREST_RATE_SWAP_TRADE"
+      ],
+      "INTEREST_RATE_SWAP_TRADE": [
+        "FX_NONDELIVERABLE_FORWARD_ASIAN_TRADE",
+        "FX_NONDELIVERABLE_FORWARD_TRADE",
+        "FX_NONDELIVERABLE_OPEN_DATED_FORWARD_TRADE",
+        "FX_OPEN_DATED_FORWARD_TRADE",
+        "FX_PREPAID_FORWARD_TRADE",
+        "FX_SPOT_FORWARD_TRADE",
+        "INTEREST_RATE_SWAP",
+        "INTEREST_RATE_SWAP_TRADE"
+      ],
+      "LEG": [
+        "FIXED_TRADE_LEG",
+        "FLOATING_TRADE_LEG",
+        "PHASE_LEG",
+        "TRADE_LEG"
+      ],
+      "LEGAL_ENTITY": [
+        "LEGAL_ENTITY"
+      ],
+      "LEGAL_ENTITY_ALTERNATIVE_IDENTIFIER": [
+        "COUNTERPARTY_ALTERNATIVE_IDENTIFIER",
+        "LEGAL_ENTITY_ALTERNATIVE_IDENTIFIER",
+        "PERSON_ALTERNATIVE_IDENTIFIER"
+      ],
+      "LEGGED_TRADE": [
+        "FX_NONDELIVERABLE_FORWARD_ASIAN_TRADE",
+        "FX_NONDELIVERABLE_FORWARD_TRADE",
+        "FX_NONDELIVERABLE_OPEN_DATED_FORWARD_TRADE",
+        "FX_OPEN_DATED_FORWARD_TRADE",
+        "FX_PREPAID_FORWARD_TRADE",
+        "FX_SPOT_FORWARD_TRADE",
+        "INTEREST_RATE_SWAP",
+        "INTEREST_RATE_SWAP_TRADE"
+      ],
+      "OPEN_DATE_FORWARD_SCHEDULE_PERIOD": [
+
+      ],
+      "PERIOD_SCHEDULE": [
+
+      ],
+      "PERIOD_SCHEDULE_RESULT": [
+
+      ],
+      "PERSON": [
+        "PERSON"
+      ],
+      "PERSON_ALTERNATIVE_IDENTIFIER": [
+        "COUNTERPARTY_ALTERNATIVE_IDENTIFIER",
+        "LEGAL_ENTITY_ALTERNATIVE_IDENTIFIER",
+        "PERSON_ALTERNATIVE_IDENTIFIER"
+      ],
+      "PHASE_LEG": [
+        "FIXED_TRADE_LEG",
+        "FLOATING_TRADE_LEG",
+        "PHASE_LEG",
+        "TRADE_LEG"
+      ],
+      "PHASE_LEG_CASHFLOW": [
+        "PHASE_LEG_CASHFLOW",
+        "TRADE_CASHFLOW",
+        "TRADE_LEG_CASHFLOW"
+      ],
+      "PHASED_TRADE": [
+        "FX_NONDELIVERABLE_FORWARD_ASIAN_TRADE",
+        "FX_NONDELIVERABLE_FORWARD_TRADE",
+        "FX_NONDELIVERABLE_OPEN_DATED_FORWARD_TRADE",
+        "FX_OPEN_DATED_FORWARD_TRADE",
+        "FX_PREPAID_FORWARD_TRADE",
+        "FX_SPOT_FORWARD_TRADE",
+        "INTEREST_RATE_SWAP",
+        "INTEREST_RATE_SWAP_TRADE"
+      ],
+      "PORTFOLIO": [
+        "PORTFOLIO"
+      ],
+      "PRODUCT": [
+        "FX_SPOT_EXCHANGE_PRODUCT"
+      ],
+      "RATE_CONVENTION": [
+        "RATE_CONVENTION"
+      ],
+      "REVISIONED_ENTITY": [
+
+      ],
+      "RISK_PORTFOLIO": [
+        "RISK_PORTFOLIO"
+      ],
+      "ROUNDING_CONVENTION": [
+
+      ],
+      "SCHEDULE_DEFINITION": [
+
+      ],
+      "SCHEDULE_GENERATOR": [
+        "SCHEDULE_GENERATOR"
+      ],
+      "SIMPLE_ENTITY": [
+
+      ],
+      "SOURCE": [
+        "SOURCE"
+      ],
+      "SPECIFIC_ENTITY": [
+
+      ],
+      "SYSTEM": [
+        "SYSTEM"
+      ],
+      "TRADE": [
+        "FX_NONDELIVERABLE_FORWARD_ASIAN_TRADE",
+        "FX_NONDELIVERABLE_FORWARD_TRADE",
+        "FX_NONDELIVERABLE_OPEN_DATED_FORWARD_TRADE",
+        "FX_OPEN_DATED_FORWARD_TRADE",
+        "FX_PREPAID_FORWARD_TRADE",
+        "FX_SPOT_FORWARD_TRADE",
+        "INTEREST_RATE_SWAP",
+        "INTEREST_RATE_SWAP_TRADE"
+      ],
+      "TRADE_CASHFLOW": [
+        "PHASE_LEG_CASHFLOW",
+        "TRADE_CASHFLOW",
+        "TRADE_LEG_CASHFLOW"
+      ],
+      "TRADE_LEG": [
+        "FIXED_TRADE_LEG",
+        "FLOATING_TRADE_LEG",
+        "PHASE_LEG",
+        "TRADE_LEG"
+      ],
+      "TRADE_LEG_CASHFLOW": [
+        "PHASE_LEG_CASHFLOW",
+        "TRADE_CASHFLOW",
+        "TRADE_LEG_CASHFLOW"
+      ],
+      "TRADE_PHASE": [
+        "TRADE_PHASE"
+      ],
+      "USER": [
+        "USER"
+      ],
+      "VENUE": [
+        "VENUE"
+      ]
+    }
+  },
+  "indexSources": {
+    "ALTERNATIVE_IDENTIFIER": [
+      {
+        "source": "AlternativeIdentifier",
+        "table": "alternative_identifier_index",
+        "columnsRef": "ALTERNATIVE_IDENTIFIER"
+      }
+    ],
+    "ASSET": [
+      {
+        "source": "Asset",
+        "table": "asset_index",
+        "columnsRef": "ASSET"
+      }
+    ],
+    "BEST_MATCHING_FORMULA": [
+
+    ],
+    "BOARD": [
+      {
+        "source": "Board",
+        "table": "board_index",
+        "columnsRef": "BOARD"
+      }
+    ],
+    "CALENDAR": [
+      {
+        "source": "Calendar",
+        "table": "calendar_index",
+        "columnsRef": "CALENDAR"
+      }
+    ],
+    "CASHFLOW": [
+      {
+        "source": "Cashflow",
+        "table": "cashflow_index",
+        "columnsRef": "CASHFLOW"
+      }
+    ],
+    "COMPOSIT_CALENDAR": [
+      {
+        "source": "Calendar",
+        "table": "calendar_index",
+        "columnsRef": "CALENDAR"
+      }
+    ],
+    "CONNPOSIT_CALENDAR": [
+      {
+        "source": "Calendar",
+        "table": "calendar_index",
+        "columnsRef": "CALENDAR"
+      }
+    ],
+    "COUNTERPARTY": [
+      {
+        "source": "Counterparty",
+        "table": "counterparty_index",
+        "columnsRef": "COUNTERPARTY"
+      }
+    ],
+    "COUNTERPARTY_ALTERNATIVE_IDENTIFIER": [
+      {
+        "source": "AlternativeIdentifier",
+        "table": "alternative_identifier_index",
+        "columnsRef": "ALTERNATIVE_IDENTIFIER"
+      }
+    ],
+    "CURRENCY": [
+      {
+        "source": "Asset",
+        "table": "asset_index",
+        "columnsRef": "ASSET"
+      },
+      {
+        "source": "Currency",
+        "table": "currency_index",
+        "columnsRef": "CURRENCY"
+      }
+    ],
+    "DATE_BOUNDED_ENTITY": [
+
+    ],
+    "DATE_SHIFTER": [
+      {
+        "source": "DateShifter",
+        "table": "date_shifter_index",
+        "columnsRef": "DATE_SHIFTER"
+      }
+    ],
+    "DAY_COUNT_CONVENTION": [
+
+    ],
+    "DESK": [
+      {
+        "source": "Desk",
+        "table": "desk_index",
+        "columnsRef": "DESK"
+      }
+    ],
+    "DRAFTABLE_DATE_BOUNDED_ENTITY": [
+
+    ],
+    "DRAFTABLE_REVISIONED_ENTITY": [
+
+    ],
+    "EMBEDDED_ENTITY": [
+
+    ],
+    "ENTITY": [
+
+    ],
+    "EXCHANGE_SECTION": [
+      {
+        "source": "ExchangeSection",
+        "table": "exchange_section_index",
+        "columnsRef": "EXCHANGE_SECTION"
+      }
+    ],
+    "FIXED_TRADE_LEG": [
+
+    ],
+    "FIXING_SOURCE": [
+
+    ],
+    "FIXING_VALUE": [
+
+    ],
+    "FLOATING_TRADE_LEG": [
+
+    ],
+    "FORMULA": [
+
+    ],
+    "FX_NONDELIVERABLE_FORWARD_ASIAN_TRADE": [
+      {
+        "source": "Trade",
+        "table": "trade_index",
+        "columnsRef": "TRADE"
+      },
+      {
+        "source": "FxSpotForwardTrade",
+        "table": "fx_spot_forward_trade_index",
+        "columnsRef": "FX_SPOT_FORWARD_TRADE"
+      }
+    ],
+    "FX_NONDELIVERABLE_FORWARD_TRADE": [
+      {
+        "source": "Trade",
+        "table": "trade_index",
+        "columnsRef": "TRADE"
+      },
+      {
+        "source": "FxSpotForwardTrade",
+        "table": "fx_spot_forward_trade_index",
+        "columnsRef": "FX_SPOT_FORWARD_TRADE"
+      }
+    ],
+    "FX_NONDELIVERABLE_OPEN_DATED_FORWARD_TRADE": [
+      {
+        "source": "Trade",
+        "table": "trade_index",
+        "columnsRef": "TRADE"
+      },
+      {
+        "source": "FxSpotForwardTrade",
+        "table": "fx_spot_forward_trade_index",
+        "columnsRef": "FX_SPOT_FORWARD_TRADE"
+      }
+    ],
+    "FX_OPEN_DATED_FORWARD_TRADE": [
+      {
+        "source": "Trade",
+        "table": "trade_index",
+        "columnsRef": "TRADE"
+      },
+      {
+        "source": "FxSpotForwardTrade",
+        "table": "fx_spot_forward_trade_index",
+        "columnsRef": "FX_SPOT_FORWARD_TRADE"
+      }
+    ],
+    "FX_PAIR": [
+      {
+        "source": "Instrument",
+        "table": "instrument_index",
+        "columnsRef": "INSTRUMENT"
+      },
+      {
+        "source": "FxPair",
+        "table": "fx_pair_index",
+        "columnsRef": "FX_PAIR"
+      }
+    ],
+    "FX_PREPAID_FORWARD_TRADE": [
+      {
+        "source": "Trade",
+        "table": "trade_index",
+        "columnsRef": "TRADE"
+      },
+      {
+        "source": "FxSpotForwardTrade",
+        "table": "fx_spot_forward_trade_index",
+        "columnsRef": "FX_SPOT_FORWARD_TRADE"
+      }
+    ],
+    "FX_SPOT_EXCHANGE_PRODUCT": [
+      {
+        "source": "Product",
+        "table": "product_index",
+        "columnsRef": "PRODUCT"
+      }
+    ],
+    "FX_SPOT_FORWARD_TRADE": [
+      {
+        "source": "Trade",
+        "table": "trade_index",
+        "columnsRef": "TRADE"
+      },
+      {
+        "source": "FxSpotForwardTrade",
+        "table": "fx_spot_forward_trade_index",
+        "columnsRef": "FX_SPOT_FORWARD_TRADE"
+      }
+    ],
+    "GLOBAL_ENTITY": [
+
+    ],
+    "IMPORT_OBJECT_MAPPING": [
+
+    ],
+    "INDEX": [
+
+    ],
+    "INSTRUMENT": [
+      {
+        "source": "Instrument",
+        "table": "instrument_index",
+        "columnsRef": "INSTRUMENT"
+      }
+    ],
+    "INTEREST_RATE_SWAP": [
+      {
+        "source": "Trade",
+        "table": "trade_index",
+        "columnsRef": "TRADE"
+      }
+    ],
+    "INTEREST_RATE_SWAP_TRADE": [
+      {
+        "source": "Trade",
+        "table": "trade_index",
+        "columnsRef": "TRADE"
+      }
+    ],
+    "LEG": [
+
+    ],
+    "LEGAL_ENTITY": [
+      {
+        "source": "LegalEntity",
+        "table": "legal_entity_index",
+        "columnsRef": "LEGAL_ENTITY"
+      }
+    ],
+    "LEGAL_ENTITY_ALTERNATIVE_IDENTIFIER": [
+      {
+        "source": "AlternativeIdentifier",
+        "table": "alternative_identifier_index",
+        "columnsRef": "ALTERNATIVE_IDENTIFIER"
+      }
+    ],
+    "LEGGED_TRADE": [
+      {
+        "source": "Trade",
+        "table": "trade_index",
+        "columnsRef": "TRADE"
+      }
+    ],
+    "OPEN_DATE_FORWARD_SCHEDULE_PERIOD": [
+
+    ],
+    "PERIOD_SCHEDULE": [
+
+    ],
+    "PERIOD_SCHEDULE_RESULT": [
+
+    ],
+    "PERSON": [
+      {
+        "source": "Person",
+        "table": "person_index",
+        "columnsRef": "PERSON"
+      }
+    ],
+    "PERSON_ALTERNATIVE_IDENTIFIER": [
+      {
+        "source": "AlternativeIdentifier",
+        "table": "alternative_identifier_index",
+        "columnsRef": "ALTERNATIVE_IDENTIFIER"
+      }
+    ],
+    "PHASE_LEG": [
+
+    ],
+    "PHASE_LEG_CASHFLOW": [
+      {
+        "source": "Cashflow",
+        "table": "cashflow_index",
+        "columnsRef": "CASHFLOW"
+      }
+    ],
+    "PHASED_TRADE": [
+      {
+        "source": "Trade",
+        "table": "trade_index",
+        "columnsRef": "TRADE"
+      }
+    ],
+    "PORTFOLIO": [
+      {
+        "source": "Portfolio",
+        "table": "portfolio_index",
+        "columnsRef": "PORTFOLIO"
+      }
+    ],
+    "PRODUCT": [
+      {
+        "source": "Product",
+        "table": "product_index",
+        "columnsRef": "PRODUCT"
+      }
+    ],
+    "RATE_CONVENTION": [
+      {
+        "source": "RateConvention",
+        "table": "rate_convention_index",
+        "columnsRef": "RATE_CONVENTION"
+      }
+    ],
+    "REVISIONED_ENTITY": [
+
+    ],
+    "RISK_PORTFOLIO": [
+
+    ],
+    "ROUNDING_CONVENTION": [
+
+    ],
+    "SCHEDULE_DEFINITION": [
+
+    ],
+    "SCHEDULE_GENERATOR": [
+
+    ],
+    "SIMPLE_ENTITY": [
+
+    ],
+    "SOURCE": [
+      {
+        "source": "Source",
+        "table": "source_index",
+        "columnsRef": "SOURCE"
+      }
+    ],
+    "SPECIFIC_ENTITY": [
+
+    ],
+    "SYSTEM": [
+      {
+        "source": "System",
+        "table": "system_index",
+        "columnsRef": "SYSTEM"
+      }
+    ],
+    "TRADE": [
+      {
+        "source": "Trade",
+        "table": "trade_index",
+        "columnsRef": "TRADE"
+      }
+    ],
+    "TRADE_CASHFLOW": [
+      {
+        "source": "Cashflow",
+        "table": "cashflow_index",
+        "columnsRef": "CASHFLOW"
+      }
+    ],
+    "TRADE_LEG": [
+
+    ],
+    "TRADE_LEG_CASHFLOW": [
+      {
+        "source": "Cashflow",
+        "table": "cashflow_index",
+        "columnsRef": "CASHFLOW"
+      }
+    ],
+    "TRADE_PHASE": [
+      {
+        "source": "TradePhase",
+        "table": "trade_phase_index",
+        "columnsRef": "TRADE_PHASE"
+      }
+    ],
+    "USER": [
+      {
+        "source": "User",
+        "table": "user_index",
+        "columnsRef": "USER"
+      }
+    ],
+    "VENUE": [
+      {
+        "source": "Venue",
+        "table": "venue_index",
+        "columnsRef": "VENUE"
+      }
+    ]
+  }
+}

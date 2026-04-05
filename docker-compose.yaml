@@ -143,6 +143,39 @@ services:
         condition: service_healthy
       datadictionary:
         condition: service_healthy
+      datadictionary-seed:
+        condition: service_completed_successfully
+      jaeger:
+        condition: service_started
+    networks:
+      - quantara-network
+    restart: unless-stopped
+
+  search-service:
+    build:
+      context: ./search-service
+      dockerfile: Dockerfile
+    container_name: quantara-search-service
+    ports:
+      - "50055:50055"
+    environment:
+      GRPC_PORT: "50055"
+      DATABASE_URL: "postgres://postgres:postgres@postgres:5432/quantara?sslmode=disable"
+      DB_SCHEMA: "murex"
+      REDIS_URL: "redis://redis:6379/0"
+      DATADICTIONARY_URL: "http://datadictionary:8080"
+      SEARCH_FILTER_JSON_FIELD_ENABLED: "false"
+      JAEGER_ENDPOINT: "jaeger:4318"
+      SERVICE_NAME: "search-service"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      datadictionary:
+        condition: service_healthy
+      datadictionary-seed:
+        condition: service_completed_successfully
       jaeger:
         condition: service_started
     networks:
@@ -194,6 +227,18 @@ services:
     command: ["-plaintext", "-bind", "0.0.0.0", "-port", "8080", "transaction-service:50054"]
     depends_on:
       - transaction-service
+    networks:
+      - quantara-network
+    restart: unless-stopped
+
+  grpcui-search:
+    image: fullstorydev/grpcui:latest
+    container_name: quantara-grpcui-search
+    ports:
+      - "8086:8080"
+    command: ["-plaintext", "-bind", "0.0.0.0", "-port", "8080", "search-service:50055"]
+    depends_on:
+      - search-service
     networks:
       - quantara-network
     restart: unless-stopped
@@ -267,7 +312,7 @@ services:
 
         echo ""
         echo "Creating database tables from metamodel..."
-        curl -X POST http://datadictionary:8080/api/database/apply
+        curl -f -X POST http://datadictionary:8080/database/api/schema/apply
         echo ""
         echo "Database tables created!"
       '

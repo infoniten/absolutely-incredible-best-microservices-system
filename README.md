@@ -19,6 +19,7 @@ docker-compose up -d --build
 - DataDictionary HTTP API: http://localhost:8083
 - gRPC UI для DataDictionary: http://localhost:8084
 - gRPC UI для Transaction Service: http://localhost:8085
+- gRPC UI для Search Service: http://localhost:8086
 - Jaeger UI (трейсинг): http://localhost:16686
 
 ## Архитектура
@@ -65,6 +66,7 @@ docker-compose up -d --build
 Полнотекстовый и структурированный поиск.
 - Управление индексами
 - Выполнение запросов по источникам данных
+- gRPC API: `localhost:50055`
 
 ## Статус
 
@@ -74,4 +76,4 @@ docker-compose up -d --build
 - [x] Transaction Service
 - [ ] Object Framework Service
 - [x] DataDictionary Service
-- [ ] Search Service
+- [x] Search Service
