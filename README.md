@@ -18,6 +18,7 @@ docker-compose up -d --build
 - gRPC UI для Lock Service: http://localhost:8082
 - DataDictionary HTTP API: http://localhost:8083
 - gRPC UI для DataDictionary: http://localhost:8084
+- gRPC UI для Transaction Service: http://localhost:8085
 - Jaeger UI (трейсинг): http://localhost:16686
 
 ## Архитектура
@@ -42,9 +43,11 @@ docker-compose up -d --build
 - Таймауты и предотвращение deadlock
 
 ### Transaction Service
-Управление распределёнными транзакциями между сервисами.
-- Координация двухфазного коммита
-- Обработка отката транзакций
+Управление транзакционной записью объектов в базу данных.
+- Staged transactions: накопление объектов в Redis, атомарный commit в PostgreSQL
+- 3 алгоритма сохранения: Embedded, Revisioned, DraftableDateBounded
+- Поддержка до 100k+ объектов в транзакции
+- gRPC API: `localhost:50054`
 
 ### Object Framework Service
 Унифицированное управление жизненным циклом объектов.
@@ -68,7 +71,7 @@ docker-compose up -d --build
 - [x] ID Generator Service
 - [x] GlobalID Generator Service
 - [x] Lock Service
-- [ ] Transaction Service
+- [x] Transaction Service
 - [ ] Object Framework Service
 - [x] DataDictionary Service
 - [ ] Search Service

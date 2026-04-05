@@ -43,6 +43,12 @@ logs-jaeger:
 logs-datadictionary:
 	docker-compose logs -f datadictionary
 
+logs-transaction:
+	docker-compose logs -f transaction-service
+
+logs-redis:
+	docker-compose logs -f redis
+
 # Clean up
 clean:
 	docker-compose down -v --rmi all
@@ -51,19 +57,22 @@ clean:
 proto:
 	cd id-service && make proto
 	cd globalid-service && make proto
+	cd transaction-service && make proto
 
 # Start infrastructure only
 infra-up:
-	docker-compose up -d postgres jaeger
+	docker-compose up -d postgres redis jaeger
 
 # Stop infrastructure
 infra-down:
-	docker-compose stop postgres jaeger
+	docker-compose stop postgres redis jaeger
 
 # Health check
 health:
 	@echo "Checking PostgreSQL..."
 	@docker-compose exec postgres pg_isready -U postgres || echo "PostgreSQL is not ready"
+	@echo "Checking Redis..."
+	@docker-compose exec redis redis-cli ping || echo "Redis is not ready"
 	@echo "Checking Jaeger..."
 	@curl -s http://localhost:16686 > /dev/null && echo "Jaeger is ready" || echo "Jaeger is not ready"
 	@echo "Checking DataDictionary..."
@@ -77,5 +86,7 @@ test-grpc:
 	@grpcurl -plaintext localhost:50052 list || echo "GlobalID Service is not available"
 	@echo "Testing Lock Service..."
 	@grpcurl -plaintext localhost:50053 list || echo "Lock Service is not available"
+	@echo "Testing Transaction Service..."
+	@grpcurl -plaintext localhost:50054 list || echo "Transaction Service is not available"
 	@echo "Testing DataDictionary gRPC..."
 	@grpcurl -plaintext localhost:9090 list || echo "DataDictionary gRPC is not available"
