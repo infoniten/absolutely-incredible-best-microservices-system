@@ -1,0 +1,100 @@
+syntax = "proto3";
+
+package transaction;
+
+option go_package = "github.com/quantara/transaction-service/proto";
+
+service TransactionService {
+  // Begin a new transaction, returns transaction_id
+  rpc BeginTransaction(BeginTxRequest) returns (BeginTxResponse);
+
+  // Save an object to the transaction (staged in Redis)
+  rpc Save(SaveRequest) returns (SaveResponse);
+
+  // Save multiple objects via streaming
+  rpc SaveStream(stream SaveRequest) returns (stream SaveResponse);
+
+  // Commit the transaction (write all staged objects to DB)
+  rpc Commit(CommitRequest) returns (CommitResponse);
+
+  // Rollback the transaction (clear staged objects)
+  rpc Rollback(RollbackRequest) returns (RollbackResponse);
+}
+
+// ============================================================================
+// BeginTransaction
+// ============================================================================
+
+message BeginTxRequest {
+  // Optional timeout in seconds (default: 600 = 10 minutes)
+  optional int32 timeout_seconds = 1;
+}
+
+message BeginTxResponse {
+  string transaction_id = 1;  // UUID
+}
+
+// ============================================================================
+// Save
+// ============================================================================
+
+// Object headers (from DataDictionary metamodel)
+message ObjectHeaders {
+  int64 id = 1;                       // Record ID (from ID Service)
+  int64 global_id = 2;                // GlobalID (from GlobalID Service)
+  string object_type = 3;             // Class name (Trade, Contract, ...)
+  string lock_id = 4;                 // Lock token (UUID from Lock Service)
+  int32 revision = 5;                 // Revision number
+  optional int32 version = 6;         // Version (nullable for DRAFT)
+  optional string actual_from = 7;    // Business date start (for DraftableDateBounded)
+  optional string draft_status = 8;   // DRAFT / CONFIRMED
+  optional int64 parent_id = 9;       // Parent ID (for Embedded entities)
+}
+
+message SaveRequest {
+  string transaction_id = 1;          // Transaction UUID
+  ObjectHeaders headers = 2;          // Structured headers
+  bytes payload = 3;                  // JSON body of the object
+
+  // Optional: client can pass algorithm_id if known
+  // If not provided, determined from object_type via metamodel
+  optional uint32 algorithm_id = 4;
+}
+
+message SaveResponse {
+  bool success = 1;
+  string error = 2;
+}
+
+// ============================================================================
+// Commit
+// ============================================================================
+
+message CommitRequest {
+  string transaction_id = 1;
+}
+
+message CommitResponse {
+  bool success = 1;
+  string error = 2;
+  int32 objects_saved = 3;            // Total objects saved
+  repeated ObjectResult results = 4;  // Per-object results (optional, for debugging)
+}
+
+message ObjectResult {
+  int64 id = 1;
+  bool success = 2;
+  string error = 3;
+}
+
+// ============================================================================
+// Rollback
+// ============================================================================
+
+message RollbackRequest {
+  string transaction_id = 1;
+}
+
+message RollbackResponse {
+  bool success = 1;
+}
