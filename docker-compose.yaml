@@ -243,6 +243,7 @@ services:
       JAEGER_ENDPOINT: "jaeger:4318"
       SERVICE_NAME: "object-framework"
       LOCK_TTL_MS: "30000"
+      WORKER_COUNT: "100"
     healthcheck:
       test: ["CMD", "wget", "-q", "--spider", "http://localhost:8088/health/live"]
       interval: 10s

@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"sync"
 	"time"
 
 	"github.com/quantara/object-framework/internal/client"
@@ -14,14 +15,14 @@ import (
 
 // FxSpotProcessor handles the business logic for FX Spot trade processing
 type FxSpotProcessor struct {
-	rawMsgRepo      *repository.RawMessageRepository
-	globalIDRepo    *repository.GlobalIDMappingRepository
-	idClient        *client.IDClient
-	globalIDClient  *client.GlobalIDClient
-	lockClient      *client.LockClient
-	searchClient    *client.SearchClient
-	txClient        *client.TransactionClient
-	lockTTLMs       int64
+	rawMsgRepo     *repository.RawMessageRepository
+	globalIDRepo   *repository.GlobalIDMappingRepository
+	idClient       *client.IDClient
+	globalIDClient *client.GlobalIDClient
+	lockClient     *client.LockClient
+	searchClient   *client.SearchClient
+	txClient       *client.TransactionClient
+	lockTTLMs      int64
 }
 
 // NewFxSpotProcessor creates a new FxSpotProcessor
@@ -72,17 +73,42 @@ func (p *FxSpotProcessor) Process(ctx context.Context, rawMsg *domain.RawMessage
 
 	tradeNo := moexRecord.GetTradeNo()
 	result.TradeNo = tradeNo
-	log.Printf("Processing trade TRADENO=%s", tradeNo)
 
-	// Step 2: Resolve GlobalID for this trade
-	productGlobalID, isNewProduct, err := p.resolveGlobalID(ctx, tradeNo)
-	if err != nil {
-		result.Error = fmt.Errorf("failed to resolve GlobalID: %w", err)
+	// Step 2: Resolve GlobalIDs for product and trade IN PARALLEL
+	var productGlobalID, tradeGlobalID int64
+	var isNewProduct, isNewTrade bool
+	var resolveErr error
+
+	var wg sync.WaitGroup
+	wg.Add(2)
+
+	go func() {
+		defer wg.Done()
+		var err error
+		productGlobalID, isNewProduct, err = p.resolveGlobalID(ctx, tradeNo, domain.SourceObjectTypeFXSPOT)
+		if err != nil {
+			resolveErr = fmt.Errorf("failed to resolve product GlobalID: %w", err)
+		}
+	}()
+
+	go func() {
+		defer wg.Done()
+		var err error
+		tradeGlobalID, isNewTrade, err = p.resolveGlobalID(ctx, tradeNo, domain.SourceObjectTypeFXSPOTTrade)
+		if err != nil {
+			resolveErr = fmt.Errorf("failed to resolve trade GlobalID: %w", err)
+		}
+	}()
+
+	wg.Wait()
+
+	if resolveErr != nil {
+		result.Error = resolveErr
 		p.updateRawMessageStatus(ctx, rawMsg.ID, domain.RawMessageStatusFailed, result.Error.Error())
 		return result
 	}
+
 	result.GlobalID = productGlobalID
-	log.Printf("Resolved GlobalID=%d, isNew=%v", productGlobalID, isNewProduct)
 
 	// Step 3: Acquire lock
 	lockResult, err := p.lockClient.LockWithTTL(ctx, productGlobalID, p.lockTTLMs)
@@ -97,7 +123,6 @@ func (p *FxSpotProcessor) Process(ctx context.Context, rawMsg *domain.RawMessage
 		return result
 	}
 	lockToken := lockResult.Token
-	log.Printf("Lock acquired, token=%s", lockToken)
 
 	// Ensure lock is released
 	defer func() {
@@ -106,8 +131,8 @@ func (p *FxSpotProcessor) Process(ctx context.Context, rawMsg *domain.RawMessage
 		}
 	}()
 
-	// Step 4: Process business logic
-	err = p.processBusinessLogic(ctx, moexRecord, productGlobalID, isNewProduct, lockToken)
+	// Step 4: Process business logic with optimizations
+	err = p.processBusinessLogicOptimized(ctx, moexRecord, productGlobalID, tradeGlobalID, isNewProduct, isNewTrade, lockToken)
 	if err != nil {
 		result.Error = fmt.Errorf("business logic failed: %w", err)
 		p.updateRawMessageStatus(ctx, rawMsg.ID, domain.RawMessageStatusFailed, result.Error.Error())
@@ -120,19 +145,13 @@ func (p *FxSpotProcessor) Process(ctx context.Context, rawMsg *domain.RawMessage
 	}
 
 	result.Success = true
-	log.Printf("Successfully processed trade TRADENO=%s, GlobalID=%d", tradeNo, productGlobalID)
 	return result
 }
 
-// resolveGlobalID resolves or creates the GlobalID for a trade
-func (p *FxSpotProcessor) resolveGlobalID(ctx context.Context, tradeNo string) (int64, bool, error) {
+// resolveGlobalID resolves or creates the GlobalID for an object type
+func (p *FxSpotProcessor) resolveGlobalID(ctx context.Context, tradeNo string, objectType string) (int64, bool, error) {
 	// Try to find existing mapping first
-	existing, err := p.globalIDRepo.FindByExternalID(
-		ctx,
-		tradeNo,
-		domain.SourceMOEX,
-		domain.SourceObjectTypeFXSPOT,
-	)
+	existing, err := p.globalIDRepo.FindByExternalID(ctx, tradeNo, domain.SourceMOEX, objectType)
 	if err != nil {
 		return 0, false, fmt.Errorf("failed to find existing mapping: %w", err)
 	}
@@ -141,25 +160,34 @@ func (p *FxSpotProcessor) resolveGlobalID(ctx context.Context, tradeNo string) (
 	}
 
 	// No existing mapping - need to create one with real IDs
-	mappingID, err := p.idClient.GetID(ctx)
-	if err != nil {
-		return 0, false, fmt.Errorf("failed to get ID for mapping: %w", err)
-	}
+	// Get both IDs in parallel
+	var mappingID, globalID int64
+	var idErr, globalIDErr error
 
-	globalID, err := p.globalIDClient.GetGlobalID(ctx)
-	if err != nil {
-		return 0, false, fmt.Errorf("failed to get GlobalID: %w", err)
+	var wg sync.WaitGroup
+	wg.Add(2)
+
+	go func() {
+		defer wg.Done()
+		mappingID, idErr = p.idClient.GetID(ctx)
+	}()
+
+	go func() {
+		defer wg.Done()
+		globalID, globalIDErr = p.globalIDClient.GetGlobalID(ctx)
+	}()
+
+	wg.Wait()
+
+	if idErr != nil {
+		return 0, false, fmt.Errorf("failed to get ID for mapping: %w", idErr)
+	}
+	if globalIDErr != nil {
+		return 0, false, fmt.Errorf("failed to get GlobalID: %w", globalIDErr)
 	}
 
 	// Create the mapping (handles race condition internally)
-	mapping, created, err := p.globalIDRepo.GetOrCreate(
-		ctx,
-		tradeNo,
-		domain.SourceMOEX,
-		domain.SourceObjectTypeFXSPOT,
-		mappingID,
-		globalID,
-	)
+	mapping, created, err := p.globalIDRepo.GetOrCreate(ctx, tradeNo, domain.SourceMOEX, objectType, mappingID, globalID)
 	if err != nil {
 		return 0, false, err
 	}
@@ -167,168 +195,105 @@ func (p *FxSpotProcessor) resolveGlobalID(ctx context.Context, tradeNo string) (
 	return mapping.GlobalID, created, nil
 }
 
-// processBusinessLogic handles the main business logic
-func (p *FxSpotProcessor) processBusinessLogic(ctx context.Context, moexRecord *parser.MoexRecord, productGlobalID int64, isNewProduct bool, lockToken string) error {
-	// Get current date for actual_date
+// processBusinessLogicOptimized handles the main business logic with all optimizations
+func (p *FxSpotProcessor) processBusinessLogicOptimized(ctx context.Context, moexRecord *parser.MoexRecord, productGlobalID, tradeGlobalID int64, isNewProduct, isNewTrade bool, lockToken string) error {
 	actualDate := time.Now().Format("2006-01-02")
-	tradeNo := moexRecord.GetTradeNo()
 
-	// Step 1: Get or create Product
-	var product *domain.FxSpotExchangeProduct
-	var existingTrade map[string]interface{}
+	// Step 1: Batch ID generation - get all IDs we need in one call
+	// We need: productID, tradeID, 2 cashflowIDs = 4 IDs max
+	allIDs, err := p.idClient.GetBatchID(ctx, 4)
+	if err != nil {
+		return fmt.Errorf("failed to get batch IDs: %w", err)
+	}
 
-	if !isNewProduct {
-		// Try to find existing product
-		productData, err := p.searchClient.GetObjectByGlobalID(
-			ctx,
-			domain.ObjectTypeFxSpotExchangeProduct,
-			productGlobalID,
-			"CONFIRMED",
-			actualDate,
-		)
-		if err != nil {
-			return fmt.Errorf("failed to search for product: %w", err)
+	// Step 2: Search for existing product and trade IN PARALLEL (if needed)
+	var existingProduct, existingTrade map[string]interface{}
+	var searchErr error
+
+	if !isNewProduct || !isNewTrade {
+		var wg sync.WaitGroup
+
+		if !isNewProduct {
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
+				var err error
+				existingProduct, err = p.searchClient.GetObjectByGlobalID(
+					ctx,
+					domain.ObjectTypeFxSpotExchangeProduct,
+					productGlobalID,
+					"CONFIRMED",
+					actualDate,
+				)
+				if err != nil {
+					searchErr = fmt.Errorf("failed to search for product: %w", err)
+				}
+			}()
 		}
 
-		if productData != nil {
-			// Product exists - increment version/revision
-			product = p.mapToProduct(productData)
-			product.Version++
-			product.Revision++
+		if !isNewTrade {
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
+				var err error
+				existingTrade, err = p.searchClient.GetObjectByGlobalID(
+					ctx,
+					domain.ObjectTypeFxSpotForwardTrade,
+					tradeGlobalID,
+					"CONFIRMED",
+					actualDate,
+				)
+				if err != nil {
+					searchErr = fmt.Errorf("failed to search for trade: %w", err)
+				}
+			}()
+		}
 
-			// Generate new ID for updated product
-			newID, err := p.idClient.GetID(ctx)
-			if err != nil {
-				return fmt.Errorf("failed to get new ID for product: %w", err)
-			}
-			product.ID = newID
+		wg.Wait()
+
+		if searchErr != nil {
+			return searchErr
 		}
 	}
 
-	// If product doesn't exist, create new one
-	if product == nil {
-		productID, err := p.idClient.GetID(ctx)
-		if err != nil {
-			return fmt.Errorf("failed to get ID for new product: %w", err)
-		}
-
+	// Step 3: Build Product
+	var product *domain.FxSpotExchangeProduct
+	if existingProduct != nil {
+		product = p.mapToProduct(existingProduct)
+		product.Version++
+		product.Revision++
+		product.ID = allIDs[0]
+	} else {
 		product = &domain.FxSpotExchangeProduct{
-			ID:       productID,
+			ID:       allIDs[0],
 			GlobalID: productGlobalID,
 			Version:  1,
 			Revision: 1,
 		}
 	}
 
-	// Step 2: Resolve or create Trade GlobalID mapping
-	tradeGlobalID, isNewTrade, err := p.resolveTradeGlobalID(ctx, tradeNo)
-	if err != nil {
-		return fmt.Errorf("failed to resolve trade GlobalID: %w", err)
-	}
-
-	// Step 3: Create or update Trade
-	var trade *domain.FxSpotForwardTrade
+	// Step 4: Build Trade
 	var tradeVersion, tradeRevision int32 = 1, 1
-
-	if !isNewTrade {
-		// Try to find existing trade to get version/revision
-		existingTrade, _ = p.findExistingTrade(ctx, tradeGlobalID, actualDate)
-		if existingTrade != nil {
-			tradeVersion = int32(getIntFromMap(existingTrade, "version")) + 1
-			tradeRevision = int32(getIntFromMap(existingTrade, "revision")) + 1
-			log.Printf("Updating existing trade: version=%d, revision=%d, globalId=%d", tradeVersion, tradeRevision, tradeGlobalID)
-		} else {
-			log.Printf("Trade mapping exists but trade not found in search, creating version 1 with globalId=%d", tradeGlobalID)
-		}
-	} else {
-		log.Printf("Creating new trade with globalId=%d", tradeGlobalID)
+	if existingTrade != nil {
+		tradeVersion = int32(getIntFromMap(existingTrade, "version")) + 1
+		tradeRevision = int32(getIntFromMap(existingTrade, "revision")) + 1
 	}
 
-	// Generate new ID for the trade record (always new for each version)
-	tradeID, err := p.idClient.GetID(ctx)
-	if err != nil {
-		return fmt.Errorf("failed to get ID for trade: %w", err)
-	}
-
-	// Convert MOEX record to trade
-	trade, err = moexRecord.ToFxSpotForwardTrade(productGlobalID, tradeID, tradeGlobalID, tradeVersion, tradeRevision)
+	trade, err := moexRecord.ToFxSpotForwardTrade(productGlobalID, allIDs[1], tradeGlobalID, tradeVersion, tradeRevision)
 	if err != nil {
 		return fmt.Errorf("failed to convert MOEX record to trade: %w", err)
 	}
 
-	// Step 3: Create Cashflows
-	cashflowIDs, err := p.idClient.GetBatchID(ctx, 2)
-	if err != nil {
-		return fmt.Errorf("failed to get IDs for cashflows: %w", err)
-	}
-
-	cashflows := parser.CreateCashflows(trade, cashflowIDs[0], cashflowIDs[1])
+	// Step 5: Build Cashflows
+	cashflows := parser.CreateCashflows(trade, allIDs[2], allIDs[3])
 	trade.Cashflows = cashflows
 
-	// Step 4: Save everything in a transaction
-	return p.saveInTransaction(ctx, product, trade, lockToken)
+	// Step 6: Save everything using streaming transaction
+	return p.saveWithStreaming(ctx, product, trade, lockToken)
 }
 
-// findExistingTrade searches for an existing trade by its own GlobalID
-func (p *FxSpotProcessor) findExistingTrade(ctx context.Context, tradeGlobalID int64, actualDate string) (map[string]interface{}, error) {
-	tradeData, err := p.searchClient.GetObjectByGlobalID(
-		ctx,
-		domain.ObjectTypeFxSpotForwardTrade,
-		tradeGlobalID,
-		"CONFIRMED",
-		actualDate,
-	)
-	if err != nil {
-		return nil, err
-	}
-	return tradeData, nil
-}
-
-// resolveTradeGlobalID resolves or creates the GlobalID mapping for a trade
-func (p *FxSpotProcessor) resolveTradeGlobalID(ctx context.Context, tradeNo string) (int64, bool, error) {
-	// Try to find existing mapping for trade
-	existing, err := p.globalIDRepo.FindByExternalID(
-		ctx,
-		tradeNo,
-		domain.SourceMOEX,
-		domain.SourceObjectTypeFXSPOTTrade,
-	)
-	if err != nil {
-		return 0, false, fmt.Errorf("failed to find existing trade mapping: %w", err)
-	}
-	if existing != nil {
-		return existing.GlobalID, false, nil
-	}
-
-	// No existing mapping - create new one
-	mappingID, err := p.idClient.GetID(ctx)
-	if err != nil {
-		return 0, false, fmt.Errorf("failed to get ID for trade mapping: %w", err)
-	}
-
-	globalID, err := p.globalIDClient.GetGlobalID(ctx)
-	if err != nil {
-		return 0, false, fmt.Errorf("failed to get GlobalID for trade: %w", err)
-	}
-
-	// Create the mapping
-	mapping, created, err := p.globalIDRepo.GetOrCreate(
-		ctx,
-		tradeNo,
-		domain.SourceMOEX,
-		domain.SourceObjectTypeFXSPOTTrade,
-		mappingID,
-		globalID,
-	)
-	if err != nil {
-		return 0, false, err
-	}
-
-	return mapping.GlobalID, created, nil
-}
-
-// saveInTransaction saves product, trade and cashflows in a single transaction
-func (p *FxSpotProcessor) saveInTransaction(ctx context.Context, product *domain.FxSpotExchangeProduct, trade *domain.FxSpotForwardTrade, lockToken string) error {
+// saveWithStreaming saves all objects using gRPC streaming for better performance
+func (p *FxSpotProcessor) saveWithStreaming(ctx context.Context, product *domain.FxSpotExchangeProduct, trade *domain.FxSpotForwardTrade, lockToken string) error {
 	// Begin transaction
 	txID, err := p.txClient.BeginTransaction(ctx, nil)
 	if err != nil {
@@ -345,56 +310,68 @@ func (p *FxSpotProcessor) saveInTransaction(ctx context.Context, product *domain
 		}
 	}()
 
-	// Save Product
+	// Prepare common values
 	actualFrom := trade.ActualFrom.Format("2006-01-02")
 	draftStatus := "CONFIRMED"
 	version := product.Version
 
-	err = p.txClient.SaveObject(ctx, txID, &client.ObjectHeaders{
-		ID:          product.ID,
-		GlobalID:    product.GlobalID,
-		ObjectType:  domain.ObjectTypeFxSpotExchangeProduct,
-		LockID:      lockToken,
-		Revision:    product.Revision,
-		Version:     &version,
-		ActualFrom:  &actualFrom,
-		DraftStatus: &draftStatus,
-	}, product)
-	if err != nil {
-		return fmt.Errorf("failed to save product: %w", err)
-	}
+	// Build all save requests
+	saveRequests := make([]*client.SaveRequest, 0, 4)
 
-	// Save Trade
+	// Product
+	saveRequests = append(saveRequests, &client.SaveRequest{
+		TxID: txID,
+		Headers: &client.ObjectHeaders{
+			ID:          product.ID,
+			GlobalID:    product.GlobalID,
+			ObjectType:  domain.ObjectTypeFxSpotExchangeProduct,
+			LockID:      lockToken,
+			Revision:    product.Revision,
+			Version:     &version,
+			ActualFrom:  &actualFrom,
+			DraftStatus: &draftStatus,
+		},
+		Payload: product,
+	})
+
+	// Trade
 	tradeVersion := trade.Version
-	err = p.txClient.SaveObject(ctx, txID, &client.ObjectHeaders{
-		ID:          trade.ID,
-		GlobalID:    trade.GlobalID,
-		ObjectType:  domain.ObjectTypeFxSpotForwardTrade,
-		LockID:      lockToken,
-		Revision:    trade.Revision,
-		Version:     &tradeVersion,
-		ActualFrom:  &actualFrom,
-		DraftStatus: &draftStatus,
-	}, trade)
-	if err != nil {
-		return fmt.Errorf("failed to save trade: %w", err)
-	}
+	saveRequests = append(saveRequests, &client.SaveRequest{
+		TxID: txID,
+		Headers: &client.ObjectHeaders{
+			ID:          trade.ID,
+			GlobalID:    trade.GlobalID,
+			ObjectType:  domain.ObjectTypeFxSpotForwardTrade,
+			LockID:      lockToken,
+			Revision:    trade.Revision,
+			Version:     &tradeVersion,
+			ActualFrom:  &actualFrom,
+			DraftStatus: &draftStatus,
+		},
+		Payload: trade,
+	})
 
-	// Save Cashflows (embedded in trade, using parent_id)
+	// Cashflows
 	for _, cf := range trade.Cashflows {
 		parentID := trade.ID
-		err = p.txClient.SaveObject(ctx, txID, &client.ObjectHeaders{
-			ID:          cf.ID,
-			GlobalID:    0, // Embedded objects don't have GlobalID
-			ObjectType:  domain.ObjectTypeTradeCashflow,
-			LockID:      lockToken,
-			Revision:    1,
-			ParentID:    &parentID,
-			DraftStatus: &draftStatus,
-		}, cf)
-		if err != nil {
-			return fmt.Errorf("failed to save cashflow: %w", err)
-		}
+		saveRequests = append(saveRequests, &client.SaveRequest{
+			TxID: txID,
+			Headers: &client.ObjectHeaders{
+				ID:          cf.ID,
+				GlobalID:    0,
+				ObjectType:  domain.ObjectTypeTradeCashflow,
+				LockID:      lockToken,
+				Revision:    1,
+				ParentID:    &parentID,
+				DraftStatus: &draftStatus,
+			},
+			Payload: cf,
+		})
+	}
+
+	// Save all objects using streaming
+	if err := p.txClient.SaveObjectsStream(ctx, saveRequests); err != nil {
+		return fmt.Errorf("failed to save objects: %w", err)
 	}
 
 	// Commit
@@ -407,7 +384,6 @@ func (p *FxSpotProcessor) saveInTransaction(ctx context.Context, product *domain
 	}
 
 	committed = true
-	log.Printf("Transaction committed, saved %d objects", result.ObjectsSaved)
 	return nil
 }
 

@@ -125,7 +125,7 @@ func main() {
 	)
 	log.Println("FxSpot processor initialized")
 
-	// Initialize Kafka consumer
+	// Initialize Kafka consumer with worker pool
 	consumer := kafka.NewConsumer(
 		cfg.KafkaBrokers,
 		cfg.KafkaTopic,
@@ -135,8 +135,9 @@ func main() {
 		func(ctx context.Context) (int64, error) {
 			return idClient.GetID(ctx)
 		},
+		cfg.WorkerCount,
 	)
-	log.Printf("Kafka consumer initialized for brokers: %v", cfg.KafkaBrokers)
+	log.Printf("Kafka consumer initialized for brokers: %v, workers: %d", cfg.KafkaBrokers, cfg.WorkerCount)
 
 	// Initialize health server
 	healthServer := server.NewHealthServer(cfg.HTTPPort, db, consumer.Reader())

@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 
 	pb "github.com/quantara/object-framework/proto/transaction"
 	"google.golang.org/grpc"
@@ -132,4 +133,77 @@ type CommitResult struct {
 	Success      bool
 	Error        string
 	ObjectsSaved int32
+}
+
+// SaveRequest represents a single save request for streaming
+type SaveRequest struct {
+	TxID    string
+	Headers *ObjectHeaders
+	Payload interface{}
+}
+
+// SaveObjectsStream saves multiple objects using gRPC streaming for better performance
+func (c *TransactionClient) SaveObjectsStream(ctx context.Context, requests []*SaveRequest) error {
+	stream, err := c.client.SaveStream(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to create save stream: %w", err)
+	}
+
+	// Send all requests
+	for _, req := range requests {
+		payloadBytes, err := json.Marshal(req.Payload)
+		if err != nil {
+			return fmt.Errorf("failed to marshal payload: %w", err)
+		}
+
+		pbHeaders := &pb.ObjectHeaders{
+			Id:         req.Headers.ID,
+			GlobalId:   req.Headers.GlobalID,
+			ObjectType: req.Headers.ObjectType,
+			LockId:     req.Headers.LockID,
+			Revision:   req.Headers.Revision,
+		}
+		if req.Headers.Version != nil {
+			pbHeaders.Version = req.Headers.Version
+		}
+		if req.Headers.ActualFrom != nil {
+			pbHeaders.ActualFrom = req.Headers.ActualFrom
+		}
+		if req.Headers.DraftStatus != nil {
+			pbHeaders.DraftStatus = req.Headers.DraftStatus
+		}
+		if req.Headers.ParentID != nil {
+			pbHeaders.ParentId = req.Headers.ParentID
+		}
+
+		if err := stream.Send(&pb.SaveRequest{
+			TransactionId: req.TxID,
+			Headers:       pbHeaders,
+			Payload:       payloadBytes,
+		}); err != nil {
+			return fmt.Errorf("failed to send save request: %w", err)
+		}
+	}
+
+	// Close send direction and receive responses
+	if err := stream.CloseSend(); err != nil {
+		return fmt.Errorf("failed to close send: %w", err)
+	}
+
+	// Read all responses
+	for {
+		resp, err := stream.Recv()
+		if err != nil {
+			// Check if stream ended normally (io.EOF)
+			if err == io.EOF {
+				break
+			}
+			return fmt.Errorf("failed to receive response: %w", err)
+		}
+		if !resp.Success {
+			return fmt.Errorf("save failed: %s", resp.Error)
+		}
+	}
+
+	return nil
 }

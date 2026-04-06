@@ -31,7 +31,8 @@ type Config struct {
 	JaegerEndpoint string
 
 	// Processing
-	LockTTLMs int64
+	LockTTLMs   int64
+	WorkerCount int // Number of parallel workers for message processing
 }
 
 func Load() *Config {
@@ -59,7 +60,8 @@ func Load() *Config {
 		JaegerEndpoint: getEnv("JAEGER_ENDPOINT", "jaeger:4318"),
 
 		// Processing
-		LockTTLMs: getEnvAsInt64("LOCK_TTL_MS", 30000),
+		LockTTLMs:   getEnvAsInt64("LOCK_TTL_MS", 30000),
+		WorkerCount: int(getEnvAsInt64("WORKER_COUNT", 100)),
 	}
 }
 
