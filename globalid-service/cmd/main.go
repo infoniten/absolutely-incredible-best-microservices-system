@@ -9,6 +9,7 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	_ "github.com/lib/pq"
 	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
@@ -48,10 +49,15 @@ func main() {
 	}
 	defer db.Close()
 
+	// Configure connection pool
+	db.SetMaxOpenConns(cfg.MaxDBConnections)
+	db.SetMaxIdleConns(cfg.MaxDBConnections / 2)
+	db.SetConnMaxLifetime(5 * time.Minute)
+
 	if err := db.PingContext(ctx); err != nil {
 		log.Fatalf("failed to ping database: %v", err)
 	}
-	log.Println("connected to database")
+	log.Printf("connected to database (pool: max=%d, idle=%d)", cfg.MaxDBConnections, cfg.MaxDBConnections/2)
 
 	// Initialize GlobalID pool
 	pool := idpool.New(db, tel.Tracer, cfg.PoolSize)

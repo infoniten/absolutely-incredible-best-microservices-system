@@ -77,8 +77,8 @@ func (c *Consumer) Start(ctx context.Context) error {
 	log.Printf("Starting Kafka consumer for topic: %s with %d workers", c.reader.Config().Topic, c.workerCount)
 
 	// Create worker pool
-	taskChan := make(chan messageTask, c.workerCount*2)
-	commitChan := make(chan kafka.Message, c.workerCount*2)
+	taskChan := make(chan messageTask, c.workerCount*4)
+	commitChan := make(chan kafka.Message, c.workerCount*4)
 
 	var wg sync.WaitGroup
 
@@ -95,41 +95,109 @@ func (c *Consumer) Start(ctx context.Context) error {
 	// Start metrics reporter
 	go c.metricsReporter(ctx)
 
-	// Main fetch loop
+	// Number of parallel fetchers (10 is good for 10 partitions)
+	fetcherCount := 10
+	if fetcherCount > c.workerCount/10 {
+		fetcherCount = c.workerCount / 10
+	}
+	if fetcherCount < 1 {
+		fetcherCount = 1
+	}
+
+	log.Printf("Starting %d parallel fetchers", fetcherCount)
+
+	// Raw message channel for fetcher → preparer pipeline
+	rawMsgChan := make(chan kafka.Message, c.workerCount*2)
+
+	// Start parallel preparers (do ID generation and DB operations)
+	var preparerWg sync.WaitGroup
+	preparerCount := fetcherCount * 2 // More preparers than fetchers
+	for i := 0; i < preparerCount; i++ {
+		preparerWg.Add(1)
+		go c.preparer(ctx, &preparerWg, rawMsgChan, taskChan)
+	}
+
+	// Start parallel fetchers
+	var fetcherWg sync.WaitGroup
+	for i := 0; i < fetcherCount; i++ {
+		fetcherWg.Add(1)
+		go c.fetcher(ctx, &fetcherWg, rawMsgChan)
+	}
+
+	// Wait for context cancellation
+	<-ctx.Done()
+	log.Println("Kafka consumer stopping...")
+
+	// Close fetchers first
+	fetcherWg.Wait()
+	close(rawMsgChan)
+
+	// Then preparers
+	preparerWg.Wait()
+	close(taskChan)
+
+	// Then workers
+	wg.Wait()
+	close(commitChan)
+	<-commitDone
+
+	return c.reader.Close()
+}
+
+// fetcher continuously fetches messages from Kafka
+func (c *Consumer) fetcher(ctx context.Context, wg *sync.WaitGroup, rawMsgChan chan<- kafka.Message) {
+	defer wg.Done()
+
 	for {
 		select {
 		case <-ctx.Done():
-			log.Println("Kafka consumer stopping...")
-			close(taskChan)
-			wg.Wait()
-			close(commitChan)
-			<-commitDone
-			return c.reader.Close()
+			return
 		default:
-			task, err := c.fetchAndPrepare(ctx)
+			msg, err := c.reader.FetchMessage(ctx)
 			if err != nil {
 				if ctx.Err() != nil {
-					continue
+					return
 				}
-				log.Printf("Error fetching message: %v", err)
 				continue
 			}
-			if task != nil {
-				atomic.AddInt64(&c.inFlightCount, 1)
-				taskChan <- *task
+			select {
+			case rawMsgChan <- msg:
+			case <-ctx.Done():
+				return
 			}
 		}
 	}
 }
 
-// fetchAndPrepare fetches a message and prepares it for processing
-func (c *Consumer) fetchAndPrepare(ctx context.Context) (*messageTask, error) {
-	// Fetch message
-	msg, err := c.reader.FetchMessage(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("failed to fetch message: %w", err)
-	}
+// preparer prepares messages (ID generation, DB operations) in parallel
+func (c *Consumer) preparer(ctx context.Context, wg *sync.WaitGroup, rawMsgChan <-chan kafka.Message, taskChan chan<- messageTask) {
+	defer wg.Done()
 
+	for msg := range rawMsgChan {
+		select {
+		case <-ctx.Done():
+			return
+		default:
+		}
+
+		task, err := c.prepareMessage(ctx, msg)
+		if err != nil {
+			log.Printf("Error preparing message: %v", err)
+			continue
+		}
+		if task != nil {
+			atomic.AddInt64(&c.inFlightCount, 1)
+			select {
+			case taskChan <- *task:
+			case <-ctx.Done():
+				return
+			}
+		}
+	}
+}
+
+// prepareMessage prepares a fetched message for processing
+func (c *Consumer) prepareMessage(ctx context.Context, msg kafka.Message) (*messageTask, error) {
 	// Build messageID
 	messageID := fmt.Sprintf("%s:%d:%d:%d",
 		msg.Topic,

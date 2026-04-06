@@ -6,20 +6,22 @@ import (
 )
 
 type Config struct {
-	GRPCPort       string
-	DatabaseURL    string
-	PoolSize       int
-	JaegerEndpoint string
-	ServiceName    string
+	GRPCPort         string
+	DatabaseURL      string
+	PoolSize         int
+	JaegerEndpoint   string
+	ServiceName      string
+	MaxDBConnections int
 }
 
 func Load() *Config {
 	return &Config{
-		GRPCPort:       getEnv("GRPC_PORT", "50052"),
-		DatabaseURL:    getEnv("DATABASE_URL", "postgres://postgres:postgres@localhost:5432/quantara?sslmode=disable"),
-		PoolSize:       getEnvInt("GLOBALID_POOL_SIZE", 1000),
-		JaegerEndpoint: getEnv("JAEGER_ENDPOINT", "http://localhost:4318"),
-		ServiceName:    getEnv("SERVICE_NAME", "globalid-service"),
+		GRPCPort:         getEnv("GRPC_PORT", "50052"),
+		DatabaseURL:      getEnv("DATABASE_URL", "postgres://postgres:postgres@localhost:5432/quantara?sslmode=disable"),
+		PoolSize:         getEnvInt("GLOBALID_POOL_SIZE", 1000),
+		JaegerEndpoint:   getEnv("JAEGER_ENDPOINT", "http://localhost:4318"),
+		ServiceName:      getEnv("SERVICE_NAME", "globalid-service"),
+		MaxDBConnections: getEnvInt("MAX_DB_CONNECTIONS", 50),
 	}
 }
 

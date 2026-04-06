@@ -51,6 +51,12 @@ func main() {
 	}
 	defer db.Close()
 
+	// Configure connection pool
+	db.SetMaxOpenConns(cfg.MaxDBConnections)
+	db.SetMaxIdleConns(cfg.MaxDBConnections / 2)
+	db.SetConnMaxLifetime(5 * time.Minute)
+	log.Printf("Database pool configured: max=%d, idle=%d", cfg.MaxDBConnections, cfg.MaxDBConnections/2)
+
 	// Verify database connection
 	if err := db.PingContext(ctx); err != nil {
 		log.Fatalf("Failed to ping database: %v", err)

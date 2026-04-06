@@ -10,6 +10,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/google/uuid"
@@ -197,6 +198,75 @@ func (s *Server) Commit(ctx context.Context, req *pb.CommitRequest) (*pb.CommitR
 		return &pb.CommitResponse{Success: true, ObjectsSaved: 0}, nil
 	}
 
+	// Pre-fetch all objects from Redis in PARALLEL (before SQL transaction)
+	prefetchStart := time.Now()
+	type prefetchedData struct {
+		key         string
+		algorithmID uint32
+		className   string
+		objects     []*redis.StoredObject
+		err         error
+	}
+
+	prefetchChan := make(chan prefetchedData, len(keys))
+	var wg sync.WaitGroup
+
+	for _, key := range keys {
+		wg.Add(1)
+		go func(k string) {
+			defer wg.Done()
+			algorithmID, className := parseObjectKey(k)
+			if algorithmID == 0 {
+				return
+			}
+
+			// Fetch all objects for this key
+			var allObjects []*redis.StoredObject
+			var offset int64 = 0
+			chunkSize := int64(s.cfg.CommitChunkSize)
+
+			for {
+				objects, err := s.redis.GetObjects(ctx, k, offset, chunkSize)
+				if err != nil {
+					prefetchChan <- prefetchedData{key: k, err: err}
+					return
+				}
+				if len(objects) == 0 {
+					break
+				}
+				allObjects = append(allObjects, objects...)
+				if int64(len(objects)) < chunkSize {
+					break
+				}
+				offset += chunkSize
+			}
+
+			prefetchChan <- prefetchedData{
+				key:         k,
+				algorithmID: algorithmID,
+				className:   className,
+				objects:     allObjects,
+			}
+		}(key)
+	}
+
+	// Wait for all prefetch goroutines
+	wg.Wait()
+	close(prefetchChan)
+
+	// Collect prefetched data
+	var prefetchedItems []prefetchedData
+	for item := range prefetchChan {
+		if item.err != nil {
+			s.redis.SetTransactionStatus(ctx, req.TransactionId, redis.TxStatusActive)
+			return fail(fmt.Sprintf("failed to prefetch objects: %v", item.err))
+		}
+		if len(item.objects) > 0 {
+			prefetchedItems = append(prefetchedItems, item)
+		}
+	}
+	s.metrics.observeCommitDurationByType(ctx, "prefetchRedis", time.Since(prefetchStart))
+
 	// Begin SQL transaction
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
@@ -208,47 +278,21 @@ func (s *Server) Commit(ctx context.Context, req *pb.CommitRequest) (*pb.CommitR
 	var results []*pb.ObjectResult
 
 	dbAllStart := time.Now()
-	// Process each key (grouped by algorithm and class)
-	for _, key := range keys {
+	// Process prefetched data (SQL writes must be sequential within transaction)
+	for _, item := range prefetchedItems {
 		typeStart := time.Now()
-		algorithmID, className := parseObjectKey(key)
-		if algorithmID == 0 {
-			continue
+
+		// Execute batch save based on algorithm
+		saved, objResults, err := s.executeBatchSave(ctx, tx, item.algorithmID, item.className, item.objects)
+		if err != nil {
+			tx.Rollback()
+			s.redis.SetTransactionStatus(ctx, req.TransactionId, redis.TxStatusActive)
+			return fail(err.Error())
 		}
 
-		// Process in chunks
-		var offset int64 = 0
-		chunkSize := int64(s.cfg.CommitChunkSize)
-
-		for {
-			objects, err := s.redis.GetObjects(ctx, key, offset, chunkSize)
-			if err != nil {
-				tx.Rollback()
-				s.redis.SetTransactionStatus(ctx, req.TransactionId, redis.TxStatusActive)
-				return fail(err.Error())
-			}
-
-			if len(objects) == 0 {
-				break
-			}
-
-			// Execute batch save based on algorithm
-			saved, objResults, err := s.executeBatchSave(ctx, tx, algorithmID, className, objects)
-			if err != nil {
-				tx.Rollback()
-				s.redis.SetTransactionStatus(ctx, req.TransactionId, redis.TxStatusActive)
-				return fail(err.Error())
-			}
-
-			totalSaved += saved
-			results = append(results, objResults...)
-
-			if int64(len(objects)) < chunkSize {
-				break
-			}
-			offset += chunkSize
-		}
-		s.metrics.observeCommitDurationByType(ctx, className, time.Since(typeStart))
+		totalSaved += saved
+		results = append(results, objResults...)
+		s.metrics.observeCommitDurationByType(ctx, item.className, time.Since(typeStart))
 	}
 	s.metrics.observeCommitDurationByType(ctx, "DBALL", time.Since(dbAllStart))
 

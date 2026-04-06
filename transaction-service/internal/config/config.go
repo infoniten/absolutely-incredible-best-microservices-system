@@ -17,6 +17,7 @@ type Config struct {
 	ServiceName       string
 	TxTTLSeconds      int
 	CommitChunkSize   int
+	MaxDBConnections  int
 }
 
 func Load() *Config {
@@ -31,6 +32,7 @@ func Load() *Config {
 		ServiceName:       getEnv("SERVICE_NAME", "transaction-service"),
 		TxTTLSeconds:      getEnvInt("TX_TTL_SECONDS", 600),
 		CommitChunkSize:   getEnvInt("COMMIT_CHUNK_SIZE", 5000),
+		MaxDBConnections:  getEnvInt("MAX_DB_CONNECTIONS", 50),
 	}
 }
 

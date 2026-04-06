@@ -16,6 +16,7 @@ type Config struct {
 	FilterJSONFieldEnabled bool
 	JaegerEndpoint         string
 	ServiceName            string
+	MaxDBConnections       int
 }
 
 func Load() *Config {
@@ -30,6 +31,7 @@ func Load() *Config {
 		FilterJSONFieldEnabled: getEnvBool("SEARCH_FILTER_JSON_FIELD_ENABLED", false),
 		JaegerEndpoint:         getEnv("JAEGER_ENDPOINT", "localhost:4318"),
 		ServiceName:            getEnv("SERVICE_NAME", "search-service"),
+		MaxDBConnections:       getEnvInt("MAX_DB_CONNECTIONS", 50),
 	}
 }
 
@@ -70,4 +72,13 @@ func getEnvBool(key string, defaultValue bool) bool {
 		return defaultValue
 	}
 	return parsed
+}
+
+func getEnvInt(key string, defaultValue int) int {
+	if value := os.Getenv(key); value != "" {
+		if intValue, err := strconv.Atoi(value); err == nil {
+			return intValue
+		}
+	}
+	return defaultValue
 }
