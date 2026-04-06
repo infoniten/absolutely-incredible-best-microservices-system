@@ -130,7 +130,7 @@ func TestE2E_FullProcessingFlow(t *testing.T) {
 	t.Logf("✓ Trade data verified: side=%s, status=%s, draft_status=%s",
 		trade.Side, trade.Status, trade.DraftStatus)
 
-	// 6. Check cashflows in embedded_entity_main
+	// 6. Check cashflows in trade_cashflow_data
 	cashflowCount, err := countCashflows(ctx, db, trade.ID)
 	if err != nil {
 		t.Logf("Warning: Failed to count cashflows: %v", err)
@@ -138,8 +138,47 @@ func TestE2E_FullProcessingFlow(t *testing.T) {
 		if cashflowCount != 2 {
 			t.Errorf("Expected 2 cashflows, got %d", cashflowCount)
 		} else {
-			t.Logf("✓ Cashflows found: %d", cashflowCount)
+			t.Logf("✓ Cashflows in trade_cashflow_data: %d", cashflowCount)
 		}
+	}
+
+	// 7. Check index tables
+	indexCounts, err := checkIndexTables(ctx, db, trade.ID)
+	if err != nil {
+		t.Logf("Warning: Failed to check index tables: %v", err)
+	} else {
+		if indexCounts.TradeIndex < 1 {
+			t.Errorf("Expected trade_index entry, got %d", indexCounts.TradeIndex)
+		}
+		if indexCounts.FxSpotTradeIndex < 1 {
+			t.Errorf("Expected fx_spot_forward_trade_index entry, got %d", indexCounts.FxSpotTradeIndex)
+		}
+		if indexCounts.CashflowMain < 2 {
+			t.Errorf("Expected 2 cashflow_main entries, got %d", indexCounts.CashflowMain)
+		}
+		if indexCounts.CashflowIndex < 2 {
+			t.Errorf("Expected 2 cashflow_index entries, got %d", indexCounts.CashflowIndex)
+		}
+		t.Logf("✓ Index tables verified: trade_index=%d, fx_spot_forward_trade_index=%d, cashflow_main=%d, cashflow_index=%d",
+			indexCounts.TradeIndex, indexCounts.FxSpotTradeIndex, indexCounts.CashflowMain, indexCounts.CashflowIndex)
+	}
+
+	// 8. Check product tables
+	productCounts, err := checkProductTables(ctx, db)
+	if err != nil {
+		t.Logf("Warning: Failed to check product tables: %v", err)
+	} else {
+		if productCounts.ProductMain < 1 {
+			t.Errorf("Expected product_main entry, got %d", productCounts.ProductMain)
+		}
+		if productCounts.ProductIndex < 1 {
+			t.Errorf("Expected product_index entry, got %d", productCounts.ProductIndex)
+		}
+		if productCounts.FxSpotProductData < 1 {
+			t.Errorf("Expected fx_spot_exchange_product_data entry, got %d", productCounts.FxSpotProductData)
+		}
+		t.Logf("✓ Product tables verified: product_main=%d, product_index=%d, fx_spot_exchange_product_data=%d",
+			productCounts.ProductMain, productCounts.ProductIndex, productCounts.FxSpotProductData)
 	}
 
 	t.Log("E2E test completed successfully!")
@@ -301,4 +340,95 @@ func countCashflows(ctx context.Context, db *sql.DB, parentID int64) (int, error
 	}
 
 	return count, err
+}
+
+// IndexCounts holds counts from various index tables
+type IndexCounts struct {
+	TradeIndex        int
+	FxSpotTradeIndex  int
+	CashflowMain      int
+	CashflowIndex     int
+}
+
+func checkIndexTables(ctx context.Context, db *sql.DB, tradeID int64) (*IndexCounts, error) {
+	counts := &IndexCounts{}
+
+	// Check trade_index
+	err := db.QueryRowContext(ctx,
+		`SELECT COUNT(*) FROM murex.trade_index WHERE id = $1`,
+		tradeID,
+	).Scan(&counts.TradeIndex)
+	if err != nil {
+		return nil, fmt.Errorf("failed to check trade_index: %w", err)
+	}
+
+	// Check fx_spot_forward_trade_index
+	err = db.QueryRowContext(ctx,
+		`SELECT COUNT(*) FROM murex.fx_spot_forward_trade_index WHERE id = $1`,
+		tradeID,
+	).Scan(&counts.FxSpotTradeIndex)
+	if err != nil {
+		return nil, fmt.Errorf("failed to check fx_spot_forward_trade_index: %w", err)
+	}
+
+	// Check cashflow_main (by parent trade)
+	err = db.QueryRowContext(ctx,
+		`SELECT COUNT(*) FROM murex.cashflow_main cm
+		 JOIN murex.trade_cashflow_data tcd ON cm.id = tcd.id
+		 WHERE (tcd.content->>'parentId')::bigint = $1`,
+		tradeID,
+	).Scan(&counts.CashflowMain)
+	if err != nil {
+		return nil, fmt.Errorf("failed to check cashflow_main: %w", err)
+	}
+
+	// Check cashflow_index (by parent trade)
+	err = db.QueryRowContext(ctx,
+		`SELECT COUNT(*) FROM murex.cashflow_index ci
+		 JOIN murex.trade_cashflow_data tcd ON ci.id = tcd.id
+		 WHERE (tcd.content->>'parentId')::bigint = $1`,
+		tradeID,
+	).Scan(&counts.CashflowIndex)
+	if err != nil {
+		return nil, fmt.Errorf("failed to check cashflow_index: %w", err)
+	}
+
+	return counts, nil
+}
+
+// ProductCounts holds counts from product tables
+type ProductCounts struct {
+	ProductMain       int
+	ProductIndex      int
+	FxSpotProductData int
+}
+
+func checkProductTables(ctx context.Context, db *sql.DB) (*ProductCounts, error) {
+	counts := &ProductCounts{}
+
+	// Check product_main
+	err := db.QueryRowContext(ctx,
+		`SELECT COUNT(*) FROM murex.product_main`,
+	).Scan(&counts.ProductMain)
+	if err != nil {
+		return nil, fmt.Errorf("failed to check product_main: %w", err)
+	}
+
+	// Check product_index
+	err = db.QueryRowContext(ctx,
+		`SELECT COUNT(*) FROM murex.product_index`,
+	).Scan(&counts.ProductIndex)
+	if err != nil {
+		return nil, fmt.Errorf("failed to check product_index: %w", err)
+	}
+
+	// Check fx_spot_exchange_product_data
+	err = db.QueryRowContext(ctx,
+		`SELECT COUNT(*) FROM murex.fx_spot_exchange_product_data`,
+	).Scan(&counts.FxSpotProductData)
+	if err != nil {
+		return nil, fmt.Errorf("failed to check fx_spot_exchange_product_data: %w", err)
+	}
+
+	return counts, nil
 }

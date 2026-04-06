@@ -171,6 +171,7 @@ func (p *FxSpotProcessor) resolveGlobalID(ctx context.Context, tradeNo string) (
 func (p *FxSpotProcessor) processBusinessLogic(ctx context.Context, moexRecord *parser.MoexRecord, productGlobalID int64, isNewProduct bool, lockToken string) error {
 	// Get current date for actual_date
 	actualDate := time.Now().Format("2006-01-02")
+	tradeNo := moexRecord.GetTradeNo()
 
 	// Step 1: Get or create Product
 	var product *domain.FxSpotExchangeProduct
@@ -201,9 +202,6 @@ func (p *FxSpotProcessor) processBusinessLogic(ctx context.Context, moexRecord *
 				return fmt.Errorf("failed to get new ID for product: %w", err)
 			}
 			product.ID = newID
-
-			// Try to find existing trade
-			existingTrade, _ = p.findExistingTrade(ctx, productGlobalID, actualDate)
 		}
 	}
 
@@ -222,25 +220,34 @@ func (p *FxSpotProcessor) processBusinessLogic(ctx context.Context, moexRecord *
 		}
 	}
 
-	// Step 2: Create or update Trade
+	// Step 2: Resolve or create Trade GlobalID mapping
+	tradeGlobalID, isNewTrade, err := p.resolveTradeGlobalID(ctx, tradeNo)
+	if err != nil {
+		return fmt.Errorf("failed to resolve trade GlobalID: %w", err)
+	}
+
+	// Step 3: Create or update Trade
 	var trade *domain.FxSpotForwardTrade
 	var tradeVersion, tradeRevision int32 = 1, 1
 
-	if existingTrade != nil {
-		// Update existing trade
-		tradeVersion = int32(getIntFromMap(existingTrade, "version")) + 1
-		tradeRevision = int32(getIntFromMap(existingTrade, "revision")) + 1
+	if !isNewTrade {
+		// Try to find existing trade to get version/revision
+		existingTrade, _ = p.findExistingTrade(ctx, tradeGlobalID, actualDate)
+		if existingTrade != nil {
+			tradeVersion = int32(getIntFromMap(existingTrade, "version")) + 1
+			tradeRevision = int32(getIntFromMap(existingTrade, "revision")) + 1
+			log.Printf("Updating existing trade: version=%d, revision=%d, globalId=%d", tradeVersion, tradeRevision, tradeGlobalID)
+		} else {
+			log.Printf("Trade mapping exists but trade not found in search, creating version 1 with globalId=%d", tradeGlobalID)
+		}
+	} else {
+		log.Printf("Creating new trade with globalId=%d", tradeGlobalID)
 	}
 
-	// Generate trade IDs
+	// Generate new ID for the trade record (always new for each version)
 	tradeID, err := p.idClient.GetID(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to get ID for trade: %w", err)
-	}
-
-	tradeGlobalID, err := p.globalIDClient.GetGlobalID(ctx)
-	if err != nil {
-		return fmt.Errorf("failed to get GlobalID for trade: %w", err)
 	}
 
 	// Convert MOEX record to trade
@@ -262,13 +269,12 @@ func (p *FxSpotProcessor) processBusinessLogic(ctx context.Context, moexRecord *
 	return p.saveInTransaction(ctx, product, trade, lockToken)
 }
 
-// findExistingTrade searches for an existing trade by product GlobalID
-func (p *FxSpotProcessor) findExistingTrade(ctx context.Context, productGlobalID int64, actualDate string) (map[string]interface{}, error) {
-	// Search for trade with this productID
+// findExistingTrade searches for an existing trade by its own GlobalID
+func (p *FxSpotProcessor) findExistingTrade(ctx context.Context, tradeGlobalID int64, actualDate string) (map[string]interface{}, error) {
 	tradeData, err := p.searchClient.GetObjectByGlobalID(
 		ctx,
 		domain.ObjectTypeFxSpotForwardTrade,
-		productGlobalID, // Using productGlobalID as reference
+		tradeGlobalID,
 		"CONFIRMED",
 		actualDate,
 	)
@@ -276,6 +282,49 @@ func (p *FxSpotProcessor) findExistingTrade(ctx context.Context, productGlobalID
 		return nil, err
 	}
 	return tradeData, nil
+}
+
+// resolveTradeGlobalID resolves or creates the GlobalID mapping for a trade
+func (p *FxSpotProcessor) resolveTradeGlobalID(ctx context.Context, tradeNo string) (int64, bool, error) {
+	// Try to find existing mapping for trade
+	existing, err := p.globalIDRepo.FindByExternalID(
+		ctx,
+		tradeNo,
+		domain.SourceMOEX,
+		domain.SourceObjectTypeFXSPOTTrade,
+	)
+	if err != nil {
+		return 0, false, fmt.Errorf("failed to find existing trade mapping: %w", err)
+	}
+	if existing != nil {
+		return existing.GlobalID, false, nil
+	}
+
+	// No existing mapping - create new one
+	mappingID, err := p.idClient.GetID(ctx)
+	if err != nil {
+		return 0, false, fmt.Errorf("failed to get ID for trade mapping: %w", err)
+	}
+
+	globalID, err := p.globalIDClient.GetGlobalID(ctx)
+	if err != nil {
+		return 0, false, fmt.Errorf("failed to get GlobalID for trade: %w", err)
+	}
+
+	// Create the mapping
+	mapping, created, err := p.globalIDRepo.GetOrCreate(
+		ctx,
+		tradeNo,
+		domain.SourceMOEX,
+		domain.SourceObjectTypeFXSPOTTrade,
+		mappingID,
+		globalID,
+	)
+	if err != nil {
+		return 0, false, err
+	}
+
+	return mapping.GlobalID, created, nil
 }
 
 // saveInTransaction saves product, trade and cashflows in a single transaction

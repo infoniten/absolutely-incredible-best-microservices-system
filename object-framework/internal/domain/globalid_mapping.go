@@ -10,6 +10,7 @@ type GlobalIDMapping struct {
 }
 
 const (
-	SourceMOEX           = "MOEX"
-	SourceObjectTypeFXSPOT = "FXSPOT"
+	SourceMOEX                = "MOEX"
+	SourceObjectTypeFXSPOT    = "FXSPOT"       // For product GlobalID mapping
+	SourceObjectTypeFXSPOTTrade = "FXSPOT_TRADE" // For trade GlobalID mapping
 )
