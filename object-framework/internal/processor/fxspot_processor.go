@@ -110,19 +110,38 @@ func (p *FxSpotProcessor) Process(ctx context.Context, rawMsg *domain.RawMessage
 
 	result.GlobalID = productGlobalID
 
-	// Step 3: Acquire lock
-	lockResult, err := p.lockClient.LockWithTTL(ctx, productGlobalID, p.lockTTLMs)
-	if err != nil {
-		result.Error = fmt.Errorf("failed to acquire lock: %w", err)
-		p.updateRawMessageStatus(ctx, rawMsg.ID, domain.RawMessageStatusFailed, result.Error.Error())
-		return result
+	// Step 3: Acquire lock with retry
+	var lockToken string
+	maxRetries := 5
+	baseBackoff := 10 * time.Millisecond
+
+	for attempt := 0; attempt < maxRetries; attempt++ {
+		lockResult, err := p.lockClient.LockWithTTL(ctx, productGlobalID, p.lockTTLMs)
+		if err != nil {
+			// Check if it's a transient error (contention)
+			if attempt < maxRetries-1 {
+				backoff := baseBackoff * time.Duration(1<<attempt) // exponential backoff: 10ms, 20ms, 40ms, 80ms, 160ms
+				time.Sleep(backoff)
+				continue
+			}
+			result.Error = fmt.Errorf("failed to acquire lock after %d attempts: %w", maxRetries, err)
+			p.updateRawMessageStatus(ctx, rawMsg.ID, domain.RawMessageStatusFailed, result.Error.Error())
+			return result
+		}
+		if !lockResult.Success {
+			// Lock held by another process - retry with backoff
+			if attempt < maxRetries-1 {
+				backoff := baseBackoff * time.Duration(1<<attempt)
+				time.Sleep(backoff)
+				continue
+			}
+			result.Error = fmt.Errorf("lock not acquired after %d attempts: %s", maxRetries, lockResult.Error)
+			p.updateRawMessageStatus(ctx, rawMsg.ID, domain.RawMessageStatusFailed, result.Error.Error())
+			return result
+		}
+		lockToken = lockResult.Token
+		break
 	}
-	if !lockResult.Success {
-		result.Error = fmt.Errorf("lock not acquired: %s", lockResult.Error)
-		p.updateRawMessageStatus(ctx, rawMsg.ID, domain.RawMessageStatusFailed, result.Error.Error())
-		return result
-	}
-	lockToken := lockResult.Token
 
 	// Ensure lock is released
 	defer func() {

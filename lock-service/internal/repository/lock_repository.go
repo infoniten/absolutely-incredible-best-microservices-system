@@ -35,7 +35,7 @@ func NewLockRepository(db *sql.DB, tracer trace.Tracer) *LockRepository {
 	}
 }
 
-// AcquireLock attempts to acquire a lock with transaction isolation
+// AcquireLock attempts to acquire a lock using atomic upsert pattern
 func (r *LockRepository) AcquireLock(ctx context.Context, globalID int64, token string, expireAt time.Time) error {
 	ctx, span := r.tracer.Start(ctx, "LockRepository.AcquireLock")
 	defer span.End()
@@ -45,47 +45,66 @@ func (r *LockRepository) AcquireLock(ctx context.Context, globalID int64, token 
 		attribute.String("token", token),
 	)
 
-	tx, err := r.db.BeginTx(ctx, &sql.TxOptions{Isolation: sql.LevelSerializable})
+	// Use READ COMMITTED with row-level locking instead of SERIALIZABLE
+	tx, err := r.db.BeginTx(ctx, &sql.TxOptions{Isolation: sql.LevelReadCommitted})
 	if err != nil {
 		span.RecordError(err)
 		return fmt.Errorf("failed to begin transaction: %w", err)
 	}
 	defer tx.Rollback()
 
-	// Check if active lock exists
+	// Try to lock the row if it exists (FOR UPDATE NOWAIT to fail fast)
+	var existingToken string
 	var existingExpire time.Time
 	err = tx.QueryRowContext(ctx,
-		"SELECT expire FROM murex.object_lock WHERE global_id = $1 AND expire > NOW() FOR UPDATE",
+		"SELECT token, expire FROM murex.object_lock WHERE global_id = $1 FOR UPDATE NOWAIT",
 		globalID,
-	).Scan(&existingExpire)
+	).Scan(&existingToken, &existingExpire)
 
 	if err == nil {
-		// Active lock exists
-		span.SetAttributes(attribute.Bool("lock_exists", true))
-		return ErrLockAlreadyExists
-	} else if !errors.Is(err, sql.ErrNoRows) {
+		// Row exists - check if lock is still active
+		if existingExpire.After(time.Now()) {
+			// Active lock exists
+			span.SetAttributes(attribute.Bool("lock_exists", true))
+			return ErrLockAlreadyExists
+		}
+		// Lock expired - update with new token
+		_, err = tx.ExecContext(ctx,
+			"UPDATE murex.object_lock SET token = $1, expire = $2 WHERE global_id = $3",
+			token, expireAt, globalID,
+		)
+		if err != nil {
+			span.RecordError(err)
+			return fmt.Errorf("failed to update expired lock: %w", err)
+		}
+	} else if errors.Is(err, sql.ErrNoRows) {
+		// No lock exists - insert new one using ON CONFLICT to handle race
+		result, err := tx.ExecContext(ctx,
+			`INSERT INTO murex.object_lock (global_id, token, expire)
+			 VALUES ($1, $2, $3)
+			 ON CONFLICT (global_id) DO UPDATE
+			 SET token = EXCLUDED.token, expire = EXCLUDED.expire
+			 WHERE murex.object_lock.expire <= NOW()`,
+			globalID, token, expireAt,
+		)
+		if err != nil {
+			span.RecordError(err)
+			return fmt.Errorf("failed to insert lock: %w", err)
+		}
+		rowsAffected, _ := result.RowsAffected()
+		if rowsAffected == 0 {
+			// Another transaction inserted an active lock
+			span.SetAttributes(attribute.Bool("lock_exists", true))
+			return ErrLockAlreadyExists
+		}
+	} else {
+		// Check if it's a lock timeout error (NOWAIT)
+		if err.Error() == "pq: could not obtain lock on row in relation \"object_lock\"" {
+			span.SetAttributes(attribute.Bool("lock_contention", true))
+			return ErrLockAlreadyExists
+		}
 		span.RecordError(err)
 		return fmt.Errorf("failed to check existing lock: %w", err)
-	}
-
-	// Delete expired lock if exists
-	_, err = tx.ExecContext(ctx,
-		"DELETE FROM murex.object_lock WHERE global_id = $1",
-		globalID,
-	)
-	if err != nil {
-		span.RecordError(err)
-		return fmt.Errorf("failed to delete expired lock: %w", err)
-	}
-
-	// Insert new lock
-	_, err = tx.ExecContext(ctx,
-		"INSERT INTO murex.object_lock (global_id, token, expire) VALUES ($1, $2, $3)",
-		globalID, token, expireAt,
-	)
-	if err != nil {
-		span.RecordError(err)
-		return fmt.Errorf("failed to insert lock: %w", err)
 	}
 
 	if err := tx.Commit(); err != nil {
@@ -107,14 +126,8 @@ func (r *LockRepository) RenewLock(ctx context.Context, globalID int64, token st
 		attribute.String("token", token),
 	)
 
-	tx, err := r.db.BeginTx(ctx, &sql.TxOptions{Isolation: sql.LevelSerializable})
-	if err != nil {
-		span.RecordError(err)
-		return fmt.Errorf("failed to begin transaction: %w", err)
-	}
-	defer tx.Rollback()
-
-	result, err := tx.ExecContext(ctx,
+	// Use READ COMMITTED - the UPDATE itself is atomic
+	result, err := r.db.ExecContext(ctx,
 		"UPDATE murex.object_lock SET expire = $1 WHERE global_id = $2 AND token = $3 AND expire > NOW()",
 		newExpireAt, globalID, token,
 	)
@@ -132,7 +145,7 @@ func (r *LockRepository) RenewLock(ctx context.Context, globalID int64, token st
 	if rowsAffected == 0 {
 		// Check if lock exists with different token or expired
 		var existingToken string
-		err = tx.QueryRowContext(ctx,
+		err = r.db.QueryRowContext(ctx,
 			"SELECT token FROM murex.object_lock WHERE global_id = $1",
 			globalID,
 		).Scan(&existingToken)
@@ -145,11 +158,6 @@ func (r *LockRepository) RenewLock(ctx context.Context, globalID int64, token st
 			return fmt.Errorf("failed to check lock: %w", err)
 		}
 		return ErrInvalidToken
-	}
-
-	if err := tx.Commit(); err != nil {
-		span.RecordError(err)
-		return fmt.Errorf("failed to commit transaction: %w", err)
 	}
 
 	span.SetAttributes(attribute.Bool("success", true))
@@ -221,14 +229,8 @@ func (r *LockRepository) ReleaseLock(ctx context.Context, globalID int64, token 
 		attribute.String("token", token),
 	)
 
-	tx, err := r.db.BeginTx(ctx, &sql.TxOptions{Isolation: sql.LevelSerializable})
-	if err != nil {
-		span.RecordError(err)
-		return fmt.Errorf("failed to begin transaction: %w", err)
-	}
-	defer tx.Rollback()
-
-	result, err := tx.ExecContext(ctx,
+	// DELETE is atomic, no transaction needed
+	result, err := r.db.ExecContext(ctx,
 		"DELETE FROM murex.object_lock WHERE global_id = $1 AND token = $2",
 		globalID, token,
 	)
@@ -245,11 +247,6 @@ func (r *LockRepository) ReleaseLock(ctx context.Context, globalID int64, token 
 
 	if rowsAffected == 0 {
 		return ErrLockNotFound
-	}
-
-	if err := tx.Commit(); err != nil {
-		span.RecordError(err)
-		return fmt.Errorf("failed to commit transaction: %w", err)
 	}
 
 	span.SetAttributes(attribute.Bool("success", true))
