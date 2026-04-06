@@ -51,6 +51,44 @@ services:
     networks:
       - quantara-network
 
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.5.0
+    container_name: quantara-zookeeper
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    volumes:
+      - zookeeper_data:/var/lib/zookeeper/data
+      - zookeeper_logs:/var/lib/zookeeper/log
+    networks:
+      - quantara-network
+
+  kafka:
+    image: confluentinc/cp-kafka:7.5.0
+    container_name: quantara-kafka
+    ports:
+      - "9092:9092"
+      - "29092:29092"
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092,PLAINTEXT_HOST://localhost:29092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+    volumes:
+      - kafka_data:/var/lib/kafka/data
+    depends_on:
+      - zookeeper
+    healthcheck:
+      test: ["CMD", "kafka-topics", "--bootstrap-server", "localhost:9092", "--list"]
+      interval: 10s
+      timeout: 10s
+      retries: 5
+    networks:
+      - quantara-network
+
   # Microservices
   id-service:
     build:
@@ -184,6 +222,54 @@ services:
       - quantara-network
     restart: unless-stopped
 
+  object-framework:
+    build:
+      context: ./object-framework
+      dockerfile: Dockerfile
+    container_name: quantara-object-framework
+    ports:
+      - "8088:8088"
+    environment:
+      HTTP_PORT: "8088"
+      KAFKA_BROKERS: "kafka:9092"
+      KAFKA_TOPIC: "moex.trades"
+      KAFKA_CONSUMER_GROUP: "object-framework-group"
+      DATABASE_URL: "postgres://postgres:postgres@postgres:5432/quantara?sslmode=disable"
+      ID_SERVICE_ADDR: "id-service:50051"
+      GLOBALID_SERVICE_ADDR: "globalid-service:50052"
+      LOCK_SERVICE_ADDR: "lock-service:50053"
+      SEARCH_SERVICE_ADDR: "search-service:50055"
+      TRANSACTION_SERVICE_ADDR: "transaction-service:50054"
+      JAEGER_ENDPOINT: "jaeger:4318"
+      SERVICE_NAME: "object-framework"
+      LOCK_TTL_MS: "30000"
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:8088/health/live"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    depends_on:
+      postgres:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+      id-service:
+        condition: service_started
+      globalid-service:
+        condition: service_started
+      lock-service:
+        condition: service_started
+      search-service:
+        condition: service_started
+      transaction-service:
+        condition: service_started
+      jaeger:
+        condition: service_started
+    networks:
+      - quantara-network
+    restart: unless-stopped
+
   # gRPC Web UI for testing
   grpcui-id:
     image: fullstorydev/grpcui:latest
@@ -255,11 +341,19 @@ services:
       - "8083:8080"   # HTTP API
       - "9090:9090"   # gRPC
     environment:
+      # Datasource for DataDictionary's own metadata (Liquibase, JPA entities)
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/datadictionary
       SPRING_DATASOURCE_USERNAME: postgres
       SPRING_DATASOURCE_PASSWORD: postgres
       SPRING_JPA_HIBERNATE_DDL_AUTO: validate
       SPRING_LIQUIBASE_ENABLED: "true"
+      # Target database for generated tables (murex schema in quantara DB)
+      DATABASE_TARGET_URL: jdbc:postgresql://postgres:5432/quantara
+      DATABASE_TARGET_USERNAME: postgres
+      DATABASE_TARGET_PASSWORD: postgres
+      DATABASE_TARGET_SCHEMA: murex
+      # Disable Vault (not used in local development)
+      SPRING_CLOUD_VAULT_ENABLED: "false"
       SERVER_PORT: "8080"
       GRPC_SERVER_PORT: "9090"
       OTEL_EXPORTER_OTLP_ENDPOINT: http://jaeger:4317
@@ -337,6 +431,9 @@ services:
 volumes:
   postgres_data:
   redis_data:
+  zookeeper_data:
+  zookeeper_logs:
+  kafka_data:
 
 networks:
   quantara-network:

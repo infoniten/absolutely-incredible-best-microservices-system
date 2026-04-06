@@ -1,0 +1,24 @@
+syntax = "proto3";
+
+package idservice;
+
+option go_package = "github.com/quantara/object-framework/proto/idservice";
+
+service IDService {
+  rpc GetID(GetIDRequest) returns (GetIDResponse);
+  rpc GetBatchID(GetBatchIDRequest) returns (GetBatchIDResponse);
+}
+
+message GetIDRequest {}
+
+message GetIDResponse {
+  int64 id = 1;
+}
+
+message GetBatchIDRequest {
+  int32 batch_size = 1;
+}
+
+message GetBatchIDResponse {
+  repeated int64 ids = 1;
+}

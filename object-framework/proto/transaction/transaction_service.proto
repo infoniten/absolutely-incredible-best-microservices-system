@@ -1,0 +1,70 @@
+syntax = "proto3";
+
+package transaction;
+
+option go_package = "github.com/quantara/object-framework/proto/transaction";
+
+service TransactionService {
+  rpc BeginTransaction(BeginTxRequest) returns (BeginTxResponse);
+  rpc Save(SaveRequest) returns (SaveResponse);
+  rpc SaveStream(stream SaveRequest) returns (stream SaveResponse);
+  rpc Commit(CommitRequest) returns (CommitResponse);
+  rpc Rollback(RollbackRequest) returns (RollbackResponse);
+}
+
+message BeginTxRequest {
+  optional int32 timeout_seconds = 1;
+}
+
+message BeginTxResponse {
+  string transaction_id = 1;
+}
+
+message ObjectHeaders {
+  int64 id = 1;
+  int64 global_id = 2;
+  string object_type = 3;
+  string lock_id = 4;
+  int32 revision = 5;
+  optional int32 version = 6;
+  optional string actual_from = 7;
+  optional string draft_status = 8;
+  optional int64 parent_id = 9;
+}
+
+message SaveRequest {
+  string transaction_id = 1;
+  ObjectHeaders headers = 2;
+  bytes payload = 3;
+  optional uint32 algorithm_id = 4;
+}
+
+message SaveResponse {
+  bool success = 1;
+  string error = 2;
+}
+
+message CommitRequest {
+  string transaction_id = 1;
+}
+
+message CommitResponse {
+  bool success = 1;
+  string error = 2;
+  int32 objects_saved = 3;
+  repeated ObjectResult results = 4;
+}
+
+message ObjectResult {
+  int64 id = 1;
+  bool success = 2;
+  string error = 3;
+}
+
+message RollbackRequest {
+  string transaction_id = 1;
+}
+
+message RollbackResponse {
+  bool success = 1;
+}

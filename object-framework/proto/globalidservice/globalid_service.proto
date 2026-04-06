@@ -1,0 +1,24 @@
+syntax = "proto3";
+
+package globalidservice;
+
+option go_package = "github.com/quantara/object-framework/proto/globalidservice";
+
+service GlobalIDService {
+  rpc GetGlobalID(GetGlobalIDRequest) returns (GetGlobalIDResponse);
+  rpc GetBatchGlobalID(GetBatchGlobalIDRequest) returns (GetBatchGlobalIDResponse);
+}
+
+message GetGlobalIDRequest {}
+
+message GetGlobalIDResponse {
+  int64 global_id = 1;
+}
+
+message GetBatchGlobalIDRequest {
+  int32 batch_size = 1;
+}
+
+message GetBatchGlobalIDResponse {
+  repeated int64 global_ids = 1;
+}

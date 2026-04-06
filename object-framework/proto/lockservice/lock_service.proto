@@ -1,0 +1,77 @@
+syntax = "proto3";
+
+package lockservice;
+
+option go_package = "github.com/quantara/object-framework/proto/lockservice";
+
+import "google/protobuf/timestamp.proto";
+
+service LockService {
+  rpc Lock(LockRequest) returns (LockResponse);
+  rpc LockWithTTL(LockWithTTLRequest) returns (LockResponse);
+  rpc Renew(RenewRequest) returns (RenewResponse);
+  rpc CheckLock(CheckLockRequest) returns (CheckLockResponse);
+  rpc CheckLockByToken(CheckLockByTokenRequest) returns (CheckLockResponse);
+  rpc Unlock(UnlockRequest) returns (UnlockResponse);
+}
+
+message LockRequest {
+  int64 global_id = 1;
+}
+
+message LockWithTTLRequest {
+  int64 global_id = 1;
+  int64 ttl_ms = 2;
+}
+
+message LockResponse {
+  bool success = 1;
+  string token = 2;
+  string error_message = 3;
+  google.protobuf.Timestamp expire_at = 4;
+}
+
+message RenewRequest {
+  int64 global_id = 1;
+  string token = 2;
+  int64 ttl_ms = 3;
+}
+
+message RenewResponse {
+  bool success = 1;
+  string error_message = 2;
+  google.protobuf.Timestamp expire_at = 3;
+}
+
+message CheckLockRequest {
+  int64 global_id = 1;
+}
+
+message CheckLockByTokenRequest {
+  int64 global_id = 1;
+  string token = 2;
+}
+
+message CheckLockResponse {
+  bool exists = 1;
+  LockStatus status = 2;
+  string token = 3;
+  google.protobuf.Timestamp expire_at = 4;
+  int64 ttl_remaining_ms = 5;
+}
+
+enum LockStatus {
+  LOCK_STATUS_UNSPECIFIED = 0;
+  LOCK_STATUS_FREE = 1;
+  LOCK_STATUS_ACQUIRED = 2;
+}
+
+message UnlockRequest {
+  int64 global_id = 1;
+  string token = 2;
+}
+
+message UnlockResponse {
+  bool success = 1;
+  string error_message = 2;
+}

@@ -1,0 +1,146 @@
+syntax = "proto3";
+
+package searchservice;
+
+option go_package = "github.com/quantara/object-framework/proto/searchservice";
+
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/struct.proto";
+import "google/protobuf/wrappers.proto";
+
+service SearchService {
+  rpc GetObjectRevisionById(GetObjectRevisionByIdRequest) returns (GetObjectRevisionByIdResponse);
+  rpc GetObjectByGlobalId(GetObjectByGlobalIdRequest) returns (GetObjectByGlobalIdResponse);
+  rpc GetObjectCollectionByParentId(GetObjectCollectionByParentIdRequest) returns (GetObjectCollectionByParentIdResponse);
+  rpc GetObjectGlobalIdByAltId(GetObjectGlobalIdByAltIdRequest) returns (GetObjectGlobalIdByAltIdResponse);
+  rpc GetObjectCollectionByFilter(GetObjectCollectionByFilterRequest) returns (GetObjectCollectionByFilterResponse);
+  rpc GetDomainConfig(GetDomainConfigRequest) returns (GetDomainConfigResponse);
+}
+
+message GetObjectRevisionByIdRequest {
+  string object_class = 1;
+  int64 id = 2;
+}
+
+message GetObjectRevisionByIdResponse {
+  google.protobuf.Value content = 1;
+}
+
+message GetObjectByGlobalIdRequest {
+  string object_root_class = 1;
+  int64 global_id = 2;
+  string draft_status = 3;
+  string actual_date = 4;
+}
+
+message GetObjectByGlobalIdResponse {
+  google.protobuf.Value content = 1;
+}
+
+message GetObjectCollectionByParentIdRequest {
+  string object_root_class = 1;
+  int64 parent_id = 2;
+}
+
+message GetObjectCollectionByParentIdResponse {
+  repeated google.protobuf.Value contents = 1;
+}
+
+message GetObjectGlobalIdByAltIdRequest {
+  string object_root_class = 1;
+  string alt_id = 2;
+  string source_alias = 3;
+}
+
+message GetObjectGlobalIdByAltIdResponse {
+  int64 global_id = 1;
+}
+
+message GetObjectCollectionByFilterRequest {
+  string object_root_class = 1;
+  string draft_status = 2;
+  string actual_date = 3;
+  FilterExpr filter = 4;
+  repeated SortField sort = 5;
+  google.protobuf.Int32Value limit = 6;
+  google.protobuf.Int32Value offset = 7;
+}
+
+message GetObjectCollectionByFilterResponse {
+  repeated google.protobuf.Value contents = 1;
+}
+
+message SortField {
+  string field = 1;
+  SortDirection direction = 2;
+}
+
+enum SortDirection {
+  SORT_DIRECTION_UNSPECIFIED = 0;
+  SORT_DIRECTION_ASC = 1;
+  SORT_DIRECTION_DESC = 2;
+}
+
+message FilterExpr {
+  oneof expr {
+    FilterAnd and = 1;
+    FilterOr or = 2;
+    FilterNot not = 3;
+    FilterPredicate predicate = 4;
+  }
+}
+
+message FilterAnd {
+  repeated FilterExpr children = 1;
+}
+
+message FilterOr {
+  repeated FilterExpr children = 1;
+}
+
+message FilterNot {
+  FilterExpr child = 1;
+}
+
+message FilterPredicate {
+  string field = 1;
+  FilterOperator operator = 2;
+  repeated FilterValue values = 3;
+}
+
+enum FilterOperator {
+  FILTER_OPERATOR_UNSPECIFIED = 0;
+  FILTER_OPERATOR_EQ = 1;
+  FILTER_OPERATOR_NE = 2;
+  FILTER_OPERATOR_GT = 3;
+  FILTER_OPERATOR_GE = 4;
+  FILTER_OPERATOR_LT = 5;
+  FILTER_OPERATOR_LE = 6;
+  FILTER_OPERATOR_IN = 7;
+  FILTER_OPERATOR_NOT_IN = 8;
+  FILTER_OPERATOR_LIKE = 9;
+  FILTER_OPERATOR_IS_NULL = 10;
+  FILTER_OPERATOR_IS_NOT_NULL = 11;
+}
+
+message FilterValue {
+  oneof kind {
+    string string_value = 1;
+    int64 int64_value = 2;
+    int32 int32_value = 3;
+    double double_value = 4;
+    bool bool_value = 5;
+    string date_value = 6;
+    string datetime_value = 7;
+  }
+}
+
+message GetDomainConfigRequest {}
+
+message GetDomainConfigResponse {
+  string source = 1;
+  string location = 2;
+  string hash = 3;
+  google.protobuf.Timestamp loaded_at = 4;
+  string config_json = 5;
+}
