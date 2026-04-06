@@ -3,14 +3,17 @@ package main
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"log"
 	"net"
+	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
 	"time"
 
 	_ "github.com/lib/pq"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/quantara/transaction-service/internal/config"
 	"github.com/quantara/transaction-service/internal/metamodel"
 	"github.com/quantara/transaction-service/internal/redis"
@@ -31,7 +34,7 @@ func main() {
 
 	// Load configuration
 	cfg := config.Load()
-	log.Printf("Starting transaction-service on port %s", cfg.GRPCPort)
+	log.Printf("Starting transaction-service (grpc=%s, http=%s)", cfg.GRPCPort, cfg.HTTPPort)
 
 	// Initialize telemetry
 	tel, err := telemetry.New(ctx, cfg.ServiceName, cfg.JaegerEndpoint)
@@ -111,6 +114,15 @@ func main() {
 		log.Fatalf("Failed to listen: %v", err)
 	}
 
+	opsMux := http.NewServeMux()
+	opsMux.Handle("/metrics", promhttp.Handler())
+
+	opsServer := &http.Server{
+		Addr:              ":" + cfg.HTTPPort,
+		Handler:           opsMux,
+		ReadHeaderTimeout: 5 * time.Second,
+	}
+
 	// Graceful shutdown
 	go func() {
 		sigCh := make(chan os.Signal, 1)
@@ -120,7 +132,19 @@ func main() {
 		log.Println("Shutting down gracefully...")
 		healthServer.SetServingStatus("", grpc_health_v1.HealthCheckResponse_NOT_SERVING)
 		grpcServer.GracefulStop()
+		shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer shutdownCancel()
+		if err := opsServer.Shutdown(shutdownCtx); err != nil {
+			log.Printf("Warning: failed to shutdown HTTP ops server: %v", err)
+		}
 		cancel()
+	}()
+
+	go func() {
+		log.Printf("Transaction HTTP ops listening on :%s", cfg.HTTPPort)
+		if err := opsServer.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+			log.Fatalf("Failed to serve HTTP ops endpoints: %v", err)
+		}
 	}()
 
 	// Start serving

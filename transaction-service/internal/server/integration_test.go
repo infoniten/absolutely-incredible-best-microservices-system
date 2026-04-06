@@ -22,7 +22,7 @@ func TestIntegration_FullTransactionFlow(t *testing.T) {
 	ddServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		response := metamodel.TransactionInstructionsResponse{
 			TransactionInstructions: struct {
-				Headers []string                   `json:"headers"`
+				Headers []string                    `json:"headers"`
 				Type    []metamodel.TypeInstruction `json:"type"`
 			}{
 				Headers: []string{},
@@ -311,7 +311,7 @@ func TestIntegration_MultipleObjectTypes(t *testing.T) {
 	ddServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		response := metamodel.TransactionInstructionsResponse{
 			TransactionInstructions: struct {
-				Headers []string                   `json:"headers"`
+				Headers []string                    `json:"headers"`
 				Type    []metamodel.TypeInstruction `json:"type"`
 			}{
 				Type: []metamodel.TypeInstruction{
@@ -381,7 +381,7 @@ func TestIntegration_LargeTransaction(t *testing.T) {
 	ddServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		response := metamodel.TransactionInstructionsResponse{
 			TransactionInstructions: struct {
-				Headers []string                   `json:"headers"`
+				Headers []string                    `json:"headers"`
 				Type    []metamodel.TypeInstruction `json:"type"`
 			}{
 				Type: []metamodel.TypeInstruction{
@@ -443,7 +443,7 @@ func setupTestServer(t *testing.T) (*Server, *sql.DB, sqlmock.Sqlmock, func()) {
 	ddServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		response := metamodel.TransactionInstructionsResponse{
 			TransactionInstructions: struct {
-				Headers []string                   `json:"headers"`
+				Headers []string                    `json:"headers"`
 				Type    []metamodel.TypeInstruction `json:"type"`
 			}{
 				Type: []metamodel.TypeInstruction{

@@ -10,6 +10,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/quantara/transaction-service/internal/config"
@@ -39,16 +40,24 @@ type Server struct {
 	metamodel *metamodel.Cache
 	db        *sql.DB
 	tracer    trace.Tracer
+	metrics   *transactionMetrics
 }
 
 // NewServer creates a new transaction service server
-func NewServer(cfg *config.Config, redisClient *redis.Client, metamodelCache *metamodel.Cache, db *sql.DB, tracer trace.Tracer) *Server {
+func NewServer(
+	cfg *config.Config,
+	redisClient *redis.Client,
+	metamodelCache *metamodel.Cache,
+	db *sql.DB,
+	tracer trace.Tracer,
+) *Server {
 	return &Server{
 		cfg:       cfg,
 		redis:     redisClient,
 		metamodel: metamodelCache,
 		db:        db,
 		tracer:    tracer,
+		metrics:   newTransactionMetrics(),
 	}
 }
 
@@ -62,6 +71,7 @@ func (s *Server) BeginTransaction(ctx context.Context, req *pb.BeginTxRequest) (
 	if err := s.redis.CreateTransaction(ctx, txID); err != nil {
 		return nil, fmt.Errorf("failed to create transaction: %w", err)
 	}
+	s.metrics.incBegin(ctx)
 
 	log.Printf("Transaction created: %s", txID)
 
@@ -75,13 +85,18 @@ func (s *Server) Save(ctx context.Context, req *pb.SaveRequest) (*pb.SaveRespons
 	ctx, span := s.startSpan(ctx, "Save")
 	defer span.End()
 
+	fail := func(message string) (*pb.SaveResponse, error) {
+		s.metrics.incSaveError(ctx)
+		return &pb.SaveResponse{Success: false, Error: message}, nil
+	}
+
 	// Validate transaction
 	status, err := s.redis.GetTransactionStatus(ctx, req.TransactionId)
 	if err != nil {
-		return &pb.SaveResponse{Success: false, Error: err.Error()}, nil
+		return fail(err.Error())
 	}
 	if status != redis.TxStatusActive {
-		return &pb.SaveResponse{Success: false, Error: fmt.Sprintf("transaction is not active: %s", status)}, nil
+		return fail(fmt.Sprintf("transaction is not active: %s", status))
 	}
 
 	// Determine algorithm ID
@@ -89,7 +104,7 @@ func (s *Server) Save(ctx context.Context, req *pb.SaveRequest) (*pb.SaveRespons
 	if algorithmID == nil || *algorithmID == 0 {
 		algID, err := s.metamodel.GetAlgorithmID(req.Headers.ObjectType)
 		if err != nil {
-			return &pb.SaveResponse{Success: false, Error: err.Error()}, nil
+			return fail(err.Error())
 		}
 		algorithmID = &algID
 	}
@@ -97,7 +112,7 @@ func (s *Server) Save(ctx context.Context, req *pb.SaveRequest) (*pb.SaveRespons
 	// Convert headers to JSON
 	headersJSON, err := json.Marshal(req.Headers)
 	if err != nil {
-		return &pb.SaveResponse{Success: false, Error: fmt.Sprintf("failed to marshal headers: %v", err)}, nil
+		return fail(fmt.Sprintf("failed to marshal headers: %v", err))
 	}
 
 	// Store in Redis
@@ -107,8 +122,9 @@ func (s *Server) Save(ctx context.Context, req *pb.SaveRequest) (*pb.SaveRespons
 	}
 
 	if err := s.redis.AddObject(ctx, req.TransactionId, *algorithmID, req.Headers.ObjectType, obj); err != nil {
-		return &pb.SaveResponse{Success: false, Error: err.Error()}, nil
+		return fail(err.Error())
 	}
+	s.metrics.incSave(ctx)
 
 	return &pb.SaveResponse{Success: true}, nil
 }
@@ -143,31 +159,41 @@ func (s *Server) SaveStream(stream pb.TransactionService_SaveStreamServer) error
 func (s *Server) Commit(ctx context.Context, req *pb.CommitRequest) (*pb.CommitResponse, error) {
 	ctx, span := s.startSpan(ctx, "Commit")
 	defer span.End()
+	startedAt := time.Now()
+	defer s.metrics.observeCommitDuration(ctx, time.Since(startedAt))
+
+	fail := func(message string) (*pb.CommitResponse, error) {
+		s.metrics.incCommitError(ctx)
+		return &pb.CommitResponse{Success: false, Error: message}, nil
+	}
 
 	// Validate transaction
 	status, err := s.redis.GetTransactionStatus(ctx, req.TransactionId)
 	if err != nil {
-		return &pb.CommitResponse{Success: false, Error: err.Error()}, nil
+		return fail(err.Error())
 	}
 	if status != redis.TxStatusActive {
-		return &pb.CommitResponse{Success: false, Error: fmt.Sprintf("transaction is not active: %s", status)}, nil
+		return fail(fmt.Sprintf("transaction is not active: %s", status))
 	}
 
 	// Set status to COMMITTING
 	if err := s.redis.SetTransactionStatus(ctx, req.TransactionId, redis.TxStatusCommitting); err != nil {
-		return &pb.CommitResponse{Success: false, Error: err.Error()}, nil
+		return fail(err.Error())
 	}
 
 	// Get all object keys
+	getTypesStart := time.Now()
 	keys, err := s.redis.GetObjectKeys(ctx, req.TransactionId)
+	s.metrics.observeCommitDurationByType(ctx, "getTypesRedis", time.Since(getTypesStart))
 	if err != nil {
 		s.redis.SetTransactionStatus(ctx, req.TransactionId, redis.TxStatusActive)
-		return &pb.CommitResponse{Success: false, Error: err.Error()}, nil
+		return fail(err.Error())
 	}
 
 	if len(keys) == 0 {
 		// No objects to commit
 		s.redis.DeleteTransaction(ctx, req.TransactionId)
+		s.metrics.incCommit(ctx)
 		return &pb.CommitResponse{Success: true, ObjectsSaved: 0}, nil
 	}
 
@@ -175,14 +201,16 @@ func (s *Server) Commit(ctx context.Context, req *pb.CommitRequest) (*pb.CommitR
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
 		s.redis.SetTransactionStatus(ctx, req.TransactionId, redis.TxStatusActive)
-		return &pb.CommitResponse{Success: false, Error: fmt.Sprintf("failed to begin SQL transaction: %v", err)}, nil
+		return fail(fmt.Sprintf("failed to begin SQL transaction: %v", err))
 	}
 
 	var totalSaved int32
 	var results []*pb.ObjectResult
 
+	dbAllStart := time.Now()
 	// Process each key (grouped by algorithm and class)
 	for _, key := range keys {
+		typeStart := time.Now()
 		algorithmID, className := parseObjectKey(key)
 		if algorithmID == 0 {
 			continue
@@ -197,7 +225,7 @@ func (s *Server) Commit(ctx context.Context, req *pb.CommitRequest) (*pb.CommitR
 			if err != nil {
 				tx.Rollback()
 				s.redis.SetTransactionStatus(ctx, req.TransactionId, redis.TxStatusActive)
-				return &pb.CommitResponse{Success: false, Error: err.Error()}, nil
+				return fail(err.Error())
 			}
 
 			if len(objects) == 0 {
@@ -209,7 +237,7 @@ func (s *Server) Commit(ctx context.Context, req *pb.CommitRequest) (*pb.CommitR
 			if err != nil {
 				tx.Rollback()
 				s.redis.SetTransactionStatus(ctx, req.TransactionId, redis.TxStatusActive)
-				return &pb.CommitResponse{Success: false, Error: err.Error()}, nil
+				return fail(err.Error())
 			}
 
 			totalSaved += saved
@@ -220,16 +248,19 @@ func (s *Server) Commit(ctx context.Context, req *pb.CommitRequest) (*pb.CommitR
 			}
 			offset += chunkSize
 		}
+		s.metrics.observeCommitDurationByType(ctx, className, time.Since(typeStart))
 	}
+	s.metrics.observeCommitDurationByType(ctx, "DBALL", time.Since(dbAllStart))
 
 	// Commit SQL transaction
 	if err := tx.Commit(); err != nil {
 		s.redis.SetTransactionStatus(ctx, req.TransactionId, redis.TxStatusActive)
-		return &pb.CommitResponse{Success: false, Error: fmt.Sprintf("failed to commit SQL transaction: %v", err)}, nil
+		return fail(fmt.Sprintf("failed to commit SQL transaction: %v", err))
 	}
 
 	// Clean up Redis
 	s.redis.DeleteTransaction(ctx, req.TransactionId)
+	s.metrics.incCommit(ctx)
 
 	log.Printf("Transaction committed: %s, objects saved: %d", req.TransactionId, totalSaved)
 
@@ -245,6 +276,11 @@ func (s *Server) Rollback(ctx context.Context, req *pb.RollbackRequest) (*pb.Rol
 	ctx, span := s.startSpan(ctx, "Rollback")
 	defer span.End()
 
+	fail := func() (*pb.RollbackResponse, error) {
+		s.metrics.incRollbackError(ctx)
+		return &pb.RollbackResponse{Success: false}, nil
+	}
+
 	// Set status to ROLLED_BACK
 	if err := s.redis.SetTransactionStatus(ctx, req.TransactionId, redis.TxStatusRolledBack); err != nil {
 		log.Printf("Warning: failed to set rollback status: %v", err)
@@ -252,10 +288,11 @@ func (s *Server) Rollback(ctx context.Context, req *pb.RollbackRequest) (*pb.Rol
 
 	// Delete all transaction data
 	if err := s.redis.DeleteTransaction(ctx, req.TransactionId); err != nil {
-		return &pb.RollbackResponse{Success: false}, nil
+		return fail()
 	}
 
 	log.Printf("Transaction rolled back: %s", req.TransactionId)
+	s.metrics.incRollback(ctx)
 
 	return &pb.RollbackResponse{Success: true}, nil
 }

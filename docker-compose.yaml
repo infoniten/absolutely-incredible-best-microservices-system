@@ -127,8 +127,10 @@ services:
     container_name: quantara-transaction-service
     ports:
       - "50054:50054"
+      - "8087:8087"
     environment:
       GRPC_PORT: "50054"
+      HTTP_PORT: "8087"
       DATABASE_URL: "postgres://postgres:postgres@postgres:5432/quantara?sslmode=disable"
       REDIS_URL: "redis://redis:6379/0"
       DATADICTIONARY_URL: "http://datadictionary:8080"

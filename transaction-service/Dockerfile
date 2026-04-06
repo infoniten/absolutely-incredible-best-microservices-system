@@ -50,6 +50,6 @@ COPY --from=builder /bin/transaction-service .
 # Use non-root user
 USER appuser
 
-EXPOSE 50054
+EXPOSE 50054 8087
 
 ENTRYPOINT ["./transaction-service"]
