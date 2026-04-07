@@ -9,6 +9,8 @@ import (
 
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
+
+	"github.com/quantara/lock-service/internal/cache"
 )
 
 var (
@@ -25,12 +27,14 @@ type Lock struct {
 
 type LockRepository struct {
 	db     *sql.DB
+	cache  *cache.LockCache
 	tracer trace.Tracer
 }
 
-func NewLockRepository(db *sql.DB, tracer trace.Tracer) *LockRepository {
+func NewLockRepository(db *sql.DB, lockCache *cache.LockCache, tracer trace.Tracer) *LockRepository {
 	return &LockRepository{
 		db:     db,
+		cache:  lockCache,
 		tracer: tracer,
 	}
 }
@@ -112,6 +116,11 @@ func (r *LockRepository) AcquireLock(ctx context.Context, globalID int64, token 
 		return fmt.Errorf("failed to commit transaction: %w", err)
 	}
 
+	// Cache the lock (best effort - DB is source of truth)
+	if r.cache != nil {
+		r.cache.Set(ctx, globalID, token, expireAt)
+	}
+
 	span.SetAttributes(attribute.Bool("success", true))
 	return nil
 }
@@ -160,6 +169,11 @@ func (r *LockRepository) RenewLock(ctx context.Context, globalID int64, token st
 		return ErrInvalidToken
 	}
 
+	// Update cache TTL (best effort)
+	if r.cache != nil {
+		r.cache.UpdateTTL(ctx, globalID, token, newExpireAt)
+	}
+
 	span.SetAttributes(attribute.Bool("success", true))
 	return nil
 }
@@ -171,6 +185,21 @@ func (r *LockRepository) GetLockByGlobalID(ctx context.Context, globalID int64) 
 
 	span.SetAttributes(attribute.Int64("global_id", globalID))
 
+	// Check cache first
+	if r.cache != nil {
+		cached, err := r.cache.Get(ctx, globalID)
+		if err == nil && cached != nil {
+			span.SetAttributes(attribute.Bool("cache_hit", true))
+			return &Lock{
+				GlobalID: globalID,
+				Token:    cached.Token,
+				ExpireAt: cached.ExpireAt,
+			}, nil
+		}
+		span.SetAttributes(attribute.Bool("cache_hit", false))
+	}
+
+	// Cache miss - query DB
 	var lock Lock
 	err := r.db.QueryRowContext(ctx,
 		"SELECT global_id, token, expire FROM murex.object_lock WHERE global_id = $1 AND expire > NOW()",
@@ -184,6 +213,11 @@ func (r *LockRepository) GetLockByGlobalID(ctx context.Context, globalID int64) 
 	if err != nil {
 		span.RecordError(err)
 		return nil, fmt.Errorf("failed to get lock: %w", err)
+	}
+
+	// Cache the result
+	if r.cache != nil {
+		r.cache.Set(ctx, globalID, lock.Token, lock.ExpireAt)
 	}
 
 	span.SetAttributes(attribute.Bool("found", true))
@@ -247,6 +281,12 @@ func (r *LockRepository) ReleaseLock(ctx context.Context, globalID int64, token 
 
 	if rowsAffected == 0 {
 		return ErrLockNotFound
+	}
+
+	// Delete from cache AFTER DB (DB is source of truth)
+	// If DB delete succeeded but cache delete fails - cache will expire via TTL
+	if r.cache != nil {
+		r.cache.Delete(ctx, globalID)
 	}
 
 	span.SetAttributes(attribute.Bool("success", true))

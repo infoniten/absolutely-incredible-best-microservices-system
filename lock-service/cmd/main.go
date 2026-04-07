@@ -18,6 +18,7 @@ import (
 	"google.golang.org/grpc/health/grpc_health_v1"
 	"google.golang.org/grpc/reflection"
 
+	"github.com/quantara/lock-service/internal/cache"
 	"github.com/quantara/lock-service/internal/config"
 	"github.com/quantara/lock-service/internal/cron"
 	"github.com/quantara/lock-service/internal/repository"
@@ -62,8 +63,21 @@ func main() {
 	}
 	log.Println("connected to database")
 
+	// Initialize Redis cache (optional)
+	var lockCache *cache.LockCache
+	if cfg.CacheEnabled {
+		var err error
+		lockCache, err = cache.NewLockCache(cfg.RedisAddr, cfg.RedisPassword, cfg.RedisDB)
+		if err != nil {
+			log.Printf("WARNING: failed to connect to Redis cache: %v (continuing without cache)", err)
+		} else {
+			log.Printf("connected to Redis cache at %s", cfg.RedisAddr)
+			defer lockCache.Close()
+		}
+	}
+
 	// Initialize repository
-	repo := repository.NewLockRepository(db, tel.Tracer)
+	repo := repository.NewLockRepository(db, lockCache, tel.Tracer)
 
 	// Start cleanup cron job
 	cleanupJob := cron.NewCleanupJob(repo, tel.Tracer, cfg.CleanupInterval)

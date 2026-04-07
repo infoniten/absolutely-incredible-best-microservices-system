@@ -15,6 +15,12 @@ type Config struct {
 	CleanupInterval   time.Duration
 	MaxDBConnections  int
 	DBConnMaxLifetime time.Duration
+
+	// Redis cache
+	RedisAddr     string
+	RedisPassword string
+	RedisDB       int
+	CacheEnabled  bool
 }
 
 func Load() *Config {
@@ -27,7 +33,20 @@ func Load() *Config {
 		CleanupInterval:   getEnvDuration("CLEANUP_INTERVAL", 1*time.Hour),
 		MaxDBConnections:  getEnvInt("MAX_DB_CONNECTIONS", 50),
 		DBConnMaxLifetime: getEnvDuration("DB_CONN_MAX_LIFETIME", 5*time.Minute),
+
+		// Redis cache
+		RedisAddr:     getEnv("REDIS_ADDR", "localhost:6379"),
+		RedisPassword: getEnv("REDIS_PASSWORD", ""),
+		RedisDB:       getEnvInt("REDIS_DB", 0),
+		CacheEnabled:  getEnvBool("CACHE_ENABLED", true),
 	}
+}
+
+func getEnvBool(key string, defaultValue bool) bool {
+	if value := os.Getenv(key); value != "" {
+		return value == "true" || value == "1"
+	}
+	return defaultValue
 }
 
 func getEnv(key, defaultValue string) string {
