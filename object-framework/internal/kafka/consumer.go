@@ -28,6 +28,8 @@ type Consumer struct {
 	processedCount uint64
 	errorCount     uint64
 	inFlightCount  int64
+	duplicateCount uint64
+	prepareErrors  uint64
 }
 
 // NewConsumer creates a new Kafka consumer with worker pool support
@@ -178,6 +180,7 @@ func (c *Consumer) preparer(ctx context.Context, wg *sync.WaitGroup, rawMsgChan 
 
 		task, err := c.prepareMessage(ctx, msg)
 		if err != nil {
+			atomic.AddUint64(&c.prepareErrors, 1)
 			log.Printf("Error preparing message: %v", err)
 			continue
 		}
@@ -205,6 +208,7 @@ func (c *Consumer) prepareMessage(ctx context.Context, msg kafka.Message) (*mess
 	// Check for duplicates
 	exists, err := c.rawMsgRepo.Exists(ctx, messageID)
 	if err == nil && exists {
+		atomic.AddUint64(&c.duplicateCount, 1)
 		c.reader.CommitMessages(ctx, msg)
 		return nil, nil
 	}
@@ -330,7 +334,7 @@ func (c *Consumer) metricsReporter(ctx context.Context) {
 	ticker := time.NewTicker(10 * time.Second)
 	defer ticker.Stop()
 
-	var lastProcessed uint64
+	var lastProcessed, lastDuplicates uint64
 
 	for {
 		select {
@@ -338,11 +342,17 @@ func (c *Consumer) metricsReporter(ctx context.Context) {
 			processed := atomic.LoadUint64(&c.processedCount)
 			errors := atomic.LoadUint64(&c.errorCount)
 			inFlight := atomic.LoadInt64(&c.inFlightCount)
-			rate := float64(processed-lastProcessed) / 10.0
-			lastProcessed = processed
+			duplicates := atomic.LoadUint64(&c.duplicateCount)
+			prepareErrs := atomic.LoadUint64(&c.prepareErrors)
+			lockWait := c.processor.LockWaitCount()
 
-			log.Printf("Consumer metrics: processed=%d, errors=%d, in_flight=%d, rate=%.1f msg/sec",
-				processed, errors, inFlight, rate)
+			rate := float64(processed-lastProcessed) / 10.0
+			dupRate := float64(duplicates-lastDuplicates) / 10.0
+			lastProcessed = processed
+			lastDuplicates = duplicates
+
+			log.Printf("Metrics: ok=%d err=%d dup=%d prep_err=%d in_flight=%d lock_wait=%d | rate=%.1f/s dup_rate=%.1f/s",
+				processed, errors, duplicates, prepareErrs, inFlight, lockWait, rate, dupRate)
 
 		case <-ctx.Done():
 			return

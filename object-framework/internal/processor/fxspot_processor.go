@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/quantara/object-framework/internal/client"
@@ -34,6 +35,9 @@ type FxSpotProcessor struct {
 	txClient          *client.TransactionClient
 	lockTTLMs         int64
 	lockRetryInterval time.Duration
+
+	// Metrics
+	lockWaitCount int64 // Number of goroutines currently waiting for lock
 }
 
 // NewFxSpotProcessor creates a new FxSpotProcessor
@@ -125,11 +129,15 @@ func (p *FxSpotProcessor) Process(ctx context.Context, rawMsg *domain.RawMessage
 
 	// Step 3: Acquire lock with infinite retry (messages are ordered by trade in partition)
 	var lockToken string
+	waiting := false
 
 	for {
 		// Check context cancellation (for graceful shutdown)
 		select {
 		case <-ctx.Done():
+			if waiting {
+				atomic.AddInt64(&p.lockWaitCount, -1)
+			}
 			result.Error = fmt.Errorf("context cancelled while waiting for lock: %w", ctx.Err())
 			p.updateRawMessageStatus(ctx, rawMsg.ID, domain.RawMessageStatusFailed, result.Error.Error())
 			return result
@@ -138,15 +146,26 @@ func (p *FxSpotProcessor) Process(ctx context.Context, rawMsg *domain.RawMessage
 
 		lockResult, err := p.lockClient.LockWithTTL(ctx, productGlobalID, p.lockTTLMs)
 		if err != nil {
+			if !waiting {
+				waiting = true
+				atomic.AddInt64(&p.lockWaitCount, 1)
+			}
 			time.Sleep(p.lockRetryInterval)
 			continue
 		}
 
 		if !lockResult.Success {
+			if !waiting {
+				waiting = true
+				atomic.AddInt64(&p.lockWaitCount, 1)
+			}
 			time.Sleep(p.lockRetryInterval)
 			continue
 		}
 
+		if waiting {
+			atomic.AddInt64(&p.lockWaitCount, -1)
+		}
 		lockToken = lockResult.Token
 		break
 	}
@@ -417,6 +436,11 @@ func (p *FxSpotProcessor) saveWithStreaming(ctx context.Context, product *domain
 
 func (p *FxSpotProcessor) updateRawMessageStatus(ctx context.Context, id int64, status domain.RawMessageStatus, errorMsg string) error {
 	return p.rawMsgRepo.UpdateStatus(ctx, id, status, errorMsg)
+}
+
+// LockWaitCount returns the number of goroutines currently waiting for locks
+func (p *FxSpotProcessor) LockWaitCount() int64 {
+	return atomic.LoadInt64(&p.lockWaitCount)
 }
 
 // mapToProduct converts search result to FxSpotExchangeProduct
