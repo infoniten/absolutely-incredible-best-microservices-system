@@ -3,6 +3,7 @@ package config
 import (
 	"os"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -17,10 +18,12 @@ type Config struct {
 	DBConnMaxLifetime time.Duration
 
 	// Redis cache
-	RedisAddr     string
-	RedisPassword string
-	RedisDB       int
-	CacheEnabled  bool
+	RedisAddr         string   // standalone mode
+	RedisClusterNodes []string // cluster mode (comma-separated)
+	RedisUsername     string
+	RedisPassword     string
+	RedisDB           int
+	CacheEnabled      bool
 }
 
 func Load() *Config {
@@ -35,11 +38,20 @@ func Load() *Config {
 		DBConnMaxLifetime: getEnvDuration("DB_CONN_MAX_LIFETIME", 5*time.Minute),
 
 		// Redis cache
-		RedisAddr:     getEnv("REDIS_ADDR", "localhost:6379"),
-		RedisPassword: getEnv("REDIS_PASSWORD", ""),
-		RedisDB:       getEnvInt("REDIS_DB", 0),
-		CacheEnabled:  getEnvBool("CACHE_ENABLED", true),
+		RedisAddr:         getEnv("REDIS_ADDR", "localhost:6379"),
+		RedisClusterNodes: getEnvSlice("REDIS_CLUSTER_NODES", nil), // e.g. "node1:6379,node2:6379,node3:6379"
+		RedisUsername:     getEnv("REDIS_USERNAME", ""),
+		RedisPassword:     getEnv("REDIS_PASSWORD", ""),
+		RedisDB:           getEnvInt("REDIS_DB", 0),
+		CacheEnabled:      getEnvBool("CACHE_ENABLED", true),
 	}
+}
+
+func getEnvSlice(key string, defaultValue []string) []string {
+	if value := os.Getenv(key); value != "" {
+		return strings.Split(value, ",")
+	}
+	return defaultValue
 }
 
 func getEnvBool(key string, defaultValue bool) bool {

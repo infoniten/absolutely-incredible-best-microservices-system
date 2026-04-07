@@ -67,12 +67,24 @@ func main() {
 	var lockCache *cache.LockCache
 	if cfg.CacheEnabled {
 		var err error
-		lockCache, err = cache.NewLockCache(cfg.RedisAddr, cfg.RedisPassword, cfg.RedisDB)
-		if err != nil {
-			log.Printf("WARNING: failed to connect to Redis cache: %v (continuing without cache)", err)
+		if len(cfg.RedisClusterNodes) > 0 {
+			// Cluster mode
+			lockCache, err = cache.NewLockCacheCluster(cfg.RedisClusterNodes, cfg.RedisUsername, cfg.RedisPassword)
+			if err != nil {
+				log.Printf("WARNING: failed to connect to Redis cluster: %v (continuing without cache)", err)
+			} else {
+				log.Printf("connected to Redis cluster: %v", cfg.RedisClusterNodes)
+				defer lockCache.Close()
+			}
 		} else {
-			log.Printf("connected to Redis cache at %s", cfg.RedisAddr)
-			defer lockCache.Close()
+			// Standalone mode
+			lockCache, err = cache.NewLockCache(cfg.RedisAddr, cfg.RedisPassword, cfg.RedisDB)
+			if err != nil {
+				log.Printf("WARNING: failed to connect to Redis: %v (continuing without cache)", err)
+			} else {
+				log.Printf("connected to Redis at %s", cfg.RedisAddr)
+				defer lockCache.Close()
+			}
 		}
 	}
 

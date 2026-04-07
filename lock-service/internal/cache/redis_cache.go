@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/redis/go-redis/v9"
@@ -16,7 +17,8 @@ const (
 
 // LockCache provides Redis caching for locks
 type LockCache struct {
-	client *redis.Client
+	client redis.Cmdable
+	closer func() error
 }
 
 // CachedLock represents a cached lock entry
@@ -25,7 +27,7 @@ type CachedLock struct {
 	ExpireAt time.Time
 }
 
-// NewLockCache creates a new Redis-based lock cache
+// NewLockCache creates a new Redis-based lock cache (standalone mode)
 func NewLockCache(addr, password string, db int) (*LockCache, error) {
 	client := redis.NewClient(&redis.Options{
 		Addr:     addr,
@@ -33,7 +35,6 @@ func NewLockCache(addr, password string, db int) (*LockCache, error) {
 		DB:       db,
 	})
 
-	// Test connection
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
@@ -41,7 +42,31 @@ func NewLockCache(addr, password string, db int) (*LockCache, error) {
 		return nil, fmt.Errorf("failed to connect to Redis: %w", err)
 	}
 
-	return &LockCache{client: client}, nil
+	return &LockCache{
+		client: client,
+		closer: client.Close,
+	}, nil
+}
+
+// NewLockCacheCluster creates a new Redis cluster-based lock cache
+func NewLockCacheCluster(nodes []string, username, password string) (*LockCache, error) {
+	client := redis.NewClusterClient(&redis.ClusterOptions{
+		Addrs:    nodes,
+		Username: username,
+		Password: password,
+	})
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	if err := client.Ping(ctx).Err(); err != nil {
+		return nil, fmt.Errorf("failed to connect to Redis cluster: %w", err)
+	}
+
+	return &LockCache{
+		client: client,
+		closer: client.Close,
+	}, nil
 }
 
 // buildKey creates Redis key for a globalID
@@ -53,50 +78,40 @@ func buildKey(globalID int64) string {
 func (c *LockCache) Set(ctx context.Context, globalID int64, token string, expireAt time.Time) error {
 	ttl := time.Until(expireAt)
 	if ttl <= 0 {
-		// Already expired, don't cache
 		return nil
 	}
 
 	key := buildKey(globalID)
-	// Store token and expireAt as hash
-	pipe := c.client.Pipeline()
-	pipe.HSet(ctx, key, "token", token, "expire", expireAt.UnixMilli())
-	pipe.PExpire(ctx, key, ttl)
-	_, err := pipe.Exec(ctx)
-	return err
+	// Store as simple string "token:expireMs" to work with cluster (no pipeline across slots)
+	value := token + ":" + strconv.FormatInt(expireAt.UnixMilli(), 10)
+	return c.client.Set(ctx, key, value, ttl).Err()
 }
 
 // Get retrieves a cached lock
 func (c *LockCache) Get(ctx context.Context, globalID int64) (*CachedLock, error) {
 	key := buildKey(globalID)
 
-	result, err := c.client.HGetAll(ctx, key).Result()
+	result, err := c.client.Get(ctx, key).Result()
+	if err == redis.Nil {
+		return nil, nil // Not found
+	}
 	if err != nil {
 		return nil, err
 	}
 
-	if len(result) == 0 {
-		return nil, nil // Not found
-	}
-
-	token, ok := result["token"]
-	if !ok {
+	// Parse "token:expireMs"
+	parts := strings.SplitN(result, ":", 2)
+	if len(parts) != 2 {
 		return nil, nil
 	}
 
-	expireStr, ok := result["expire"]
-	if !ok {
-		return nil, nil
-	}
-
-	expireMs, err := strconv.ParseInt(expireStr, 10, 64)
+	token := parts[0]
+	expireMs, err := strconv.ParseInt(parts[1], 10, 64)
 	if err != nil {
 		return nil, nil
 	}
 
 	expireAt := time.UnixMilli(expireMs)
-
-	// Check if expired (shouldn't happen due to TTL, but be safe)
 	if expireAt.Before(time.Now()) {
 		c.Delete(ctx, globalID)
 		return nil, nil
@@ -122,16 +137,14 @@ func (c *LockCache) UpdateTTL(ctx context.Context, globalID int64, token string,
 	}
 
 	key := buildKey(globalID)
-
-	// Update expire field and TTL atomically using transaction
-	pipe := c.client.Pipeline()
-	pipe.HSet(ctx, key, "expire", newExpireAt.UnixMilli())
-	pipe.PExpire(ctx, key, ttl)
-	_, err := pipe.Exec(ctx)
-	return err
+	value := token + ":" + strconv.FormatInt(newExpireAt.UnixMilli(), 10)
+	return c.client.Set(ctx, key, value, ttl).Err()
 }
 
 // Close closes the Redis connection
 func (c *LockCache) Close() error {
-	return c.client.Close()
+	if c.closer != nil {
+		return c.closer()
+	}
+	return nil
 }
