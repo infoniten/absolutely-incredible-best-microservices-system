@@ -2,7 +2,7 @@
 // versions:
 // - protoc-gen-go-grpc v1.6.1
 // - protoc             v7.34.1
-// source: proto/search_service.proto
+// source: search_service.proto
 
 package searchservice
 
@@ -307,5 +307,5 @@ var SearchService_ServiceDesc = grpc.ServiceDesc{
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
-	Metadata: "proto/search_service.proto",
+	Metadata: "search_service.proto",
 }

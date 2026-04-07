@@ -2,7 +2,7 @@
 // versions:
 // 	protoc-gen-go v1.36.11
 // 	protoc        v7.34.1
-// source: proto/search_service.proto
+// source: search_service.proto
 
 package searchservice
 
@@ -57,11 +57,11 @@ func (x SortDirection) String() string {
 }
 
 func (SortDirection) Descriptor() protoreflect.EnumDescriptor {
-	return file_proto_search_service_proto_enumTypes[0].Descriptor()
+	return file_search_service_proto_enumTypes[0].Descriptor()
 }
 
 func (SortDirection) Type() protoreflect.EnumType {
-	return &file_proto_search_service_proto_enumTypes[0]
+	return &file_search_service_proto_enumTypes[0]
 }
 
 func (x SortDirection) Number() protoreflect.EnumNumber {
@@ -70,7 +70,7 @@ func (x SortDirection) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use SortDirection.Descriptor instead.
 func (SortDirection) EnumDescriptor() ([]byte, []int) {
-	return file_proto_search_service_proto_rawDescGZIP(), []int{0}
+	return file_search_service_proto_rawDescGZIP(), []int{0}
 }
 
 type FilterOperator int32
@@ -133,11 +133,11 @@ func (x FilterOperator) String() string {
 }
 
 func (FilterOperator) Descriptor() protoreflect.EnumDescriptor {
-	return file_proto_search_service_proto_enumTypes[1].Descriptor()
+	return file_search_service_proto_enumTypes[1].Descriptor()
 }
 
 func (FilterOperator) Type() protoreflect.EnumType {
-	return &file_proto_search_service_proto_enumTypes[1]
+	return &file_search_service_proto_enumTypes[1]
 }
 
 func (x FilterOperator) Number() protoreflect.EnumNumber {
@@ -146,7 +146,7 @@ func (x FilterOperator) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use FilterOperator.Descriptor instead.
 func (FilterOperator) EnumDescriptor() ([]byte, []int) {
-	return file_proto_search_service_proto_rawDescGZIP(), []int{1}
+	return file_search_service_proto_rawDescGZIP(), []int{1}
 }
 
 type GetObjectRevisionByIdRequest struct {
@@ -159,7 +159,7 @@ type GetObjectRevisionByIdRequest struct {
 
 func (x *GetObjectRevisionByIdRequest) Reset() {
 	*x = GetObjectRevisionByIdRequest{}
-	mi := &file_proto_search_service_proto_msgTypes[0]
+	mi := &file_search_service_proto_msgTypes[0]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -171,7 +171,7 @@ func (x *GetObjectRevisionByIdRequest) String() string {
 func (*GetObjectRevisionByIdRequest) ProtoMessage() {}
 
 func (x *GetObjectRevisionByIdRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_search_service_proto_msgTypes[0]
+	mi := &file_search_service_proto_msgTypes[0]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -184,7 +184,7 @@ func (x *GetObjectRevisionByIdRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetObjectRevisionByIdRequest.ProtoReflect.Descriptor instead.
 func (*GetObjectRevisionByIdRequest) Descriptor() ([]byte, []int) {
-	return file_proto_search_service_proto_rawDescGZIP(), []int{0}
+	return file_search_service_proto_rawDescGZIP(), []int{0}
 }
 
 func (x *GetObjectRevisionByIdRequest) GetObjectClass() string {
@@ -210,7 +210,7 @@ type GetObjectRevisionByIdResponse struct {
 
 func (x *GetObjectRevisionByIdResponse) Reset() {
 	*x = GetObjectRevisionByIdResponse{}
-	mi := &file_proto_search_service_proto_msgTypes[1]
+	mi := &file_search_service_proto_msgTypes[1]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -222,7 +222,7 @@ func (x *GetObjectRevisionByIdResponse) String() string {
 func (*GetObjectRevisionByIdResponse) ProtoMessage() {}
 
 func (x *GetObjectRevisionByIdResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_search_service_proto_msgTypes[1]
+	mi := &file_search_service_proto_msgTypes[1]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -235,7 +235,7 @@ func (x *GetObjectRevisionByIdResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetObjectRevisionByIdResponse.ProtoReflect.Descriptor instead.
 func (*GetObjectRevisionByIdResponse) Descriptor() ([]byte, []int) {
-	return file_proto_search_service_proto_rawDescGZIP(), []int{1}
+	return file_search_service_proto_rawDescGZIP(), []int{1}
 }
 
 func (x *GetObjectRevisionByIdResponse) GetContent() *structpb.Value {
@@ -257,7 +257,7 @@ type GetObjectByGlobalIdRequest struct {
 
 func (x *GetObjectByGlobalIdRequest) Reset() {
 	*x = GetObjectByGlobalIdRequest{}
-	mi := &file_proto_search_service_proto_msgTypes[2]
+	mi := &file_search_service_proto_msgTypes[2]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -269,7 +269,7 @@ func (x *GetObjectByGlobalIdRequest) String() string {
 func (*GetObjectByGlobalIdRequest) ProtoMessage() {}
 
 func (x *GetObjectByGlobalIdRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_search_service_proto_msgTypes[2]
+	mi := &file_search_service_proto_msgTypes[2]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -282,7 +282,7 @@ func (x *GetObjectByGlobalIdRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetObjectByGlobalIdRequest.ProtoReflect.Descriptor instead.
 func (*GetObjectByGlobalIdRequest) Descriptor() ([]byte, []int) {
-	return file_proto_search_service_proto_rawDescGZIP(), []int{2}
+	return file_search_service_proto_rawDescGZIP(), []int{2}
 }
 
 func (x *GetObjectByGlobalIdRequest) GetObjectRootClass() string {
@@ -322,7 +322,7 @@ type GetObjectByGlobalIdResponse struct {
 
 func (x *GetObjectByGlobalIdResponse) Reset() {
 	*x = GetObjectByGlobalIdResponse{}
-	mi := &file_proto_search_service_proto_msgTypes[3]
+	mi := &file_search_service_proto_msgTypes[3]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -334,7 +334,7 @@ func (x *GetObjectByGlobalIdResponse) String() string {
 func (*GetObjectByGlobalIdResponse) ProtoMessage() {}
 
 func (x *GetObjectByGlobalIdResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_search_service_proto_msgTypes[3]
+	mi := &file_search_service_proto_msgTypes[3]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -347,7 +347,7 @@ func (x *GetObjectByGlobalIdResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetObjectByGlobalIdResponse.ProtoReflect.Descriptor instead.
 func (*GetObjectByGlobalIdResponse) Descriptor() ([]byte, []int) {
-	return file_proto_search_service_proto_rawDescGZIP(), []int{3}
+	return file_search_service_proto_rawDescGZIP(), []int{3}
 }
 
 func (x *GetObjectByGlobalIdResponse) GetContent() *structpb.Value {
@@ -367,7 +367,7 @@ type GetObjectCollectionByParentIdRequest struct {
 
 func (x *GetObjectCollectionByParentIdRequest) Reset() {
 	*x = GetObjectCollectionByParentIdRequest{}
-	mi := &file_proto_search_service_proto_msgTypes[4]
+	mi := &file_search_service_proto_msgTypes[4]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -379,7 +379,7 @@ func (x *GetObjectCollectionByParentIdRequest) String() string {
 func (*GetObjectCollectionByParentIdRequest) ProtoMessage() {}
 
 func (x *GetObjectCollectionByParentIdRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_search_service_proto_msgTypes[4]
+	mi := &file_search_service_proto_msgTypes[4]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -392,7 +392,7 @@ func (x *GetObjectCollectionByParentIdRequest) ProtoReflect() protoreflect.Messa
 
 // Deprecated: Use GetObjectCollectionByParentIdRequest.ProtoReflect.Descriptor instead.
 func (*GetObjectCollectionByParentIdRequest) Descriptor() ([]byte, []int) {
-	return file_proto_search_service_proto_rawDescGZIP(), []int{4}
+	return file_search_service_proto_rawDescGZIP(), []int{4}
 }
 
 func (x *GetObjectCollectionByParentIdRequest) GetObjectRootClass() string {
@@ -418,7 +418,7 @@ type GetObjectCollectionByParentIdResponse struct {
 
 func (x *GetObjectCollectionByParentIdResponse) Reset() {
 	*x = GetObjectCollectionByParentIdResponse{}
-	mi := &file_proto_search_service_proto_msgTypes[5]
+	mi := &file_search_service_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -430,7 +430,7 @@ func (x *GetObjectCollectionByParentIdResponse) String() string {
 func (*GetObjectCollectionByParentIdResponse) ProtoMessage() {}
 
 func (x *GetObjectCollectionByParentIdResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_search_service_proto_msgTypes[5]
+	mi := &file_search_service_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -443,7 +443,7 @@ func (x *GetObjectCollectionByParentIdResponse) ProtoReflect() protoreflect.Mess
 
 // Deprecated: Use GetObjectCollectionByParentIdResponse.ProtoReflect.Descriptor instead.
 func (*GetObjectCollectionByParentIdResponse) Descriptor() ([]byte, []int) {
-	return file_proto_search_service_proto_rawDescGZIP(), []int{5}
+	return file_search_service_proto_rawDescGZIP(), []int{5}
 }
 
 func (x *GetObjectCollectionByParentIdResponse) GetContents() []*structpb.Value {
@@ -464,7 +464,7 @@ type GetObjectGlobalIdByAltIdRequest struct {
 
 func (x *GetObjectGlobalIdByAltIdRequest) Reset() {
 	*x = GetObjectGlobalIdByAltIdRequest{}
-	mi := &file_proto_search_service_proto_msgTypes[6]
+	mi := &file_search_service_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -476,7 +476,7 @@ func (x *GetObjectGlobalIdByAltIdRequest) String() string {
 func (*GetObjectGlobalIdByAltIdRequest) ProtoMessage() {}
 
 func (x *GetObjectGlobalIdByAltIdRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_search_service_proto_msgTypes[6]
+	mi := &file_search_service_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -489,7 +489,7 @@ func (x *GetObjectGlobalIdByAltIdRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetObjectGlobalIdByAltIdRequest.ProtoReflect.Descriptor instead.
 func (*GetObjectGlobalIdByAltIdRequest) Descriptor() ([]byte, []int) {
-	return file_proto_search_service_proto_rawDescGZIP(), []int{6}
+	return file_search_service_proto_rawDescGZIP(), []int{6}
 }
 
 func (x *GetObjectGlobalIdByAltIdRequest) GetObjectRootClass() string {
@@ -522,7 +522,7 @@ type GetObjectGlobalIdByAltIdResponse struct {
 
 func (x *GetObjectGlobalIdByAltIdResponse) Reset() {
 	*x = GetObjectGlobalIdByAltIdResponse{}
-	mi := &file_proto_search_service_proto_msgTypes[7]
+	mi := &file_search_service_proto_msgTypes[7]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -534,7 +534,7 @@ func (x *GetObjectGlobalIdByAltIdResponse) String() string {
 func (*GetObjectGlobalIdByAltIdResponse) ProtoMessage() {}
 
 func (x *GetObjectGlobalIdByAltIdResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_search_service_proto_msgTypes[7]
+	mi := &file_search_service_proto_msgTypes[7]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -547,7 +547,7 @@ func (x *GetObjectGlobalIdByAltIdResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetObjectGlobalIdByAltIdResponse.ProtoReflect.Descriptor instead.
 func (*GetObjectGlobalIdByAltIdResponse) Descriptor() ([]byte, []int) {
-	return file_proto_search_service_proto_rawDescGZIP(), []int{7}
+	return file_search_service_proto_rawDescGZIP(), []int{7}
 }
 
 func (x *GetObjectGlobalIdByAltIdResponse) GetGlobalId() int64 {
@@ -572,7 +572,7 @@ type GetObjectCollectionByFilterRequest struct {
 
 func (x *GetObjectCollectionByFilterRequest) Reset() {
 	*x = GetObjectCollectionByFilterRequest{}
-	mi := &file_proto_search_service_proto_msgTypes[8]
+	mi := &file_search_service_proto_msgTypes[8]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -584,7 +584,7 @@ func (x *GetObjectCollectionByFilterRequest) String() string {
 func (*GetObjectCollectionByFilterRequest) ProtoMessage() {}
 
 func (x *GetObjectCollectionByFilterRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_search_service_proto_msgTypes[8]
+	mi := &file_search_service_proto_msgTypes[8]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -597,7 +597,7 @@ func (x *GetObjectCollectionByFilterRequest) ProtoReflect() protoreflect.Message
 
 // Deprecated: Use GetObjectCollectionByFilterRequest.ProtoReflect.Descriptor instead.
 func (*GetObjectCollectionByFilterRequest) Descriptor() ([]byte, []int) {
-	return file_proto_search_service_proto_rawDescGZIP(), []int{8}
+	return file_search_service_proto_rawDescGZIP(), []int{8}
 }
 
 func (x *GetObjectCollectionByFilterRequest) GetObjectRootClass() string {
@@ -658,7 +658,7 @@ type GetObjectCollectionByFilterResponse struct {
 
 func (x *GetObjectCollectionByFilterResponse) Reset() {
 	*x = GetObjectCollectionByFilterResponse{}
-	mi := &file_proto_search_service_proto_msgTypes[9]
+	mi := &file_search_service_proto_msgTypes[9]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -670,7 +670,7 @@ func (x *GetObjectCollectionByFilterResponse) String() string {
 func (*GetObjectCollectionByFilterResponse) ProtoMessage() {}
 
 func (x *GetObjectCollectionByFilterResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_search_service_proto_msgTypes[9]
+	mi := &file_search_service_proto_msgTypes[9]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -683,7 +683,7 @@ func (x *GetObjectCollectionByFilterResponse) ProtoReflect() protoreflect.Messag
 
 // Deprecated: Use GetObjectCollectionByFilterResponse.ProtoReflect.Descriptor instead.
 func (*GetObjectCollectionByFilterResponse) Descriptor() ([]byte, []int) {
-	return file_proto_search_service_proto_rawDescGZIP(), []int{9}
+	return file_search_service_proto_rawDescGZIP(), []int{9}
 }
 
 func (x *GetObjectCollectionByFilterResponse) GetContents() []*structpb.Value {
@@ -703,7 +703,7 @@ type SortField struct {
 
 func (x *SortField) Reset() {
 	*x = SortField{}
-	mi := &file_proto_search_service_proto_msgTypes[10]
+	mi := &file_search_service_proto_msgTypes[10]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -715,7 +715,7 @@ func (x *SortField) String() string {
 func (*SortField) ProtoMessage() {}
 
 func (x *SortField) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_search_service_proto_msgTypes[10]
+	mi := &file_search_service_proto_msgTypes[10]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -728,7 +728,7 @@ func (x *SortField) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SortField.ProtoReflect.Descriptor instead.
 func (*SortField) Descriptor() ([]byte, []int) {
-	return file_proto_search_service_proto_rawDescGZIP(), []int{10}
+	return file_search_service_proto_rawDescGZIP(), []int{10}
 }
 
 func (x *SortField) GetField() string {
@@ -760,7 +760,7 @@ type FilterExpr struct {
 
 func (x *FilterExpr) Reset() {
 	*x = FilterExpr{}
-	mi := &file_proto_search_service_proto_msgTypes[11]
+	mi := &file_search_service_proto_msgTypes[11]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -772,7 +772,7 @@ func (x *FilterExpr) String() string {
 func (*FilterExpr) ProtoMessage() {}
 
 func (x *FilterExpr) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_search_service_proto_msgTypes[11]
+	mi := &file_search_service_proto_msgTypes[11]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -785,7 +785,7 @@ func (x *FilterExpr) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use FilterExpr.ProtoReflect.Descriptor instead.
 func (*FilterExpr) Descriptor() ([]byte, []int) {
-	return file_proto_search_service_proto_rawDescGZIP(), []int{11}
+	return file_search_service_proto_rawDescGZIP(), []int{11}
 }
 
 func (x *FilterExpr) GetExpr() isFilterExpr_Expr {
@@ -868,7 +868,7 @@ type FilterAnd struct {
 
 func (x *FilterAnd) Reset() {
 	*x = FilterAnd{}
-	mi := &file_proto_search_service_proto_msgTypes[12]
+	mi := &file_search_service_proto_msgTypes[12]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -880,7 +880,7 @@ func (x *FilterAnd) String() string {
 func (*FilterAnd) ProtoMessage() {}
 
 func (x *FilterAnd) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_search_service_proto_msgTypes[12]
+	mi := &file_search_service_proto_msgTypes[12]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -893,7 +893,7 @@ func (x *FilterAnd) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use FilterAnd.ProtoReflect.Descriptor instead.
 func (*FilterAnd) Descriptor() ([]byte, []int) {
-	return file_proto_search_service_proto_rawDescGZIP(), []int{12}
+	return file_search_service_proto_rawDescGZIP(), []int{12}
 }
 
 func (x *FilterAnd) GetChildren() []*FilterExpr {
@@ -912,7 +912,7 @@ type FilterOr struct {
 
 func (x *FilterOr) Reset() {
 	*x = FilterOr{}
-	mi := &file_proto_search_service_proto_msgTypes[13]
+	mi := &file_search_service_proto_msgTypes[13]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -924,7 +924,7 @@ func (x *FilterOr) String() string {
 func (*FilterOr) ProtoMessage() {}
 
 func (x *FilterOr) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_search_service_proto_msgTypes[13]
+	mi := &file_search_service_proto_msgTypes[13]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -937,7 +937,7 @@ func (x *FilterOr) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use FilterOr.ProtoReflect.Descriptor instead.
 func (*FilterOr) Descriptor() ([]byte, []int) {
-	return file_proto_search_service_proto_rawDescGZIP(), []int{13}
+	return file_search_service_proto_rawDescGZIP(), []int{13}
 }
 
 func (x *FilterOr) GetChildren() []*FilterExpr {
@@ -956,7 +956,7 @@ type FilterNot struct {
 
 func (x *FilterNot) Reset() {
 	*x = FilterNot{}
-	mi := &file_proto_search_service_proto_msgTypes[14]
+	mi := &file_search_service_proto_msgTypes[14]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -968,7 +968,7 @@ func (x *FilterNot) String() string {
 func (*FilterNot) ProtoMessage() {}
 
 func (x *FilterNot) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_search_service_proto_msgTypes[14]
+	mi := &file_search_service_proto_msgTypes[14]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -981,7 +981,7 @@ func (x *FilterNot) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use FilterNot.ProtoReflect.Descriptor instead.
 func (*FilterNot) Descriptor() ([]byte, []int) {
-	return file_proto_search_service_proto_rawDescGZIP(), []int{14}
+	return file_search_service_proto_rawDescGZIP(), []int{14}
 }
 
 func (x *FilterNot) GetChild() *FilterExpr {
@@ -1002,7 +1002,7 @@ type FilterPredicate struct {
 
 func (x *FilterPredicate) Reset() {
 	*x = FilterPredicate{}
-	mi := &file_proto_search_service_proto_msgTypes[15]
+	mi := &file_search_service_proto_msgTypes[15]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1014,7 +1014,7 @@ func (x *FilterPredicate) String() string {
 func (*FilterPredicate) ProtoMessage() {}
 
 func (x *FilterPredicate) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_search_service_proto_msgTypes[15]
+	mi := &file_search_service_proto_msgTypes[15]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1027,7 +1027,7 @@ func (x *FilterPredicate) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use FilterPredicate.ProtoReflect.Descriptor instead.
 func (*FilterPredicate) Descriptor() ([]byte, []int) {
-	return file_proto_search_service_proto_rawDescGZIP(), []int{15}
+	return file_search_service_proto_rawDescGZIP(), []int{15}
 }
 
 func (x *FilterPredicate) GetField() string {
@@ -1069,7 +1069,7 @@ type FilterValue struct {
 
 func (x *FilterValue) Reset() {
 	*x = FilterValue{}
-	mi := &file_proto_search_service_proto_msgTypes[16]
+	mi := &file_search_service_proto_msgTypes[16]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1081,7 +1081,7 @@ func (x *FilterValue) String() string {
 func (*FilterValue) ProtoMessage() {}
 
 func (x *FilterValue) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_search_service_proto_msgTypes[16]
+	mi := &file_search_service_proto_msgTypes[16]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1094,7 +1094,7 @@ func (x *FilterValue) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use FilterValue.ProtoReflect.Descriptor instead.
 func (*FilterValue) Descriptor() ([]byte, []int) {
-	return file_proto_search_service_proto_rawDescGZIP(), []int{16}
+	return file_search_service_proto_rawDescGZIP(), []int{16}
 }
 
 func (x *FilterValue) GetKind() isFilterValue_Kind {
@@ -1221,7 +1221,7 @@ type GetDomainConfigRequest struct {
 
 func (x *GetDomainConfigRequest) Reset() {
 	*x = GetDomainConfigRequest{}
-	mi := &file_proto_search_service_proto_msgTypes[17]
+	mi := &file_search_service_proto_msgTypes[17]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1233,7 +1233,7 @@ func (x *GetDomainConfigRequest) String() string {
 func (*GetDomainConfigRequest) ProtoMessage() {}
 
 func (x *GetDomainConfigRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_search_service_proto_msgTypes[17]
+	mi := &file_search_service_proto_msgTypes[17]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1246,7 +1246,7 @@ func (x *GetDomainConfigRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetDomainConfigRequest.ProtoReflect.Descriptor instead.
 func (*GetDomainConfigRequest) Descriptor() ([]byte, []int) {
-	return file_proto_search_service_proto_rawDescGZIP(), []int{17}
+	return file_search_service_proto_rawDescGZIP(), []int{17}
 }
 
 type GetDomainConfigResponse struct {
@@ -1262,7 +1262,7 @@ type GetDomainConfigResponse struct {
 
 func (x *GetDomainConfigResponse) Reset() {
 	*x = GetDomainConfigResponse{}
-	mi := &file_proto_search_service_proto_msgTypes[18]
+	mi := &file_search_service_proto_msgTypes[18]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1274,7 +1274,7 @@ func (x *GetDomainConfigResponse) String() string {
 func (*GetDomainConfigResponse) ProtoMessage() {}
 
 func (x *GetDomainConfigResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_search_service_proto_msgTypes[18]
+	mi := &file_search_service_proto_msgTypes[18]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1287,7 +1287,7 @@ func (x *GetDomainConfigResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetDomainConfigResponse.ProtoReflect.Descriptor instead.
 func (*GetDomainConfigResponse) Descriptor() ([]byte, []int) {
-	return file_proto_search_service_proto_rawDescGZIP(), []int{18}
+	return file_search_service_proto_rawDescGZIP(), []int{18}
 }
 
 func (x *GetDomainConfigResponse) GetSource() string {
@@ -1325,11 +1325,11 @@ func (x *GetDomainConfigResponse) GetConfigJson() string {
 	return ""
 }
 
-var File_proto_search_service_proto protoreflect.FileDescriptor
+var File_search_service_proto protoreflect.FileDescriptor
 
-const file_proto_search_service_proto_rawDesc = "" +
+const file_search_service_proto_rawDesc = "" +
 	"\n" +
-	"\x1aproto/search_service.proto\x12\rsearchservice\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x1cgoogle/protobuf/struct.proto\x1a\x1egoogle/protobuf/wrappers.proto\"Q\n" +
+	"\x14search_service.proto\x12\rsearchservice\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x1cgoogle/protobuf/struct.proto\x1a\x1egoogle/protobuf/wrappers.proto\"Q\n" +
 	"\x1cGetObjectRevisionByIdRequest\x12!\n" +
 	"\fobject_class\x18\x01 \x01(\tR\vobjectClass\x12\x0e\n" +
 	"\x02id\x18\x02 \x01(\x03R\x02id\"Q\n" +
@@ -1430,23 +1430,23 @@ const file_proto_search_service_proto_rawDesc = "" +
 	"\x1dGetObjectCollectionByParentId\x123.searchservice.GetObjectCollectionByParentIdRequest\x1a4.searchservice.GetObjectCollectionByParentIdResponse\x12{\n" +
 	"\x18GetObjectGlobalIdByAltId\x12..searchservice.GetObjectGlobalIdByAltIdRequest\x1a/.searchservice.GetObjectGlobalIdByAltIdResponse\x12\x84\x01\n" +
 	"\x1bGetObjectCollectionByFilter\x121.searchservice.GetObjectCollectionByFilterRequest\x1a2.searchservice.GetObjectCollectionByFilterResponse\x12`\n" +
-	"\x0fGetDomainConfig\x12%.searchservice.GetDomainConfigRequest\x1a&.searchservice.GetDomainConfigResponseB8Z6github.com/quantara/search-service/proto;searchserviceb\x06proto3"
+	"\x0fGetDomainConfig\x12%.searchservice.GetDomainConfigRequest\x1a&.searchservice.GetDomainConfigResponseB:Z8github.com/quantara/object-framework/proto/searchserviceb\x06proto3"
 
 var (
-	file_proto_search_service_proto_rawDescOnce sync.Once
-	file_proto_search_service_proto_rawDescData []byte
+	file_search_service_proto_rawDescOnce sync.Once
+	file_search_service_proto_rawDescData []byte
 )
 
-func file_proto_search_service_proto_rawDescGZIP() []byte {
-	file_proto_search_service_proto_rawDescOnce.Do(func() {
-		file_proto_search_service_proto_rawDescData = protoimpl.X.CompressGZIP(unsafe.Slice(unsafe.StringData(file_proto_search_service_proto_rawDesc), len(file_proto_search_service_proto_rawDesc)))
+func file_search_service_proto_rawDescGZIP() []byte {
+	file_search_service_proto_rawDescOnce.Do(func() {
+		file_search_service_proto_rawDescData = protoimpl.X.CompressGZIP(unsafe.Slice(unsafe.StringData(file_search_service_proto_rawDesc), len(file_search_service_proto_rawDesc)))
 	})
-	return file_proto_search_service_proto_rawDescData
+	return file_search_service_proto_rawDescData
 }
 
-var file_proto_search_service_proto_enumTypes = make([]protoimpl.EnumInfo, 2)
-var file_proto_search_service_proto_msgTypes = make([]protoimpl.MessageInfo, 19)
-var file_proto_search_service_proto_goTypes = []any{
+var file_search_service_proto_enumTypes = make([]protoimpl.EnumInfo, 2)
+var file_search_service_proto_msgTypes = make([]protoimpl.MessageInfo, 19)
+var file_search_service_proto_goTypes = []any{
 	(SortDirection)(0),                            // 0: searchservice.SortDirection
 	(FilterOperator)(0),                           // 1: searchservice.FilterOperator
 	(*GetObjectRevisionByIdRequest)(nil),          // 2: searchservice.GetObjectRevisionByIdRequest
@@ -1472,7 +1472,7 @@ var file_proto_search_service_proto_goTypes = []any{
 	(*wrapperspb.Int32Value)(nil),                 // 22: google.protobuf.Int32Value
 	(*timestamppb.Timestamp)(nil),                 // 23: google.protobuf.Timestamp
 }
-var file_proto_search_service_proto_depIdxs = []int32{
+var file_search_service_proto_depIdxs = []int32{
 	21, // 0: searchservice.GetObjectRevisionByIdResponse.content:type_name -> google.protobuf.Value
 	21, // 1: searchservice.GetObjectByGlobalIdResponse.content:type_name -> google.protobuf.Value
 	21, // 2: searchservice.GetObjectCollectionByParentIdResponse.contents:type_name -> google.protobuf.Value
@@ -1511,18 +1511,18 @@ var file_proto_search_service_proto_depIdxs = []int32{
 	0,  // [0:19] is the sub-list for field type_name
 }
 
-func init() { file_proto_search_service_proto_init() }
-func file_proto_search_service_proto_init() {
-	if File_proto_search_service_proto != nil {
+func init() { file_search_service_proto_init() }
+func file_search_service_proto_init() {
+	if File_search_service_proto != nil {
 		return
 	}
-	file_proto_search_service_proto_msgTypes[11].OneofWrappers = []any{
+	file_search_service_proto_msgTypes[11].OneofWrappers = []any{
 		(*FilterExpr_And)(nil),
 		(*FilterExpr_Or)(nil),
 		(*FilterExpr_Not)(nil),
 		(*FilterExpr_Predicate)(nil),
 	}
-	file_proto_search_service_proto_msgTypes[16].OneofWrappers = []any{
+	file_search_service_proto_msgTypes[16].OneofWrappers = []any{
 		(*FilterValue_StringValue)(nil),
 		(*FilterValue_Int64Value)(nil),
 		(*FilterValue_Int32Value)(nil),
@@ -1535,18 +1535,18 @@ func file_proto_search_service_proto_init() {
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
-			RawDescriptor: unsafe.Slice(unsafe.StringData(file_proto_search_service_proto_rawDesc), len(file_proto_search_service_proto_rawDesc)),
+			RawDescriptor: unsafe.Slice(unsafe.StringData(file_search_service_proto_rawDesc), len(file_search_service_proto_rawDesc)),
 			NumEnums:      2,
 			NumMessages:   19,
 			NumExtensions: 0,
 			NumServices:   1,
 		},
-		GoTypes:           file_proto_search_service_proto_goTypes,
-		DependencyIndexes: file_proto_search_service_proto_depIdxs,
-		EnumInfos:         file_proto_search_service_proto_enumTypes,
-		MessageInfos:      file_proto_search_service_proto_msgTypes,
+		GoTypes:           file_search_service_proto_goTypes,
+		DependencyIndexes: file_search_service_proto_depIdxs,
+		EnumInfos:         file_search_service_proto_enumTypes,
+		MessageInfos:      file_search_service_proto_msgTypes,
 	}.Build()
-	File_proto_search_service_proto = out.File
-	file_proto_search_service_proto_goTypes = nil
-	file_proto_search_service_proto_depIdxs = nil
+	File_search_service_proto = out.File
+	file_search_service_proto_goTypes = nil
+	file_search_service_proto_depIdxs = nil
 }

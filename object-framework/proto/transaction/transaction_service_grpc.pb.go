@@ -2,9 +2,9 @@
 // versions:
 // - protoc-gen-go-grpc v1.6.1
 // - protoc             v7.34.1
-// source: proto/transaction_service.proto
+// source: transaction_service.proto
 
-package proto
+package transaction
 
 import (
 	context "context"
@@ -30,15 +30,10 @@ const (
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type TransactionServiceClient interface {
-	// Begin a new transaction, returns transaction_id
 	BeginTransaction(ctx context.Context, in *BeginTxRequest, opts ...grpc.CallOption) (*BeginTxResponse, error)
-	// Save an object to the transaction (staged in Redis)
 	Save(ctx context.Context, in *SaveRequest, opts ...grpc.CallOption) (*SaveResponse, error)
-	// Save multiple objects via streaming
 	SaveStream(ctx context.Context, opts ...grpc.CallOption) (grpc.BidiStreamingClient[SaveRequest, SaveResponse], error)
-	// Commit the transaction (write all staged objects to DB)
 	Commit(ctx context.Context, in *CommitRequest, opts ...grpc.CallOption) (*CommitResponse, error)
-	// Rollback the transaction (clear staged objects)
 	Rollback(ctx context.Context, in *RollbackRequest, opts ...grpc.CallOption) (*RollbackResponse, error)
 }
 
@@ -107,15 +102,10 @@ func (c *transactionServiceClient) Rollback(ctx context.Context, in *RollbackReq
 // All implementations must embed UnimplementedTransactionServiceServer
 // for forward compatibility.
 type TransactionServiceServer interface {
-	// Begin a new transaction, returns transaction_id
 	BeginTransaction(context.Context, *BeginTxRequest) (*BeginTxResponse, error)
-	// Save an object to the transaction (staged in Redis)
 	Save(context.Context, *SaveRequest) (*SaveResponse, error)
-	// Save multiple objects via streaming
 	SaveStream(grpc.BidiStreamingServer[SaveRequest, SaveResponse]) error
-	// Commit the transaction (write all staged objects to DB)
 	Commit(context.Context, *CommitRequest) (*CommitResponse, error)
-	// Rollback the transaction (clear staged objects)
 	Rollback(context.Context, *RollbackRequest) (*RollbackResponse, error)
 	mustEmbedUnimplementedTransactionServiceServer()
 }
@@ -274,5 +264,5 @@ var TransactionService_ServiceDesc = grpc.ServiceDesc{
 			ClientStreams: true,
 		},
 	},
-	Metadata: "proto/transaction_service.proto",
+	Metadata: "transaction_service.proto",
 }
