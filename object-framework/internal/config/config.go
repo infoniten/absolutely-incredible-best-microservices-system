@@ -37,6 +37,9 @@ type Config struct {
 	// ID Pool settings
 	IDPoolBatchSize       int32 // Number of IDs to prefetch in one batch
 	IDPoolRefillThreshold int   // Refill pool when size drops below this
+
+	// Lock retry settings
+	LockRetryIntervalMs int64 // Fixed interval between lock retry attempts (infinite retry)
 }
 
 func Load() *Config {
@@ -70,6 +73,9 @@ func Load() *Config {
 		// ID Pool settings
 		IDPoolBatchSize:       int32(getEnvAsInt64("ID_POOL_BATCH_SIZE", 2000)),
 		IDPoolRefillThreshold: int(getEnvAsInt64("ID_POOL_REFILL_THRESHOLD", 500)),
+
+		// Lock retry settings
+		LockRetryIntervalMs: getEnvAsInt64("LOCK_RETRY_INTERVAL_MS", 100), // 100ms default
 	}
 }
 

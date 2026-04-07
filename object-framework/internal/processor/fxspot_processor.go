@@ -26,14 +26,15 @@ type GlobalIDProvider interface {
 
 // FxSpotProcessor handles the business logic for FX Spot trade processing
 type FxSpotProcessor struct {
-	rawMsgRepo       *repository.RawMessageRepository
-	globalIDRepo     *repository.GlobalIDMappingRepository
-	idProvider       IDProvider
-	globalIDProvider GlobalIDProvider
-	lockClient       *client.LockClient
-	searchClient     *client.SearchClient
-	txClient         *client.TransactionClient
-	lockTTLMs        int64
+	rawMsgRepo        *repository.RawMessageRepository
+	globalIDRepo      *repository.GlobalIDMappingRepository
+	idProvider        IDProvider
+	globalIDProvider  GlobalIDProvider
+	lockClient        *client.LockClient
+	searchClient      *client.SearchClient
+	txClient          *client.TransactionClient
+	lockTTLMs         int64
+	lockRetryInterval time.Duration
 }
 
 // NewFxSpotProcessor creates a new FxSpotProcessor
@@ -46,16 +47,18 @@ func NewFxSpotProcessor(
 	searchClient *client.SearchClient,
 	txClient *client.TransactionClient,
 	lockTTLMs int64,
+	lockRetryIntervalMs int64,
 ) *FxSpotProcessor {
 	return &FxSpotProcessor{
-		rawMsgRepo:       rawMsgRepo,
-		globalIDRepo:     globalIDRepo,
-		idProvider:       idProvider,
-		globalIDProvider: globalIDProvider,
-		lockClient:       lockClient,
-		searchClient:     searchClient,
-		txClient:         txClient,
-		lockTTLMs:        lockTTLMs,
+		rawMsgRepo:        rawMsgRepo,
+		globalIDRepo:      globalIDRepo,
+		idProvider:        idProvider,
+		globalIDProvider:  globalIDProvider,
+		lockClient:        lockClient,
+		searchClient:      searchClient,
+		txClient:          txClient,
+		lockTTLMs:         lockTTLMs,
+		lockRetryInterval: time.Duration(lockRetryIntervalMs) * time.Millisecond,
 	}
 }
 
@@ -121,36 +124,50 @@ func (p *FxSpotProcessor) Process(ctx context.Context, rawMsg *domain.RawMessage
 
 	result.GlobalID = productGlobalID
 
-	// Step 3: Acquire lock with retry
+	// Step 3: Acquire lock with infinite retry (messages are ordered by trade in partition)
 	var lockToken string
-	maxRetries := 5
-	baseBackoff := 10 * time.Millisecond
+	attempt := 0
+	startTime := time.Now()
 
-	for attempt := 0; attempt < maxRetries; attempt++ {
+	for {
+		// Check context cancellation (for graceful shutdown)
+		select {
+		case <-ctx.Done():
+			result.Error = fmt.Errorf("context cancelled while waiting for lock: %w", ctx.Err())
+			p.updateRawMessageStatus(ctx, rawMsg.ID, domain.RawMessageStatusFailed, result.Error.Error())
+			return result
+		default:
+		}
+
 		lockResult, err := p.lockClient.LockWithTTL(ctx, productGlobalID, p.lockTTLMs)
 		if err != nil {
-			// Check if it's a transient error (contention)
-			if attempt < maxRetries-1 {
-				backoff := baseBackoff * time.Duration(1<<attempt) // exponential backoff: 10ms, 20ms, 40ms, 80ms, 160ms
-				time.Sleep(backoff)
-				continue
+			// Log and retry - we must not lose the message
+			attempt++
+			if attempt%100 == 0 {
+				log.Printf("Warning: lock acquisition error for globalID=%d, tradeNo=%s, attempt=%d, elapsed=%v: %v",
+					productGlobalID, tradeNo, attempt, time.Since(startTime), err)
 			}
-			result.Error = fmt.Errorf("failed to acquire lock after %d attempts: %w", maxRetries, err)
-			p.updateRawMessageStatus(ctx, rawMsg.ID, domain.RawMessageStatusFailed, result.Error.Error())
-			return result
+			time.Sleep(p.lockRetryInterval)
+			continue
 		}
+
 		if !lockResult.Success {
-			// Lock held by another process - retry with backoff
-			if attempt < maxRetries-1 {
-				backoff := baseBackoff * time.Duration(1<<attempt)
-				time.Sleep(backoff)
-				continue
+			// Lock held by another process - wait and retry
+			attempt++
+			if attempt%100 == 0 {
+				log.Printf("Waiting for lock: globalID=%d, tradeNo=%s, attempt=%d, elapsed=%v, holder=%s",
+					productGlobalID, tradeNo, attempt, time.Since(startTime), lockResult.Error)
 			}
-			result.Error = fmt.Errorf("lock not acquired after %d attempts: %s", maxRetries, lockResult.Error)
-			p.updateRawMessageStatus(ctx, rawMsg.ID, domain.RawMessageStatusFailed, result.Error.Error())
-			return result
+			time.Sleep(p.lockRetryInterval)
+			continue
 		}
+
+		// Lock acquired successfully
 		lockToken = lockResult.Token
+		if attempt > 0 {
+			log.Printf("Lock acquired after waiting: globalID=%d, tradeNo=%s, attempts=%d, elapsed=%v",
+				productGlobalID, tradeNo, attempt, time.Since(startTime))
+		}
 		break
 	}
 

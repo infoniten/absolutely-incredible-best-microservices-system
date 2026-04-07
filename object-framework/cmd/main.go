@@ -137,8 +137,10 @@ func main() {
 		searchClient,
 		txClient,
 		cfg.LockTTLMs,
+		cfg.LockRetryIntervalMs,
 	)
-	log.Println("FxSpot processor initialized with ID pools")
+	log.Printf("FxSpot processor initialized: ID pools, lock TTL=%dms, lock retry interval=%dms",
+		cfg.LockTTLMs, cfg.LockRetryIntervalMs)
 
 	// Initialize Kafka consumer with worker pool (using ID pool for raw message IDs)
 	consumer := kafka.NewConsumer(
