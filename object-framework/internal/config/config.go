@@ -33,6 +33,10 @@ type Config struct {
 	// Processing
 	LockTTLMs   int64
 	WorkerCount int // Number of parallel workers for message processing
+
+	// ID Pool settings
+	IDPoolBatchSize       int32 // Number of IDs to prefetch in one batch
+	IDPoolRefillThreshold int   // Refill pool when size drops below this
 }
 
 func Load() *Config {
@@ -62,6 +66,10 @@ func Load() *Config {
 		// Processing
 		LockTTLMs:   getEnvAsInt64("LOCK_TTL_MS", 30000),
 		WorkerCount: int(getEnvAsInt64("WORKER_COUNT", 100)),
+
+		// ID Pool settings
+		IDPoolBatchSize:       int32(getEnvAsInt64("ID_POOL_BATCH_SIZE", 2000)),
+		IDPoolRefillThreshold: int(getEnvAsInt64("ID_POOL_REFILL_THRESHOLD", 500)),
 	}
 }
 

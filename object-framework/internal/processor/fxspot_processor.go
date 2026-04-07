@@ -13,38 +13,49 @@ import (
 	"github.com/quantara/object-framework/internal/repository"
 )
 
+// IDProvider provides IDs (can be pool or direct client)
+type IDProvider interface {
+	GetID(ctx context.Context) (int64, error)
+	GetBatchID(ctx context.Context, count int) ([]int64, error)
+}
+
+// GlobalIDProvider provides GlobalIDs (can be pool or direct client)
+type GlobalIDProvider interface {
+	GetGlobalID(ctx context.Context) (int64, error)
+}
+
 // FxSpotProcessor handles the business logic for FX Spot trade processing
 type FxSpotProcessor struct {
-	rawMsgRepo     *repository.RawMessageRepository
-	globalIDRepo   *repository.GlobalIDMappingRepository
-	idClient       *client.IDClient
-	globalIDClient *client.GlobalIDClient
-	lockClient     *client.LockClient
-	searchClient   *client.SearchClient
-	txClient       *client.TransactionClient
-	lockTTLMs      int64
+	rawMsgRepo       *repository.RawMessageRepository
+	globalIDRepo     *repository.GlobalIDMappingRepository
+	idProvider       IDProvider
+	globalIDProvider GlobalIDProvider
+	lockClient       *client.LockClient
+	searchClient     *client.SearchClient
+	txClient         *client.TransactionClient
+	lockTTLMs        int64
 }
 
 // NewFxSpotProcessor creates a new FxSpotProcessor
 func NewFxSpotProcessor(
 	rawMsgRepo *repository.RawMessageRepository,
 	globalIDRepo *repository.GlobalIDMappingRepository,
-	idClient *client.IDClient,
-	globalIDClient *client.GlobalIDClient,
+	idProvider IDProvider,
+	globalIDProvider GlobalIDProvider,
 	lockClient *client.LockClient,
 	searchClient *client.SearchClient,
 	txClient *client.TransactionClient,
 	lockTTLMs int64,
 ) *FxSpotProcessor {
 	return &FxSpotProcessor{
-		rawMsgRepo:     rawMsgRepo,
-		globalIDRepo:   globalIDRepo,
-		idClient:       idClient,
-		globalIDClient: globalIDClient,
-		lockClient:     lockClient,
-		searchClient:   searchClient,
-		txClient:       txClient,
-		lockTTLMs:      lockTTLMs,
+		rawMsgRepo:       rawMsgRepo,
+		globalIDRepo:     globalIDRepo,
+		idProvider:       idProvider,
+		globalIDProvider: globalIDProvider,
+		lockClient:       lockClient,
+		searchClient:     searchClient,
+		txClient:         txClient,
+		lockTTLMs:        lockTTLMs,
 	}
 }
 
@@ -188,12 +199,12 @@ func (p *FxSpotProcessor) resolveGlobalID(ctx context.Context, tradeNo string, o
 
 	go func() {
 		defer wg.Done()
-		mappingID, idErr = p.idClient.GetID(ctx)
+		mappingID, idErr = p.idProvider.GetID(ctx)
 	}()
 
 	go func() {
 		defer wg.Done()
-		globalID, globalIDErr = p.globalIDClient.GetGlobalID(ctx)
+		globalID, globalIDErr = p.globalIDProvider.GetGlobalID(ctx)
 	}()
 
 	wg.Wait()
@@ -220,7 +231,7 @@ func (p *FxSpotProcessor) processBusinessLogicOptimized(ctx context.Context, moe
 
 	// Step 1: Batch ID generation - get all IDs we need in one call
 	// We need: productID, tradeID, 2 cashflowIDs = 4 IDs max
-	allIDs, err := p.idClient.GetBatchID(ctx, 4)
+	allIDs, err := p.idProvider.GetBatchID(ctx, 4)
 	if err != nil {
 		return fmt.Errorf("failed to get batch IDs: %w", err)
 	}

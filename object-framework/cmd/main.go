@@ -91,6 +91,21 @@ func main() {
 	defer globalIDClient.Close()
 	log.Printf("Connected to GlobalID Service at %s", cfg.GlobalIDServiceAddr)
 
+	// Initialize ID pools for high-throughput
+	idPool := client.NewIDPool(idClient, cfg.IDPoolBatchSize, cfg.IDPoolRefillThreshold)
+	if err := idPool.Prefill(ctx); err != nil {
+		log.Fatalf("Failed to prefill ID pool: %v", err)
+	}
+	log.Printf("ID pool initialized: size=%d, batch=%d, refill_threshold=%d",
+		idPool.Size(), cfg.IDPoolBatchSize, cfg.IDPoolRefillThreshold)
+
+	globalIDPool := client.NewGlobalIDPool(globalIDClient, cfg.IDPoolBatchSize, cfg.IDPoolRefillThreshold)
+	if err := globalIDPool.Prefill(ctx); err != nil {
+		log.Fatalf("Failed to prefill GlobalID pool: %v", err)
+	}
+	log.Printf("GlobalID pool initialized: size=%d, batch=%d, refill_threshold=%d",
+		globalIDPool.Size(), cfg.IDPoolBatchSize, cfg.IDPoolRefillThreshold)
+
 	lockClient, err := client.NewLockClient(cfg.LockServiceAddr)
 	if err != nil {
 		log.Fatalf("Failed to create Lock client: %v", err)
@@ -112,20 +127,20 @@ func main() {
 	defer txClient.Close()
 	log.Printf("Connected to Transaction Service at %s", cfg.TransactionServiceAddr)
 
-	// Initialize processor
+	// Initialize processor with ID pools for high throughput
 	proc := processor.NewFxSpotProcessor(
 		rawMsgRepo,
 		globalIDRepo,
-		idClient,
-		globalIDClient,
+		idPool,
+		globalIDPool,
 		lockClient,
 		searchClient,
 		txClient,
 		cfg.LockTTLMs,
 	)
-	log.Println("FxSpot processor initialized")
+	log.Println("FxSpot processor initialized with ID pools")
 
-	// Initialize Kafka consumer with worker pool
+	// Initialize Kafka consumer with worker pool (using ID pool for raw message IDs)
 	consumer := kafka.NewConsumer(
 		cfg.KafkaBrokers,
 		cfg.KafkaTopic,
@@ -133,7 +148,7 @@ func main() {
 		proc,
 		rawMsgRepo,
 		func(ctx context.Context) (int64, error) {
-			return idClient.GetID(ctx)
+			return idPool.GetID(ctx)
 		},
 		cfg.WorkerCount,
 	)
