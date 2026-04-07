@@ -74,7 +74,6 @@ type messageTask struct {
 
 // Start begins consuming messages with parallel workers
 func (c *Consumer) Start(ctx context.Context) error {
-	log.Printf("Starting Kafka consumer for topic: %s with %d workers", c.reader.Config().Topic, c.workerCount)
 
 	// Create worker pool
 	taskChan := make(chan messageTask, c.workerCount*4)
@@ -104,8 +103,6 @@ func (c *Consumer) Start(ctx context.Context) error {
 		fetcherCount = 1
 	}
 
-	log.Printf("Starting %d parallel fetchers", fetcherCount)
-
 	// Raw message channel for fetcher → preparer pipeline
 	rawMsgChan := make(chan kafka.Message, c.workerCount*2)
 
@@ -126,7 +123,6 @@ func (c *Consumer) Start(ctx context.Context) error {
 
 	// Wait for context cancellation
 	<-ctx.Done()
-	log.Println("Kafka consumer stopping...")
 
 	// Close fetchers first
 	fetcherWg.Wait()
@@ -208,14 +204,8 @@ func (c *Consumer) prepareMessage(ctx context.Context, msg kafka.Message) (*mess
 
 	// Check for duplicates
 	exists, err := c.rawMsgRepo.Exists(ctx, messageID)
-	if err != nil {
-		log.Printf("Warning: failed to check message existence: %v", err)
-	}
-	if exists {
-		log.Printf("Skipping duplicate message: %s", messageID)
-		if err := c.reader.CommitMessages(ctx, msg); err != nil {
-			log.Printf("Warning: failed to commit duplicate message: %v", err)
-		}
+	if err == nil && exists {
+		c.reader.CommitMessages(ctx, msg)
 		return nil, nil
 	}
 
@@ -332,9 +322,7 @@ func (c *Consumer) commitBatch(ctx context.Context, batch []kafka.Message) {
 	if len(batch) == 0 {
 		return
 	}
-	if err := c.reader.CommitMessages(ctx, batch...); err != nil {
-		log.Printf("Warning: failed to commit %d messages: %v", len(batch), err)
-	}
+	c.reader.CommitMessages(ctx, batch...)
 }
 
 // metricsReporter periodically logs metrics

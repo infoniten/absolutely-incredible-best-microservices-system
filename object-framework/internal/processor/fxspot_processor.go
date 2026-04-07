@@ -3,7 +3,6 @@ package processor
 import (
 	"context"
 	"fmt"
-	"log"
 	"sync"
 	"time"
 
@@ -126,8 +125,6 @@ func (p *FxSpotProcessor) Process(ctx context.Context, rawMsg *domain.RawMessage
 
 	// Step 3: Acquire lock with infinite retry (messages are ordered by trade in partition)
 	var lockToken string
-	attempt := 0
-	startTime := time.Now()
 
 	for {
 		// Check context cancellation (for graceful shutdown)
@@ -141,42 +138,21 @@ func (p *FxSpotProcessor) Process(ctx context.Context, rawMsg *domain.RawMessage
 
 		lockResult, err := p.lockClient.LockWithTTL(ctx, productGlobalID, p.lockTTLMs)
 		if err != nil {
-			// Log and retry - we must not lose the message
-			attempt++
-			if attempt%100 == 0 {
-				log.Printf("Warning: lock acquisition error for globalID=%d, tradeNo=%s, attempt=%d, elapsed=%v: %v",
-					productGlobalID, tradeNo, attempt, time.Since(startTime), err)
-			}
 			time.Sleep(p.lockRetryInterval)
 			continue
 		}
 
 		if !lockResult.Success {
-			// Lock held by another process - wait and retry
-			attempt++
-			if attempt%100 == 0 {
-				log.Printf("Waiting for lock: globalID=%d, tradeNo=%s, attempt=%d, elapsed=%v, holder=%s",
-					productGlobalID, tradeNo, attempt, time.Since(startTime), lockResult.Error)
-			}
 			time.Sleep(p.lockRetryInterval)
 			continue
 		}
 
-		// Lock acquired successfully
 		lockToken = lockResult.Token
-		if attempt > 0 {
-			log.Printf("Lock acquired after waiting: globalID=%d, tradeNo=%s, attempts=%d, elapsed=%v",
-				productGlobalID, tradeNo, attempt, time.Since(startTime))
-		}
 		break
 	}
 
 	// Ensure lock is released
-	defer func() {
-		if err := p.lockClient.Unlock(ctx, productGlobalID, lockToken); err != nil {
-			log.Printf("Warning: failed to release lock: %v", err)
-		}
-	}()
+	defer p.lockClient.Unlock(ctx, productGlobalID, lockToken)
 
 	// Step 4: Process business logic with optimizations
 	err = p.processBusinessLogicOptimized(ctx, moexRecord, productGlobalID, tradeGlobalID, isNewProduct, isNewTrade, lockToken)
@@ -187,9 +163,7 @@ func (p *FxSpotProcessor) Process(ctx context.Context, rawMsg *domain.RawMessage
 	}
 
 	// Step 5: Update raw message status to SAVED
-	if err := p.updateRawMessageStatus(ctx, rawMsg.ID, domain.RawMessageStatusSaved, ""); err != nil {
-		log.Printf("Warning: failed to update raw message status: %v", err)
-	}
+	p.updateRawMessageStatus(ctx, rawMsg.ID, domain.RawMessageStatusSaved, "")
 
 	result.Success = true
 	return result
@@ -360,9 +334,7 @@ func (p *FxSpotProcessor) saveWithStreaming(ctx context.Context, product *domain
 	committed := false
 	defer func() {
 		if !committed {
-			if rbErr := p.txClient.Rollback(ctx, txID); rbErr != nil {
-				log.Printf("Warning: failed to rollback transaction: %v", rbErr)
-			}
+			p.txClient.Rollback(ctx, txID)
 		}
 	}()
 
