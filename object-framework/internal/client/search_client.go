@@ -7,7 +7,9 @@ import (
 
 	pb "github.com/quantara/object-framework/proto/searchservice"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/structpb"
 )
 
@@ -125,4 +127,16 @@ func structValueToMap(v *structpb.Value) (map[string]interface{}, error) {
 	}
 
 	return result, nil
+}
+
+// IsNotFoundError checks if the error is a gRPC NotFound error
+func IsNotFoundError(err error) bool {
+	if err == nil {
+		return false
+	}
+	st, ok := status.FromError(err)
+	if !ok {
+		return false
+	}
+	return st.Code() == codes.NotFound
 }

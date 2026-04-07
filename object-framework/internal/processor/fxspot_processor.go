@@ -227,7 +227,7 @@ func (p *FxSpotProcessor) processBusinessLogicOptimized(ctx context.Context, moe
 
 	// Step 2: Search for existing product and trade IN PARALLEL (if needed)
 	var existingProduct, existingTrade map[string]interface{}
-	var searchErr error
+	var productSearchErr, tradeSearchErr error
 
 	if !isNewProduct || !isNewTrade {
 		var wg sync.WaitGroup
@@ -244,9 +244,12 @@ func (p *FxSpotProcessor) processBusinessLogicOptimized(ctx context.Context, moe
 					"CONFIRMED",
 					actualDate,
 				)
-				if err != nil {
-					searchErr = fmt.Errorf("failed to search for product: %w", err)
+				if err != nil && !client.IsNotFoundError(err) {
+					// Only set error if it's NOT a NotFound error
+					// NotFound is expected during initial load (race condition)
+					productSearchErr = fmt.Errorf("failed to search for product: %w", err)
 				}
+				// If NotFound - existingProduct stays nil, treat as new
 			}()
 		}
 
@@ -262,16 +265,22 @@ func (p *FxSpotProcessor) processBusinessLogicOptimized(ctx context.Context, moe
 					"CONFIRMED",
 					actualDate,
 				)
-				if err != nil {
-					searchErr = fmt.Errorf("failed to search for trade: %w", err)
+				if err != nil && !client.IsNotFoundError(err) {
+					// Only set error if it's NOT a NotFound error
+					// NotFound is expected during initial load (race condition)
+					tradeSearchErr = fmt.Errorf("failed to search for trade: %w", err)
 				}
+				// If NotFound - existingTrade stays nil, treat as new
 			}()
 		}
 
 		wg.Wait()
 
-		if searchErr != nil {
-			return searchErr
+		if productSearchErr != nil {
+			return productSearchErr
+		}
+		if tradeSearchErr != nil {
+			return tradeSearchErr
 		}
 	}
 
