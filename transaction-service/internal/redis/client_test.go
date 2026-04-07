@@ -18,7 +18,7 @@ func setupTestRedis(t *testing.T) (*Client, *miniredis.Miniredis) {
 		t.Fatalf("failed to start miniredis: %v", err)
 	}
 
-	client, err := NewClient("redis://"+mr.Addr(), nil, 3600)
+	client, err := NewClient("redis://"+mr.Addr(), nil, "", "", 3600)
 	if err != nil {
 		mr.Close()
 		t.Fatalf("failed to create client: %v", err)
@@ -39,7 +39,7 @@ func TestNewClient_Standalone(t *testing.T) {
 	}
 	defer mr.Close()
 
-	client, err := NewClient("redis://"+mr.Addr(), nil, 3600)
+	client, err := NewClient("redis://"+mr.Addr(), nil, "", "", 3600)
 	if err != nil {
 		t.Fatalf("NewClient failed: %v", err)
 	}
@@ -51,7 +51,7 @@ func TestNewClient_Standalone(t *testing.T) {
 }
 
 func TestNewClient_InvalidURL(t *testing.T) {
-	_, err := NewClient("invalid-url", nil, 3600)
+	_, err := NewClient("invalid-url", nil, "", "", 3600)
 	if err == nil {
 		t.Error("expected error for invalid URL")
 	}
@@ -455,7 +455,7 @@ func TestTxStatus_Constants(t *testing.T) {
 func TestNewClient_Cluster(t *testing.T) {
 	// This test just verifies the cluster client is created
 	// We can't easily test actual cluster functionality without a real cluster
-	client, err := NewClient("", []string{"localhost:7000", "localhost:7001"}, 3600)
+	client, err := NewClient("", []string{"localhost:7000", "localhost:7001"}, "", "", 3600)
 	if err != nil {
 		t.Fatalf("NewClient cluster mode failed: %v", err)
 	}
@@ -471,7 +471,7 @@ func BenchmarkClient_AddObject(b *testing.B) {
 	mr, _ := miniredis.Run()
 	defer mr.Close()
 
-	client, _ := NewClient("redis://"+mr.Addr(), nil, 3600)
+	client, _ := NewClient("redis://"+mr.Addr(), nil, "", "", 3600)
 	defer client.Close()
 
 	ctx := context.Background()
@@ -493,7 +493,7 @@ func BenchmarkClient_GetObjects(b *testing.B) {
 	mr, _ := miniredis.Run()
 	defer mr.Close()
 
-	client, _ := NewClient("redis://"+mr.Addr(), nil, 3600)
+	client, _ := NewClient("redis://"+mr.Addr(), nil, "", "", 3600)
 	defer client.Close()
 
 	ctx := context.Background()

@@ -3,6 +3,7 @@ package config
 import (
 	"os"
 	"strconv"
+	"strings"
 )
 
 type Config struct {
@@ -10,6 +11,9 @@ type Config struct {
 	DatabaseURL            string
 	DatabaseSchema         string
 	RedisURL               string
+	RedisClusterNodes      []string
+	RedisUsername          string
+	RedisPassword          string
 	DataDictionaryURL      string
 	DomainConfigURL        string
 	DomainConfigLocalFile  string
@@ -25,6 +29,9 @@ func Load() *Config {
 		DatabaseURL:            getEnv("DATABASE_URL", "postgres://postgres:postgres@localhost:5432/quantara?sslmode=disable"),
 		DatabaseSchema:         getEnv("DB_SCHEMA", "murex"),
 		RedisURL:               getEnv("REDIS_URL", "redis://localhost:6379/0"),
+		RedisClusterNodes:      getEnvSlice("REDIS_CLUSTER_NODES", nil),
+		RedisUsername:          getEnv("REDIS_USERNAME", ""),
+		RedisPassword:          getEnv("REDIS_PASSWORD", ""),
 		DataDictionaryURL:      getEnv("DATADICTIONARY_URL", ""),
 		DomainConfigURL:        resolveDomainConfigURL(),
 		DomainConfigLocalFile:  getEnv("DOMAIN_CONFIG_LOCAL_FILE", "domain-config.json"),
@@ -79,6 +86,13 @@ func getEnvInt(key string, defaultValue int) int {
 		if intValue, err := strconv.Atoi(value); err == nil {
 			return intValue
 		}
+	}
+	return defaultValue
+}
+
+func getEnvSlice(key string, defaultValue []string) []string {
+	if value := os.Getenv(key); value != "" {
+		return strings.Split(value, ",")
 	}
 	return defaultValue
 }

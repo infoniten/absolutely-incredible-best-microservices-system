@@ -56,7 +56,7 @@ func TestIntegration_FullTransactionFlow(t *testing.T) {
 	defer db.Close()
 
 	// Create Redis client
-	redisClient, err := redisclient.NewClient("redis://"+mr.Addr(), nil, 3600)
+	redisClient, err := redisclient.NewClient("redis://"+mr.Addr(), nil, "", "", 3600)
 	if err != nil {
 		t.Fatalf("failed to create redis client: %v", err)
 	}
@@ -272,7 +272,7 @@ func TestIntegration_InvalidTransactionOperations(t *testing.T) {
 	mr, _ := miniredis.Run()
 	defer mr.Close()
 
-	redisClient, _ := redisclient.NewClient("redis://"+mr.Addr(), nil, 3600)
+	redisClient, _ := redisclient.NewClient("redis://"+mr.Addr(), nil, "", "", 3600)
 	defer redisClient.Close()
 
 	cfg := &config.Config{CommitChunkSize: 100}
@@ -337,7 +337,7 @@ func TestIntegration_MultipleObjectTypes(t *testing.T) {
 	mr, _ := miniredis.Run()
 	defer mr.Close()
 
-	redisClient, _ := redisclient.NewClient("redis://"+mr.Addr(), nil, 3600)
+	redisClient, _ := redisclient.NewClient("redis://"+mr.Addr(), nil, "", "", 3600)
 	defer redisClient.Close()
 
 	metamodelCache := metamodel.NewCache(ddServer.URL)
@@ -401,7 +401,7 @@ func TestIntegration_LargeTransaction(t *testing.T) {
 	mr, _ := miniredis.Run()
 	defer mr.Close()
 
-	redisClient, _ := redisclient.NewClient("redis://"+mr.Addr(), nil, 3600)
+	redisClient, _ := redisclient.NewClient("redis://"+mr.Addr(), nil, "", "", 3600)
 	defer redisClient.Close()
 
 	metamodelCache := metamodel.NewCache(ddServer.URL)
@@ -460,7 +460,7 @@ func setupTestServer(t *testing.T) (*Server, *sql.DB, sqlmock.Sqlmock, func()) {
 	}))
 
 	mr, _ := miniredis.Run()
-	redisClient, _ := redisclient.NewClient("redis://"+mr.Addr(), nil, 3600)
+	redisClient, _ := redisclient.NewClient("redis://"+mr.Addr(), nil, "", "", 3600)
 	metamodelCache := metamodel.NewCache(ddServer.URL)
 	metamodelCache.Load(context.Background())
 

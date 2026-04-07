@@ -82,19 +82,36 @@ func main() {
 	log.Printf("connected to database (pool: max=%d, idle=%d)", cfg.MaxDBConnections, cfg.MaxDBConnections/2)
 
 	var redisClient redis.UniversalClient
-	redisOptions, err := redis.ParseURL(cfg.RedisURL)
-	if err != nil {
-		log.Fatalf("failed to parse REDIS_URL: %v", err)
-	}
-
-	client := redis.NewClient(redisOptions)
-	if err := client.Ping(ctx).Err(); err != nil {
-		log.Printf("redis is unavailable, caching disabled: %v", err)
-		_ = client.Close()
+	if len(cfg.RedisClusterNodes) > 0 {
+		// Cluster mode
+		client := redis.NewClusterClient(&redis.ClusterOptions{
+			Addrs:    cfg.RedisClusterNodes,
+			Username: cfg.RedisUsername,
+			Password: cfg.RedisPassword,
+		})
+		if err := client.Ping(ctx).Err(); err != nil {
+			log.Printf("redis cluster is unavailable, caching disabled: %v", err)
+			_ = client.Close()
+		} else {
+			log.Printf("connected to redis cluster (%d nodes)", len(cfg.RedisClusterNodes))
+			redisClient = client
+			defer redisClient.Close()
+		}
 	} else {
-		log.Println("connected to redis")
-		redisClient = client
-		defer redisClient.Close()
+		// Standalone mode
+		redisOptions, err := redis.ParseURL(cfg.RedisURL)
+		if err != nil {
+			log.Fatalf("failed to parse REDIS_URL: %v", err)
+		}
+		client := redis.NewClient(redisOptions)
+		if err := client.Ping(ctx).Err(); err != nil {
+			log.Printf("redis is unavailable, caching disabled: %v", err)
+			_ = client.Close()
+		} else {
+			log.Println("connected to redis")
+			redisClient = client
+			defer redisClient.Close()
+		}
 	}
 
 	searchRepository := repository.NewSearchRepository(db, cfg.DatabaseSchema)

@@ -38,13 +38,15 @@ type Client struct {
 }
 
 // NewClient creates a new Redis client
-func NewClient(redisURL string, clusterNodes []string, ttlSeconds int) (*Client, error) {
+func NewClient(redisURL string, clusterNodes []string, username, password string, ttlSeconds int) (*Client, error) {
 	var rdb redis.UniversalClient
 
 	if len(clusterNodes) > 0 {
 		// Cluster mode
 		rdb = redis.NewClusterClient(&redis.ClusterOptions{
-			Addrs: clusterNodes,
+			Addrs:    clusterNodes,
+			Username: username,
+			Password: password,
 		})
 	} else {
 		// Standalone mode

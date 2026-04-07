@@ -12,6 +12,8 @@ type Config struct {
 	DatabaseURL       string
 	RedisURL          string
 	RedisClusterNodes []string
+	RedisUsername     string
+	RedisPassword     string
 	DataDictionaryURL string
 	JaegerEndpoint    string
 	ServiceName       string
@@ -27,6 +29,8 @@ func Load() *Config {
 		DatabaseURL:       getEnv("DATABASE_URL", "postgres://postgres:postgres@localhost:5432/quantara?sslmode=disable"),
 		RedisURL:          getEnv("REDIS_URL", "redis://localhost:6379/0"),
 		RedisClusterNodes: getEnvSlice("REDIS_CLUSTER_NODES", nil),
+		RedisUsername:     getEnv("REDIS_USERNAME", ""),
+		RedisPassword:     getEnv("REDIS_PASSWORD", ""),
 		DataDictionaryURL: getEnv("DATADICTIONARY_URL", "http://localhost:8083"),
 		JaegerEndpoint:    getEnv("JAEGER_ENDPOINT", "localhost:4318"),
 		ServiceName:       getEnv("SERVICE_NAME", "transaction-service"),

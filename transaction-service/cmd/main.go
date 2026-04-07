@@ -64,7 +64,7 @@ func main() {
 	log.Println("Connected to PostgreSQL")
 
 	// Connect to Redis
-	redisClient, err := redis.NewClient(cfg.RedisURL, cfg.RedisClusterNodes, cfg.TxTTLSeconds)
+	redisClient, err := redis.NewClient(cfg.RedisURL, cfg.RedisClusterNodes, cfg.RedisUsername, cfg.RedisPassword, cfg.TxTTLSeconds)
 	if err != nil {
 		log.Fatalf("Failed to create Redis client: %v", err)
 	}
