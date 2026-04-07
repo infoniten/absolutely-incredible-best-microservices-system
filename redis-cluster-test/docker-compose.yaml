@@ -1,0 +1,93 @@
+version: '3.8'
+
+services:
+  redis-node-1:
+    image: redis:7-alpine
+    command: >
+      redis-server
+      --port 6379
+      --cluster-enabled yes
+      --cluster-config-file nodes.conf
+      --cluster-node-timeout 5000
+      --appendonly yes
+      --requirepass testpass123
+      --masterauth testpass123
+    ports:
+      - "6381:6379"
+    volumes:
+      - redis-node-1-data:/data
+    networks:
+      redis-cluster:
+        ipv4_address: 172.30.0.11
+
+  redis-node-2:
+    image: redis:7-alpine
+    command: >
+      redis-server
+      --port 6379
+      --cluster-enabled yes
+      --cluster-config-file nodes.conf
+      --cluster-node-timeout 5000
+      --appendonly yes
+      --requirepass testpass123
+      --masterauth testpass123
+    ports:
+      - "6382:6379"
+    volumes:
+      - redis-node-2-data:/data
+    networks:
+      redis-cluster:
+        ipv4_address: 172.30.0.12
+
+  redis-node-3:
+    image: redis:7-alpine
+    command: >
+      redis-server
+      --port 6379
+      --cluster-enabled yes
+      --cluster-config-file nodes.conf
+      --cluster-node-timeout 5000
+      --appendonly yes
+      --requirepass testpass123
+      --masterauth testpass123
+    ports:
+      - "6383:6379"
+    volumes:
+      - redis-node-3-data:/data
+    networks:
+      redis-cluster:
+        ipv4_address: 172.30.0.13
+
+  # Инициализатор кластера
+  redis-cluster-init:
+    image: redis:7-alpine
+    depends_on:
+      - redis-node-1
+      - redis-node-2
+      - redis-node-3
+    command: >
+      sh -c "
+        sleep 5 &&
+        echo 'Creating Redis Cluster...' &&
+        redis-cli -a testpass123 --cluster create \
+          172.30.0.11:6379 \
+          172.30.0.12:6379 \
+          172.30.0.13:6379 \
+          --cluster-replicas 0 --cluster-yes &&
+        echo 'Cluster created successfully!' &&
+        redis-cli -a testpass123 -h 172.30.0.11 -p 6379 cluster info
+      "
+    networks:
+      - redis-cluster
+
+networks:
+  redis-cluster:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.30.0.0/16
+
+volumes:
+  redis-node-1-data:
+  redis-node-2-data:
+  redis-node-3-data:
