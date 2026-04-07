@@ -3,7 +3,7 @@ module github.com/quantara/lock-service
 go 1.23
 
 require (
-	github.com/go-redis/redis/v8 v8.11.5
+	github.com/redis/go-redis/v9 v9.6.1
 	github.com/google/uuid v1.6.0
 	github.com/lib/pq v1.10.9
 	go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc v0.54.0
