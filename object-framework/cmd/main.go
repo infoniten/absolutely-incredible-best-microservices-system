@@ -12,6 +12,7 @@ import (
 
 	_ "github.com/lib/pq"
 
+	"github.com/quantara/object-framework/internal/cache"
 	"github.com/quantara/object-framework/internal/client"
 	"github.com/quantara/object-framework/internal/config"
 	"github.com/quantara/object-framework/internal/kafka"
@@ -75,6 +76,28 @@ func main() {
 		log.Fatalf("Failed to create globalid_mappings table: %v", err)
 	}
 	log.Println("Database tables initialized")
+
+	// Initialize Redis cache for IdMapping lookups (cluster mode if REDIS_CLUSTER_NODES is set)
+	idMapCache, err := cache.NewIdMappingCache(
+		cfg.RedisURL,
+		cfg.RedisClusterNodes,
+		cfg.RedisUsername,
+		cfg.RedisPassword,
+		cfg.IdMappingCacheTTLSecs,
+	)
+	if err != nil {
+		log.Fatalf("Failed to create IdMapping cache: %v", err)
+	}
+	defer idMapCache.Close()
+	if err := idMapCache.Ping(ctx); err != nil {
+		log.Fatalf("Failed to ping Redis: %v", err)
+	}
+	globalIDRepo.SetCache(idMapCache)
+	if len(cfg.RedisClusterNodes) > 0 {
+		log.Printf("IdMapping Redis cache enabled (cluster mode, nodes=%v, ttl=%ds)", cfg.RedisClusterNodes, cfg.IdMappingCacheTTLSecs)
+	} else {
+		log.Printf("IdMapping Redis cache enabled (standalone, url=%s, ttl=%ds)", cfg.RedisURL, cfg.IdMappingCacheTTLSecs)
+	}
 
 	// Initialize gRPC clients
 	idClient, err := client.NewIDClient(cfg.IDServiceAddr)

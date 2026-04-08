@@ -40,6 +40,13 @@ type Config struct {
 
 	// Lock retry settings
 	LockRetryIntervalMs int64 // Fixed interval between lock retry attempts (infinite retry)
+
+	// Redis (for IdMapping cache). Cluster mode is used when RedisClusterNodes is non-empty.
+	RedisURL              string
+	RedisClusterNodes     []string
+	RedisUsername         string
+	RedisPassword         string
+	IdMappingCacheTTLSecs int
 }
 
 func Load() *Config {
@@ -76,6 +83,13 @@ func Load() *Config {
 
 		// Lock retry settings
 		LockRetryIntervalMs: getEnvAsInt64("LOCK_RETRY_INTERVAL_MS", 100), // 100ms default
+
+		// Redis (env var names match transaction-service for consistency)
+		RedisURL:              getEnv("REDIS_URL", "redis://localhost:6379/0"),
+		RedisClusterNodes:     getEnvAsSlice("REDIS_CLUSTER_NODES", nil),
+		RedisUsername:         getEnv("REDIS_USERNAME", ""),
+		RedisPassword:         getEnv("REDIS_PASSWORD", ""),
+		IdMappingCacheTTLSecs: int(getEnvAsInt64("IDMAPPING_CACHE_TTL_SECONDS", 3600)),
 	}
 }
 

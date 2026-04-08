@@ -4,13 +4,18 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"log"
 
+	"github.com/quantara/object-framework/internal/cache"
 	"github.com/quantara/object-framework/internal/domain"
 )
 
-// GlobalIDMappingRepository handles persistence of external ID to GlobalID mappings
+// GlobalIDMappingRepository handles persistence of external ID to GlobalID mappings.
+// An optional Redis cache short-circuits FindByExternalID lookups: subsequent
+// versions of the same trade (same TRADENO) hit Redis instead of Postgres.
 type GlobalIDMappingRepository struct {
-	db *sql.DB
+	db    *sql.DB
+	cache *cache.IdMappingCache
 }
 
 // NewGlobalIDMappingRepository creates a new GlobalIDMappingRepository
@@ -18,8 +23,28 @@ func NewGlobalIDMappingRepository(db *sql.DB) *GlobalIDMappingRepository {
 	return &GlobalIDMappingRepository{db: db}
 }
 
-// FindByExternalID finds a mapping by external ID, source, and source object type
+// SetCache attaches a Redis cache to this repository. Pass nil to disable.
+func (r *GlobalIDMappingRepository) SetCache(c *cache.IdMappingCache) {
+	r.cache = c
+}
+
+// FindByExternalID finds a mapping by external ID, source, and source object type.
+// On cache hit only globalID is meaningful in the returned struct (other fields
+// are echoed from the lookup arguments) — callers in this service only read GlobalID.
 func (r *GlobalIDMappingRepository) FindByExternalID(ctx context.Context, externalID, source, sourceObjectType string) (*domain.GlobalIDMapping, error) {
+	if r.cache != nil {
+		if gid, ok, err := r.cache.Get(ctx, externalID, source, sourceObjectType); err != nil {
+			log.Printf("idmapping cache get error (falling back to db): %v", err)
+		} else if ok {
+			return &domain.GlobalIDMapping{
+				ExternalID:       externalID,
+				Source:           source,
+				SourceObjectType: sourceObjectType,
+				GlobalID:         gid,
+			}, nil
+		}
+	}
+
 	query := `
 		SELECT id, external_id, source, source_object_type, global_id
 		FROM globalid_mappings
@@ -41,6 +66,12 @@ func (r *GlobalIDMappingRepository) FindByExternalID(ctx context.Context, extern
 		return nil, fmt.Errorf("failed to find globalid mapping: %w", err)
 	}
 
+	if r.cache != nil {
+		if cerr := r.cache.Set(ctx, externalID, source, sourceObjectType, mapping.GlobalID); cerr != nil {
+			log.Printf("idmapping cache set error: %v", cerr)
+		}
+	}
+
 	return &mapping, nil
 }
 
@@ -60,6 +91,11 @@ func (r *GlobalIDMappingRepository) Create(ctx context.Context, mapping *domain.
 	)
 	if err != nil {
 		return fmt.Errorf("failed to insert globalid mapping: %w", err)
+	}
+	if r.cache != nil {
+		if cerr := r.cache.Set(ctx, mapping.ExternalID, mapping.Source, mapping.SourceObjectType, mapping.GlobalID); cerr != nil {
+			log.Printf("idmapping cache set error: %v", cerr)
+		}
 	}
 	return nil
 }
