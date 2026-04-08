@@ -89,6 +89,12 @@ func objectKey(txID string, algorithmID uint32, className string) string {
 	return fmt.Sprintf("{%s}:alg:%d:class:%s", txID, algorithmID, className)
 }
 
+// keysSetKey returns the key for the set that indexes all object keys of a transaction.
+// Uses the same {txID} hash tag so it co-locates on the same cluster shard.
+func keysSetKey(txID string) string {
+	return fmt.Sprintf("{%s}:keys", txID)
+}
+
 // CreateTransaction creates a new transaction in Redis
 func (c *Client) CreateTransaction(ctx context.Context, txID string) error {
 	meta := TxMeta{
@@ -176,9 +182,13 @@ func (c *Client) AddObject(ctx context.Context, txID string, algorithmID uint32,
 
 	key := objectKey(txID, algorithmID, className)
 
+	setKey := keysSetKey(txID)
+
 	pipe := c.rdb.Pipeline()
 	pipe.RPush(ctx, key, data)
 	pipe.Expire(ctx, key, c.ttl)
+	pipe.SAdd(ctx, setKey, key)
+	pipe.Expire(ctx, setKey, c.ttl)
 
 	_, err = pipe.Exec(ctx)
 	if err != nil {
@@ -188,23 +198,17 @@ func (c *Client) AddObject(ctx context.Context, txID string, algorithmID uint32,
 	return nil
 }
 
-// GetObjectKeys returns all object list keys for a transaction
+// GetObjectKeys returns all object list keys for a transaction.
+// Uses an indexed Set ({txID}:keys) instead of SCAN so it works correctly
+// in Redis Cluster mode (SCAN on a ClusterClient only walks one random node).
 func (c *Client) GetObjectKeys(ctx context.Context, txID string) ([]string, error) {
-	pattern := fmt.Sprintf("{%s}:alg:*", txID)
-	var keys []string
-
-	iter := c.rdb.Scan(ctx, 0, pattern, 0).Iterator()
-	for iter.Next(ctx) {
-		key := iter.Val()
-		// Skip meta key
-		if key != metaKey(txID) {
-			keys = append(keys, key)
+	keys, err := c.rdb.SMembers(ctx, keysSetKey(txID)).Result()
+	if err != nil {
+		if err == redis.Nil {
+			return nil, nil
 		}
+		return nil, fmt.Errorf("failed to read transaction keys set: %w", err)
 	}
-	if err := iter.Err(); err != nil {
-		return nil, fmt.Errorf("failed to scan keys: %w", err)
-	}
-
 	return keys, nil
 }
 
@@ -232,24 +236,24 @@ func (c *Client) GetObjectCount(ctx context.Context, key string) (int64, error) 
 	return c.rdb.LLen(ctx, key).Result()
 }
 
-// DeleteTransaction removes all keys associated with a transaction
+// DeleteTransaction removes all keys associated with a transaction.
+// Uses the {txID}:keys index Set instead of SCAN so it works correctly
+// in Redis Cluster mode. All keys share the {txID} hash tag, so a single
+// DEL of multiple keys is safe (no cross-slot error).
 func (c *Client) DeleteTransaction(ctx context.Context, txID string) error {
-	// Get all keys for this transaction
-	pattern := fmt.Sprintf("{%s}:*", txID)
+	setKey := keysSetKey(txID)
 
-	var keys []string
-	iter := c.rdb.Scan(ctx, 0, pattern, 0).Iterator()
-	for iter.Next(ctx) {
-		keys = append(keys, iter.Val())
-	}
-	if err := iter.Err(); err != nil {
-		return fmt.Errorf("failed to scan keys: %w", err)
+	objectKeys, err := c.rdb.SMembers(ctx, setKey).Result()
+	if err != nil && err != redis.Nil {
+		return fmt.Errorf("failed to read transaction keys set: %w", err)
 	}
 
-	if len(keys) > 0 {
-		if err := c.rdb.Del(ctx, keys...).Err(); err != nil {
-			return fmt.Errorf("failed to delete keys: %w", err)
-		}
+	toDelete := make([]string, 0, len(objectKeys)+2)
+	toDelete = append(toDelete, objectKeys...)
+	toDelete = append(toDelete, metaKey(txID), setKey)
+
+	if err := c.rdb.Del(ctx, toDelete...).Err(); err != nil {
+		return fmt.Errorf("failed to delete keys: %w", err)
 	}
 
 	return nil
