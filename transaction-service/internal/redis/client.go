@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/redis/go-redis/v9"
@@ -251,5 +252,59 @@ func (c *Client) DeleteTransaction(ctx context.Context, txID string) error {
 		}
 	}
 
+	return nil
+}
+
+// DeleteKeys deletes keys one-by-one.
+// Single-key DEL avoids cross-slot issues in Redis Cluster mode.
+func (c *Client) DeleteKeys(ctx context.Context, keys ...string) error {
+	for _, key := range keys {
+		if strings.TrimSpace(key) == "" {
+			continue
+		}
+		if err := c.rdb.Del(ctx, key).Err(); err != nil {
+			return fmt.Errorf("failed to delete key %s: %w", key, err)
+		}
+	}
+	return nil
+}
+
+// PutCommittedGlobal stores one committed object body by global key.
+// Value layout matches search-service cache contract.
+func (c *Client) PutCommittedGlobal(ctx context.Context, key, objectClass, body string) error {
+	if strings.TrimSpace(key) == "" || strings.TrimSpace(objectClass) == "" || strings.TrimSpace(body) == "" {
+		return nil
+	}
+
+	values := map[string]any{
+		"objectClass": objectClass,
+		"body":        body,
+	}
+	if err := c.rdb.HSet(ctx, key, values).Err(); err != nil {
+		return fmt.Errorf("failed to set committed global key %s: %w", key, err)
+	}
+	return nil
+}
+
+// AppendCommittedParent appends committed embedded objects to parent list key.
+func (c *Client) AppendCommittedParent(ctx context.Context, key string, items []string) error {
+	if strings.TrimSpace(key) == "" || len(items) == 0 {
+		return nil
+	}
+
+	args := make([]any, 0, len(items))
+	for _, item := range items {
+		if strings.TrimSpace(item) == "" {
+			continue
+		}
+		args = append(args, item)
+	}
+	if len(args) == 0 {
+		return nil
+	}
+
+	if err := c.rdb.RPush(ctx, key, args...).Err(); err != nil {
+		return fmt.Errorf("failed to append committed parent key %s: %w", key, err)
+	}
 	return nil
 }

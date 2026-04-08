@@ -8,6 +8,7 @@ import (
 	"io"
 	"log"
 	"regexp"
+	"sort"
 	"strconv"
 	"strings"
 	"sync"
@@ -42,6 +43,46 @@ type Server struct {
 	db        *sql.DB
 	tracer    trace.Tracer
 	metrics   *transactionMetrics
+}
+
+type prefetchedData struct {
+	key         string
+	algorithmID uint32
+	className   string
+	objects     []*redis.StoredObject
+	err         error
+}
+
+type committedGlobalEntry struct {
+	objectClass string
+	body        string
+}
+
+type committedCachePlan struct {
+	preDeleteKeys map[string]struct{}
+	globalUpserts map[string]committedGlobalEntry
+	parentAppends map[string][]string
+}
+
+func newCommittedCachePlan() *committedCachePlan {
+	return &committedCachePlan{
+		preDeleteKeys: make(map[string]struct{}),
+		globalUpserts: make(map[string]committedGlobalEntry),
+		parentAppends: make(map[string][]string),
+	}
+}
+
+func (p *committedCachePlan) sortedPreDeleteKeys() []string {
+	if p == nil || len(p.preDeleteKeys) == 0 {
+		return nil
+	}
+
+	keys := make([]string, 0, len(p.preDeleteKeys))
+	for key := range p.preDeleteKeys {
+		keys = append(keys, key)
+	}
+	sort.Strings(keys)
+	return keys
 }
 
 // NewServer creates a new transaction service server
@@ -200,14 +241,6 @@ func (s *Server) Commit(ctx context.Context, req *pb.CommitRequest) (*pb.CommitR
 
 	// Pre-fetch all objects from Redis in PARALLEL (before SQL transaction)
 	prefetchStart := time.Now()
-	type prefetchedData struct {
-		key         string
-		algorithmID uint32
-		className   string
-		objects     []*redis.StoredObject
-		err         error
-	}
-
 	prefetchChan := make(chan prefetchedData, len(keys))
 	var wg sync.WaitGroup
 
@@ -267,6 +300,17 @@ func (s *Server) Commit(ctx context.Context, req *pb.CommitRequest) (*pb.CommitR
 	}
 	s.metrics.observeCommitDurationByType(ctx, "prefetchRedis", time.Since(prefetchStart))
 
+	cachePlan, err := buildCommittedCachePlan(prefetchedItems)
+	if err != nil {
+		s.redis.SetTransactionStatus(ctx, req.TransactionId, redis.TxStatusActive)
+		return fail(fmt.Sprintf("failed to prepare committed cache writes: %v", err))
+	}
+
+	if err := s.redis.DeleteKeys(ctx, cachePlan.sortedPreDeleteKeys()...); err != nil {
+		s.redis.SetTransactionStatus(ctx, req.TransactionId, redis.TxStatusActive)
+		return fail(fmt.Sprintf("failed to clear committed cache before commit: %v", err))
+	}
+
 	// Begin SQL transaction
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
@@ -304,6 +348,7 @@ func (s *Server) Commit(ctx context.Context, req *pb.CommitRequest) (*pb.CommitR
 
 	// Clean up Redis
 	s.redis.DeleteTransaction(ctx, req.TransactionId)
+	s.writeCommittedCacheBestEffort(ctx, cachePlan)
 	s.metrics.incCommit(ctx)
 
 	log.Printf("Transaction committed: %s, objects saved: %d", req.TransactionId, totalSaved)
@@ -359,6 +404,93 @@ func parseObjectKey(key string) (uint32, string) {
 	}
 
 	return uint32(algID), matches[2]
+}
+
+func buildCommittedCachePlan(items []prefetchedData) (*committedCachePlan, error) {
+	plan := newCommittedCachePlan()
+
+	for _, item := range items {
+		for _, obj := range item.objects {
+			req, err := parseStoredObject(obj)
+			if err != nil {
+				return nil, fmt.Errorf("failed to parse staged object for cache plan: %w", err)
+			}
+
+			objectClass := strings.TrimSpace(req.ObjectType)
+			if objectClass == "" {
+				objectClass = strings.TrimSpace(item.className)
+			}
+			payload := strings.TrimSpace(string(req.Payload))
+
+			switch item.algorithmID {
+			case metamodel.AlgorithmEmbedded:
+				if req.ParentID == nil || objectClass == "" || payload == "" {
+					continue
+				}
+				key := committedParentKey(objectClass, *req.ParentID)
+				plan.parentAppends[key] = append(plan.parentAppends[key], payload)
+			case metamodel.AlgorithmRevisioned:
+				key := committedGlobalKey(req.GlobalID)
+				plan.preDeleteKeys[key] = struct{}{}
+				if objectClass == "" || payload == "" {
+					continue
+				}
+				plan.globalUpserts[key] = committedGlobalEntry{
+					objectClass: objectClass,
+					body:        payload,
+				}
+			case metamodel.AlgorithmDraftableDateBounded:
+				key := committedTradeKey(req.GlobalID, draftStatusCacheSuffix(req.DraftStatus))
+				plan.preDeleteKeys[key] = struct{}{}
+				if objectClass == "" || payload == "" {
+					continue
+				}
+				plan.globalUpserts[key] = committedGlobalEntry{
+					objectClass: objectClass,
+					body:        payload,
+				}
+			}
+		}
+	}
+
+	return plan, nil
+}
+
+func (s *Server) writeCommittedCacheBestEffort(ctx context.Context, plan *committedCachePlan) {
+	if s.redis == nil || plan == nil {
+		return
+	}
+
+	for key, entry := range plan.globalUpserts {
+		if err := s.redis.PutCommittedGlobal(ctx, key, entry.objectClass, entry.body); err != nil {
+			log.Printf("Warning: failed to write committed global cache key %s: %v", key, err)
+		}
+	}
+
+	for key, items := range plan.parentAppends {
+		if err := s.redis.AppendCommittedParent(ctx, key, items); err != nil {
+			log.Printf("Warning: failed to write committed parent cache key %s: %v", key, err)
+		}
+	}
+}
+
+func committedGlobalKey(globalID int64) string {
+	return "txn:committed:global:" + strconv.FormatInt(globalID, 10)
+}
+
+func committedTradeKey(globalID int64, suffix string) string {
+	return committedGlobalKey(globalID) + ":" + suffix
+}
+
+func committedParentKey(objectClass string, parentID int64) string {
+	return "txn:committed:" + objectClass + ":" + strconv.FormatInt(parentID, 10)
+}
+
+func draftStatusCacheSuffix(draftStatus *string) string {
+	if draftStatus != nil && strings.EqualFold(strings.TrimSpace(*draftStatus), "DRAFT") {
+		return "draft"
+	}
+	return "confirmed"
 }
 
 // executeBatchSave executes batch save based on algorithm
