@@ -235,7 +235,8 @@ func (s *Server) Commit(ctx context.Context, req *pb.CommitRequest) (*pb.CommitR
 	if len(keys) == 0 {
 		// No objects to commit
 		s.redis.DeleteTransaction(ctx, req.TransactionId)
-		s.metrics.incCommit(ctx)
+		s.metrics.incCommitEmpty(ctx)
+		log.Printf("Empty commit (no objects in transaction): %s", req.TransactionId)
 		return &pb.CommitResponse{Success: true, ObjectsSaved: 0}, nil
 	}
 
@@ -1003,6 +1004,10 @@ func (s *Server) saveDraftableDateBounded(ctx context.Context, tx *sql.Tx, class
 	err = tx.QueryRowContext(ctx, query, args...).Scan(&count)
 	if err != nil {
 		return 0, nil, fmt.Errorf("failed to execute DraftableDateBounded save for %s: %w", mainTable, err)
+	}
+
+	if count == 0 && len(parsedObjects) > 0 {
+		return 0, nil, fmt.Errorf("DraftableDateBounded save for %s inserted 0 rows out of %d (likely missing/expired object_lock for at least one record in batch)", mainTable, len(parsedObjects))
 	}
 
 	if count > 0 {
