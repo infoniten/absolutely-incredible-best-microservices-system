@@ -13,6 +13,7 @@ type transactionMetrics struct {
 	saveCounter          prometheus.Counter
 	saveErrorCounter     prometheus.Counter
 	commitCounter        prometheus.Counter
+	commitEmptyCounter   prometheus.Counter
 	commitErrorCounter   prometheus.Counter
 	rollbackCounter      prometheus.Counter
 	rollbackErrorCounter prometheus.Counter
@@ -43,6 +44,10 @@ func newTransactionMetrics() *transactionMetrics {
 			commitCounter: registerCounter(
 				"transactions_commit_total",
 				"Total number of successful commit operations.",
+			),
+			commitEmptyCounter: registerCounter(
+				"transactions_commit_empty_total",
+				"Total number of commit calls that had no objects to persist.",
 			),
 			commitErrorCounter: registerCounter(
 				"transactions_commit_errors_total",
@@ -126,6 +131,10 @@ func (m *transactionMetrics) incSaveError(_ context.Context) {
 
 func (m *transactionMetrics) incCommit(_ context.Context) {
 	m.commitCounter.Inc()
+}
+
+func (m *transactionMetrics) incCommitEmpty(_ context.Context) {
+	m.commitEmptyCounter.Inc()
 }
 
 func (m *transactionMetrics) incCommitError(_ context.Context) {
