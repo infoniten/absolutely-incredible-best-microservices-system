@@ -337,6 +337,53 @@ func TestClient_GetObjects(t *testing.T) {
 	}
 }
 
+func TestClient_CommittedCacheOperations(t *testing.T) {
+	client, mr := setupTestRedis(t)
+	ctx := context.Background()
+
+	globalKey := "txn:committed:global:101"
+	parentKey := "txn:committed:PersonAlternativeIdentifier:1"
+
+	err := client.PutCommittedGlobal(ctx, globalKey, "Source", `{"alias":"SRC_1"}`)
+	if err != nil {
+		t.Fatalf("PutCommittedGlobal failed: %v", err)
+	}
+
+	objectClass := mr.HGet(globalKey, "objectClass")
+	if objectClass != "Source" {
+		t.Fatalf("unexpected objectClass: %q", objectClass)
+	}
+	body := mr.HGet(globalKey, "body")
+	if body != `{"alias":"SRC_1"}` {
+		t.Fatalf("unexpected body: %q", body)
+	}
+
+	err = client.AppendCommittedParent(ctx, parentKey, []string{`{"value":"A"}`, `{"value":"B"}`})
+	if err != nil {
+		t.Fatalf("AppendCommittedParent failed: %v", err)
+	}
+
+	items, err := mr.List(parentKey)
+	if err != nil {
+		t.Fatalf("failed to read parent list: %v", err)
+	}
+	if len(items) != 2 {
+		t.Fatalf("expected 2 list items, got %d", len(items))
+	}
+
+	err = client.DeleteKeys(ctx, globalKey, parentKey)
+	if err != nil {
+		t.Fatalf("DeleteKeys failed: %v", err)
+	}
+
+	if mr.Exists(globalKey) {
+		t.Fatalf("expected key %s to be deleted", globalKey)
+	}
+	if mr.Exists(parentKey) {
+		t.Fatalf("expected key %s to be deleted", parentKey)
+	}
+}
+
 func TestClient_GetObjectCount(t *testing.T) {
 	client, _ := setupTestRedis(t)
 	ctx := context.Background()

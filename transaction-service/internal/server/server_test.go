@@ -281,6 +281,98 @@ func TestExtractFieldValue(t *testing.T) {
 	}
 }
 
+func TestDraftStatusCacheSuffix(t *testing.T) {
+	draft := "DRAFT"
+	confirmed := "CONFIRMED"
+
+	if got := draftStatusCacheSuffix(&draft); got != "draft" {
+		t.Fatalf("expected draft suffix, got %q", got)
+	}
+	if got := draftStatusCacheSuffix(&confirmed); got != "confirmed" {
+		t.Fatalf("expected confirmed suffix, got %q", got)
+	}
+	if got := draftStatusCacheSuffix(nil); got != "confirmed" {
+		t.Fatalf("expected default confirmed suffix, got %q", got)
+	}
+}
+
+func TestBuildCommittedCachePlan(t *testing.T) {
+	embeddedObj := &redis.StoredObject{
+		Headers: json.RawMessage(`{
+			"id": 1,
+			"global_id": 11,
+			"object_type": "PersonAlternativeIdentifier",
+			"lock_id": "",
+			"revision": 1,
+			"parent_id": 101
+		}`),
+		Payload: json.RawMessage(`{"value":"ALT_1","sourceId":101}`),
+	}
+	revisionedObj := &redis.StoredObject{
+		Headers: json.RawMessage(`{
+			"id": 2,
+			"global_id": 22,
+			"object_type": "Source",
+			"lock_id": "",
+			"revision": 1
+		}`),
+		Payload: json.RawMessage(`{"alias":"SRC_1"}`),
+	}
+	draftObj := &redis.StoredObject{
+		Headers: json.RawMessage(`{
+			"id": 3,
+			"global_id": 33,
+			"object_type": "FixingSource",
+			"lock_id": "",
+			"revision": 1,
+			"draft_status": "DRAFT"
+		}`),
+		Payload: json.RawMessage(`{"code":"FIX_1"}`),
+	}
+
+	plan, err := buildCommittedCachePlan([]prefetchedData{
+		{
+			algorithmID: metamodel.AlgorithmEmbedded,
+			className:   "PersonAlternativeIdentifier",
+			objects:     []*redis.StoredObject{embeddedObj},
+		},
+		{
+			algorithmID: metamodel.AlgorithmRevisioned,
+			className:   "Source",
+			objects:     []*redis.StoredObject{revisionedObj},
+		},
+		{
+			algorithmID: metamodel.AlgorithmDraftableDateBounded,
+			className:   "FixingSource",
+			objects:     []*redis.StoredObject{draftObj},
+		},
+	})
+	if err != nil {
+		t.Fatalf("buildCommittedCachePlan failed: %v", err)
+	}
+
+	embeddedKey := committedParentKey("PersonAlternativeIdentifier", 101)
+	if got := len(plan.parentAppends[embeddedKey]); got != 1 {
+		t.Fatalf("expected 1 embedded payload, got %d", got)
+	}
+
+	revisionedKey := committedGlobalKey(22)
+	if _, ok := plan.preDeleteKeys[revisionedKey]; !ok {
+		t.Fatalf("expected pre-delete key %s", revisionedKey)
+	}
+	if got := plan.globalUpserts[revisionedKey].objectClass; got != "Source" {
+		t.Fatalf("unexpected objectClass for revisioned key: %q", got)
+	}
+
+	draftKey := committedTradeKey(33, "draft")
+	if _, ok := plan.preDeleteKeys[draftKey]; !ok {
+		t.Fatalf("expected pre-delete key %s", draftKey)
+	}
+	if got := plan.globalUpserts[draftKey].objectClass; got != "FixingSource" {
+		t.Fatalf("unexpected objectClass for draft key: %q", got)
+	}
+}
+
 func TestExtractFieldValue_NilPayloadMap(t *testing.T) {
 	server := &Server{}
 
