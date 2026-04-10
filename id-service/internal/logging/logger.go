@@ -162,7 +162,10 @@ func Setup(serviceName, appPort string) (func(), error) {
 			zapcore.NewJSONEncoder(jsonEncoderCfg),
 			zapcore.AddSync(tcpWriter),
 			level,
-		)
+		).With([]zapcore.Field{
+			zap.String("app_name", serviceName),
+			zap.String("app_port", appPort),
+		})
 		cores = append(cores, tcpCore)
 	}
 
@@ -170,9 +173,6 @@ func Setup(serviceName, appPort string) (func(), error) {
 		zapcore.NewTee(cores...),
 		zap.AddCaller(),
 		zap.AddCallerSkip(1),
-	).With(
-		zap.String("app_name", serviceName),
-		zap.String("app_port", appPort),
 	)
 
 	zap.ReplaceGlobals(logger)
