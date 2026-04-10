@@ -6,7 +6,6 @@ import (
 
 	pb "github.com/quantara/object-framework/proto/lockservice"
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials/insecure"
 )
 
 // LockClient wraps the gRPC client for Lock Service
@@ -17,7 +16,7 @@ type LockClient struct {
 
 // NewLockClient creates a new LockClient
 func NewLockClient(addr string) (*LockClient, error) {
-	conn, err := grpc.NewClient(addr, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	conn, err := newGRPCConn(addr)
 	if err != nil {
 		return nil, fmt.Errorf("failed to connect to lock-service: %w", err)
 	}

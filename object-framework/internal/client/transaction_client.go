@@ -8,7 +8,6 @@ import (
 
 	pb "github.com/quantara/object-framework/proto/transaction"
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials/insecure"
 )
 
 // TransactionClient wraps the gRPC client for Transaction Service
@@ -19,7 +18,7 @@ type TransactionClient struct {
 
 // NewTransactionClient creates a new TransactionClient
 func NewTransactionClient(addr string) (*TransactionClient, error) {
-	conn, err := grpc.NewClient(addr, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	conn, err := newGRPCConn(addr)
 	if err != nil {
 		return nil, fmt.Errorf("failed to connect to transaction-service: %w", err)
 	}

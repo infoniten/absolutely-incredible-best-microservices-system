@@ -8,7 +8,6 @@ import (
 	pb "github.com/quantara/object-framework/proto/searchservice"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/structpb"
 )
@@ -21,7 +20,7 @@ type SearchClient struct {
 
 // NewSearchClient creates a new SearchClient
 func NewSearchClient(addr string) (*SearchClient, error) {
-	conn, err := grpc.NewClient(addr, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	conn, err := newGRPCConn(addr)
 	if err != nil {
 		return nil, fmt.Errorf("failed to connect to search-service: %w", err)
 	}

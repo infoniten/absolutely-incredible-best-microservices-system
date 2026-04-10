@@ -6,7 +6,6 @@ import (
 
 	pb "github.com/quantara/object-framework/proto/idservice"
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials/insecure"
 )
 
 // IDClient wraps the gRPC client for ID Service
@@ -17,7 +16,7 @@ type IDClient struct {
 
 // NewIDClient creates a new IDClient
 func NewIDClient(addr string) (*IDClient, error) {
-	conn, err := grpc.NewClient(addr, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	conn, err := newGRPCConn(addr)
 	if err != nil {
 		return nil, fmt.Errorf("failed to connect to id-service: %w", err)
 	}

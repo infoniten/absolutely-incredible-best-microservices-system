@@ -11,7 +11,13 @@ import (
 	"github.com/quantara/object-framework/internal/domain"
 	"github.com/quantara/object-framework/internal/parser"
 	"github.com/quantara/object-framework/internal/repository"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/codes"
+	"go.opentelemetry.io/otel/trace"
 )
+
+var processorTracer = otel.Tracer("object-framework/processor")
 
 // IDProvider provides IDs (can be pool or direct client)
 type IDProvider interface {
@@ -76,6 +82,16 @@ type ProcessResult struct {
 
 // Process processes a single MOEX message
 func (p *FxSpotProcessor) Process(ctx context.Context, rawMsg *domain.RawMessageDto) *ProcessResult {
+	ctx, span := processorTracer.Start(
+		ctx,
+		"fxspot.process",
+		trace.WithAttributes(
+			attribute.String("kafka.message_id", rawMsg.MessageID),
+			attribute.Int64("raw_message.id", rawMsg.ID),
+		),
+	)
+	defer span.End()
+
 	result := &ProcessResult{
 		MessageID: rawMsg.MessageID,
 	}
@@ -84,14 +100,18 @@ func (p *FxSpotProcessor) Process(ctx context.Context, rawMsg *domain.RawMessage
 	moexRecord, err := parser.ParseMoexMessage(rawMsg.Value)
 	if err != nil {
 		result.Error = fmt.Errorf("failed to parse MOEX message: %w", err)
+		span.RecordError(result.Error)
+		span.SetStatus(codes.Error, result.Error.Error())
 		p.updateRawMessageStatus(ctx, rawMsg.ID, domain.RawMessageStatusFailed, result.Error.Error())
 		return result
 	}
 
 	tradeNo := moexRecord.GetTradeNo()
+	span.SetAttributes(attribute.String("trade_no", tradeNo))
 	result.TradeNo = tradeNo
 
 	// Step 2: Resolve GlobalIDs for product and trade IN PARALLEL
+	resolveCtx, resolveSpan := processorTracer.Start(ctx, "fxspot.resolve_global_ids")
 	var productGlobalID, tradeGlobalID int64
 	var isNewProduct, isNewTrade bool
 	var resolveErr error
@@ -102,7 +122,7 @@ func (p *FxSpotProcessor) Process(ctx context.Context, rawMsg *domain.RawMessage
 	go func() {
 		defer wg.Done()
 		var err error
-		productGlobalID, isNewProduct, err = p.resolveGlobalID(ctx, tradeNo, domain.SourceObjectTypeFXSPOT)
+		productGlobalID, isNewProduct, err = p.resolveGlobalID(resolveCtx, tradeNo, domain.SourceObjectTypeFXSPOT)
 		if err != nil {
 			resolveErr = fmt.Errorf("failed to resolve product GlobalID: %w", err)
 		}
@@ -111,27 +131,39 @@ func (p *FxSpotProcessor) Process(ctx context.Context, rawMsg *domain.RawMessage
 	go func() {
 		defer wg.Done()
 		var err error
-		tradeGlobalID, isNewTrade, err = p.resolveGlobalID(ctx, tradeNo, domain.SourceObjectTypeFXSPOTTrade)
+		tradeGlobalID, isNewTrade, err = p.resolveGlobalID(resolveCtx, tradeNo, domain.SourceObjectTypeFXSPOTTrade)
 		if err != nil {
 			resolveErr = fmt.Errorf("failed to resolve trade GlobalID: %w", err)
 		}
 	}()
 
 	wg.Wait()
+	resolveSpan.End()
 
 	if resolveErr != nil {
 		result.Error = resolveErr
+		span.RecordError(result.Error)
+		span.SetStatus(codes.Error, result.Error.Error())
 		p.updateRawMessageStatus(ctx, rawMsg.ID, domain.RawMessageStatusFailed, result.Error.Error())
 		return result
 	}
+	span.SetAttributes(
+		attribute.Int64("global_id.product", productGlobalID),
+		attribute.Int64("global_id.trade", tradeGlobalID),
+		attribute.Bool("is_new.product", isNewProduct),
+		attribute.Bool("is_new.trade", isNewTrade),
+	)
 
 	result.GlobalID = productGlobalID
 
 	// Step 3: Acquire lock with infinite retry (messages are ordered by trade in partition)
 	var lockToken string
 	waiting := false
+	lockAttempts := 0
+	lockCtx, lockSpan := processorTracer.Start(ctx, "fxspot.acquire_lock")
 
 	for {
+		lockAttempts++
 		// Check context cancellation (for graceful shutdown)
 		select {
 		case <-ctx.Done():
@@ -139,12 +171,17 @@ func (p *FxSpotProcessor) Process(ctx context.Context, rawMsg *domain.RawMessage
 				atomic.AddInt64(&p.lockWaitCount, -1)
 			}
 			result.Error = fmt.Errorf("context cancelled while waiting for lock: %w", ctx.Err())
+			lockSpan.RecordError(result.Error)
+			lockSpan.SetStatus(codes.Error, result.Error.Error())
+			lockSpan.End()
+			span.RecordError(result.Error)
+			span.SetStatus(codes.Error, result.Error.Error())
 			p.updateRawMessageStatus(ctx, rawMsg.ID, domain.RawMessageStatusFailed, result.Error.Error())
 			return result
 		default:
 		}
 
-		lockResult, err := p.lockClient.LockWithTTL(ctx, productGlobalID, p.lockTTLMs)
+		lockResult, err := p.lockClient.LockWithTTL(lockCtx, productGlobalID, p.lockTTLMs)
 		if err != nil {
 			if !waiting {
 				waiting = true
@@ -169,14 +206,27 @@ func (p *FxSpotProcessor) Process(ctx context.Context, rawMsg *domain.RawMessage
 		lockToken = lockResult.Token
 		break
 	}
+	lockSpan.SetAttributes(
+		attribute.Int("attempts", lockAttempts),
+		attribute.Bool("waited", waiting),
+	)
+	lockSpan.End()
 
 	// Ensure lock is released
 	defer p.lockClient.Unlock(ctx, productGlobalID, lockToken)
 
 	// Step 4: Process business logic with optimizations
-	err = p.processBusinessLogicOptimized(ctx, moexRecord, productGlobalID, tradeGlobalID, isNewProduct, isNewTrade, lockToken)
+	businessCtx, businessSpan := processorTracer.Start(ctx, "fxspot.business_logic")
+	err = p.processBusinessLogicOptimized(businessCtx, moexRecord, productGlobalID, tradeGlobalID, isNewProduct, isNewTrade, lockToken)
+	if err != nil {
+		businessSpan.RecordError(err)
+		businessSpan.SetStatus(codes.Error, err.Error())
+	}
+	businessSpan.End()
 	if err != nil {
 		result.Error = fmt.Errorf("business logic failed: %w", err)
+		span.RecordError(result.Error)
+		span.SetStatus(codes.Error, result.Error.Error())
 		p.updateRawMessageStatus(ctx, rawMsg.ID, domain.RawMessageStatusFailed, result.Error.Error())
 		return result
 	}
@@ -185,6 +235,7 @@ func (p *FxSpotProcessor) Process(ctx context.Context, rawMsg *domain.RawMessage
 	p.updateRawMessageStatus(ctx, rawMsg.ID, domain.RawMessageStatusSaved, "")
 
 	result.Success = true
+	span.SetStatus(codes.Ok, "processed")
 	return result
 }
 
