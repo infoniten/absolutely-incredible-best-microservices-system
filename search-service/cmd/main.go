@@ -23,6 +23,7 @@ import (
 	"github.com/quantara/search-service/internal/config"
 	"github.com/quantara/search-service/internal/domainconfig"
 	"github.com/quantara/search-service/internal/filter"
+	"github.com/quantara/search-service/internal/logging"
 	"github.com/quantara/search-service/internal/registry"
 	"github.com/quantara/search-service/internal/repository"
 	"github.com/quantara/search-service/internal/server"
@@ -36,6 +37,11 @@ func main() {
 	defer cancel()
 
 	cfg := config.Load()
+	logCleanup, err := logging.Setup(cfg.ServiceName, cfg.GRPCPort)
+	if err != nil {
+		log.Fatalf("failed to initialize logger: %v", err)
+	}
+	defer logCleanup()
 
 	tel, err := telemetry.New(ctx, cfg.ServiceName, cfg.JaegerEndpoint)
 	if err != nil {

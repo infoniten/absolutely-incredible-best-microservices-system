@@ -20,6 +20,7 @@ import (
 
 	"github.com/quantara/globalid-service/internal/config"
 	"github.com/quantara/globalid-service/internal/idpool"
+	"github.com/quantara/globalid-service/internal/logging"
 	"github.com/quantara/globalid-service/internal/server"
 	"github.com/quantara/globalid-service/internal/telemetry"
 	pb "github.com/quantara/globalid-service/proto"
@@ -30,6 +31,11 @@ func main() {
 	defer cancel()
 
 	cfg := config.Load()
+	logCleanup, err := logging.Setup(cfg.ServiceName, cfg.GRPCPort)
+	if err != nil {
+		log.Fatalf("failed to initialize logger: %v", err)
+	}
+	defer logCleanup()
 
 	// Initialize telemetry
 	tel, err := telemetry.New(ctx, cfg.ServiceName, cfg.JaegerEndpoint)

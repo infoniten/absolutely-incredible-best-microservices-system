@@ -16,6 +16,7 @@ import (
 	"github.com/quantara/object-framework/internal/client"
 	"github.com/quantara/object-framework/internal/config"
 	"github.com/quantara/object-framework/internal/kafka"
+	"github.com/quantara/object-framework/internal/logging"
 	"github.com/quantara/object-framework/internal/processor"
 	"github.com/quantara/object-framework/internal/repository"
 	"github.com/quantara/object-framework/internal/server"
@@ -28,6 +29,11 @@ func main() {
 
 	// Load configuration
 	cfg := config.Load()
+	logCleanup, err := logging.Setup(cfg.ServiceName, cfg.HTTPPort)
+	if err != nil {
+		log.Fatalf("failed to initialize logger: %v", err)
+	}
+	defer logCleanup()
 	log.Printf("Configuration loaded: topic=%s, group=%s, http_port=%s",
 		cfg.KafkaTopic, cfg.KafkaConsumerGroup, cfg.HTTPPort)
 

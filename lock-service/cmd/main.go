@@ -21,6 +21,7 @@ import (
 	"github.com/quantara/lock-service/internal/cache"
 	"github.com/quantara/lock-service/internal/config"
 	"github.com/quantara/lock-service/internal/cron"
+	"github.com/quantara/lock-service/internal/logging"
 	"github.com/quantara/lock-service/internal/repository"
 	"github.com/quantara/lock-service/internal/server"
 	"github.com/quantara/lock-service/internal/telemetry"
@@ -32,6 +33,11 @@ func main() {
 	defer cancel()
 
 	cfg := config.Load()
+	logCleanup, err := logging.Setup(cfg.ServiceName, cfg.GRPCPort)
+	if err != nil {
+		log.Fatalf("failed to initialize logger: %v", err)
+	}
+	defer logCleanup()
 
 	// Initialize telemetry
 	tel, err := telemetry.New(ctx, cfg.ServiceName, cfg.JaegerEndpoint)

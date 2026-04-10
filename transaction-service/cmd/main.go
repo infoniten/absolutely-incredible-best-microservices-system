@@ -15,6 +15,7 @@ import (
 	_ "github.com/lib/pq"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/quantara/transaction-service/internal/config"
+	"github.com/quantara/transaction-service/internal/logging"
 	"github.com/quantara/transaction-service/internal/metamodel"
 	"github.com/quantara/transaction-service/internal/redis"
 	"github.com/quantara/transaction-service/internal/server"
@@ -34,6 +35,11 @@ func main() {
 
 	// Load configuration
 	cfg := config.Load()
+	logCleanup, err := logging.Setup(cfg.ServiceName, cfg.HTTPPort)
+	if err != nil {
+		log.Fatalf("failed to initialize logger: %v", err)
+	}
+	defer logCleanup()
 	log.Printf("Starting transaction-service (grpc=%s, http=%s)", cfg.GRPCPort, cfg.HTTPPort)
 
 	// Initialize telemetry
