@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strconv"
 	"strings"
 	"time"
 
@@ -273,6 +274,16 @@ func (c *Client) DeleteKeys(ctx context.Context, keys ...string) error {
 	return nil
 }
 
+// TryLock attempts to acquire a distributed lock using SETNX with TTL.
+// Returns true if the lock was acquired, false if another instance holds it.
+func (c *Client) TryLock(ctx context.Context, key string, ttl time.Duration) (bool, error) {
+	ok, err := c.rdb.SetNX(ctx, key, "1", ttl).Result()
+	if err != nil {
+		return false, fmt.Errorf("failed to acquire lock %s: %w", key, err)
+	}
+	return ok, nil
+}
+
 // PutCommittedGlobal stores one committed object body by global key.
 // Value layout matches search-service cache contract.
 func (c *Client) PutCommittedGlobal(ctx context.Context, key, objectClass, body string) error {
@@ -288,6 +299,15 @@ func (c *Client) PutCommittedGlobal(ctx context.Context, key, objectClass, body 
 		return fmt.Errorf("failed to set committed global key %s: %w", key, err)
 	}
 	return nil
+}
+
+// PutEnrichFilter stores a filter-based enrichment cache entry.
+// Key format: enrich:filter:{class}:{field}:{value} → globalId
+func (c *Client) PutEnrichFilter(ctx context.Context, key string, globalID int64, ttl time.Duration) error {
+	if strings.TrimSpace(key) == "" {
+		return nil
+	}
+	return c.rdb.Set(ctx, key, strconv.FormatInt(globalID, 10), ttl).Err()
 }
 
 // AppendCommittedParent appends committed embedded objects to parent list key.

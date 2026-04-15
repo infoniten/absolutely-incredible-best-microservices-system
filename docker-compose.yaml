@@ -51,6 +51,19 @@ services:
     networks:
       - quantara-network
 
+  redisinsight:
+    image: redis/redisinsight:latest
+    container_name: quantara-redisinsight
+    ports:
+      - "5540:5540"
+    volumes:
+      - redisinsight_data:/data
+    depends_on:
+      redis:
+        condition: service_healthy
+    networks:
+      - quantara-network
+
   zookeeper:
     image: confluentinc/cp-zookeeper:7.5.0
     container_name: quantara-zookeeper
@@ -240,6 +253,7 @@ services:
       LOCK_SERVICE_ADDR: "lock-service:50053"
       SEARCH_SERVICE_ADDR: "search-service:50055"
       TRANSACTION_SERVICE_ADDR: "transaction-service:50054"
+      REDIS_URL: "redis://redis:6379/0"
       JAEGER_ENDPOINT: "jaeger:4318"
       SERVICE_NAME: "object-framework"
       LOCK_TTL_MS: "30000"
@@ -252,6 +266,8 @@ services:
       start_period: 10s
     depends_on:
       postgres:
+        condition: service_healthy
+      redis:
         condition: service_healthy
       kafka:
         condition: service_healthy
@@ -432,6 +448,7 @@ services:
 volumes:
   postgres_data:
   redis_data:
+  redisinsight_data:
   zookeeper_data:
   zookeeper_logs:
   kafka_data:

@@ -47,6 +47,9 @@ type Config struct {
 	RedisUsername         string
 	RedisPassword         string
 	IdMappingCacheTTLSecs int
+
+	// Enrichment cache (reads alt: and enrich:filter: keys from shared Redis)
+	EnrichCacheEnabled bool
 }
 
 func Load() *Config {
@@ -90,6 +93,9 @@ func Load() *Config {
 		RedisUsername:         getEnv("REDIS_USERNAME", ""),
 		RedisPassword:         getEnv("REDIS_PASSWORD", ""),
 		IdMappingCacheTTLSecs: int(getEnvAsInt64("IDMAPPING_CACHE_TTL_SECONDS", 3600)),
+
+		// Enrichment cache
+		EnrichCacheEnabled: getEnv("ENRICH_CACHE_ENABLED", "true") == "true",
 	}
 }
 

@@ -346,7 +346,7 @@ func TestBuildCommittedCachePlan(t *testing.T) {
 			className:   "FixingSource",
 			objects:     []*redis.StoredObject{draftObj},
 		},
-	})
+	}, nil)
 	if err != nil {
 		t.Fatalf("buildCommittedCachePlan failed: %v", err)
 	}

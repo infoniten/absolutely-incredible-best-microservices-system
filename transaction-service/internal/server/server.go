@@ -62,6 +62,7 @@ type committedCachePlan struct {
 	preDeleteKeys map[string]struct{}
 	globalUpserts map[string]committedGlobalEntry
 	parentAppends map[string][]string
+	filterUpserts map[string]int64 // enrich:filter:{class}:{field}:{value} → globalId
 }
 
 func newCommittedCachePlan() *committedCachePlan {
@@ -69,6 +70,7 @@ func newCommittedCachePlan() *committedCachePlan {
 		preDeleteKeys: make(map[string]struct{}),
 		globalUpserts: make(map[string]committedGlobalEntry),
 		parentAppends: make(map[string][]string),
+		filterUpserts: make(map[string]int64),
 	}
 }
 
@@ -301,7 +303,7 @@ func (s *Server) Commit(ctx context.Context, req *pb.CommitRequest) (*pb.CommitR
 	}
 	s.metrics.observeCommitDurationByType(ctx, "prefetchRedis", time.Since(prefetchStart))
 
-	cachePlan, err := buildCommittedCachePlan(prefetchedItems)
+	cachePlan, err := buildCommittedCachePlan(prefetchedItems, s.cfg.EnrichFilterFields)
 	if err != nil {
 		s.redis.SetTransactionStatus(ctx, req.TransactionId, redis.TxStatusActive)
 		return fail(fmt.Sprintf("failed to prepare committed cache writes: %v", err))
@@ -407,7 +409,7 @@ func parseObjectKey(key string) (uint32, string) {
 	return uint32(algID), matches[2]
 }
 
-func buildCommittedCachePlan(items []prefetchedData) (*committedCachePlan, error) {
+func buildCommittedCachePlan(items []prefetchedData, enrichFilterFields map[string]map[string]string) (*committedCachePlan, error) {
 	plan := newCommittedCachePlan()
 
 	for _, item := range items {
@@ -440,6 +442,10 @@ func buildCommittedCachePlan(items []prefetchedData) (*committedCachePlan, error
 					objectClass: objectClass,
 					body:        payload,
 				}
+
+				// Build enrichment filter cache entries for dictionary objects
+				addEnrichFilterEntries(plan, objectClass, payload, req.GlobalID, enrichFilterFields)
+
 			case metamodel.AlgorithmDraftableDateBounded:
 				key := committedTradeKey(req.GlobalID, draftStatusCacheSuffix(req.DraftStatus))
 				plan.preDeleteKeys[key] = struct{}{}
@@ -457,6 +463,36 @@ func buildCommittedCachePlan(items []prefetchedData) (*committedCachePlan, error
 	return plan, nil
 }
 
+// addEnrichFilterEntries extracts indexed field values from payload JSON and adds
+// enrich:filter: cache entries for dictionary objects (System, Venue, Currency, etc.).
+func addEnrichFilterEntries(plan *committedCachePlan, objectClass, payload string, globalID int64, enrichFilterFields map[string]map[string]string) {
+	fieldMap, ok := enrichFilterFields[objectClass]
+	if !ok || len(fieldMap) == 0 {
+		return
+	}
+
+	var parsed map[string]json.RawMessage
+	if err := json.Unmarshal([]byte(payload), &parsed); err != nil {
+		return
+	}
+
+	for filterField, jsonKey := range fieldMap {
+		raw, ok := parsed[jsonKey]
+		if !ok {
+			continue
+		}
+		var value string
+		if err := json.Unmarshal(raw, &value); err != nil {
+			continue
+		}
+		if value == "" {
+			continue
+		}
+		key := "enrich:filter:" + objectClass + ":" + filterField + ":" + value
+		plan.filterUpserts[key] = globalID
+	}
+}
+
 func (s *Server) writeCommittedCacheBestEffort(ctx context.Context, plan *committedCachePlan) {
 	if s.redis == nil || plan == nil {
 		return
@@ -471,6 +507,15 @@ func (s *Server) writeCommittedCacheBestEffort(ctx context.Context, plan *commit
 	for key, items := range plan.parentAppends {
 		if err := s.redis.AppendCommittedParent(ctx, key, items); err != nil {
 			log.Printf("Warning: failed to write committed parent cache key %s: %v", key, err)
+		}
+	}
+
+	if len(plan.filterUpserts) > 0 {
+		filterTTL := time.Duration(s.cfg.EnrichFilterCacheTTLSecs) * time.Second
+		for key, globalID := range plan.filterUpserts {
+			if err := s.redis.PutEnrichFilter(ctx, key, globalID, filterTTL); err != nil {
+				log.Printf("Warning: failed to write enrichment filter cache key %s: %v", key, err)
+			}
 		}
 	}
 }

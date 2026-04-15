@@ -88,6 +88,19 @@ func main() {
 		log.Printf("Loaded metamodel: %d types", metamodelCache.TypeCount())
 	}
 
+	// Warmup enrichment filter cache (with distributed lock for multi-replica safety)
+	if len(cfg.EnrichFilterFields) > 0 {
+		mainTables, dataTables := server.BuildTableMappings(
+			cfg.EnrichFilterFields,
+			metamodelCache.GetMainTable,
+			metamodelCache.GetDataTable,
+		)
+		filterTTL := time.Duration(cfg.EnrichFilterCacheTTLSecs) * time.Second
+		// DB schema is "murex" — same as search-service uses
+		dbSchema := "murex"
+		go server.WarmupEnrichFilterCache(ctx, redisClient, db, dbSchema, cfg.EnrichFilterFields, filterTTL, mainTables, dataTables)
+	}
+
 	// Create gRPC server
 	var opts []grpc.ServerOption
 	if tel != nil {

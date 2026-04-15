@@ -95,6 +95,73 @@ func (c *SearchClient) GetObjectCollectionByParentID(ctx context.Context, object
 	return result, nil
 }
 
+// GetObjectCollectionByFilter retrieves objects matching a filter expression
+func (c *SearchClient) GetObjectCollectionByFilter(ctx context.Context, objectClass string, filter *pb.FilterExpr) ([]map[string]interface{}, error) {
+	resp, err := c.client.GetObjectCollectionByFilter(ctx, &pb.GetObjectCollectionByFilterRequest{
+		ObjectRootClass: objectClass,
+		Filter:          filter,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to get objects by filter: %w", err)
+	}
+
+	result := make([]map[string]interface{}, 0, len(resp.Contents))
+	for _, content := range resp.Contents {
+		m, err := structValueToMap(content)
+		if err != nil {
+			return nil, err
+		}
+		result = append(result, m)
+	}
+
+	return result, nil
+}
+
+// FindGlobalIDByFilter searches for an object by filter and returns its globalId, or nil if not found
+func (c *SearchClient) FindGlobalIDByFilter(ctx context.Context, objectClass, field, value string) (*int64, error) {
+	filter := &pb.FilterExpr{
+		Expr: &pb.FilterExpr_Predicate{
+			Predicate: &pb.FilterPredicate{
+				Field:    field,
+				Operator: pb.FilterOperator_FILTER_OPERATOR_EQ,
+				Values: []*pb.FilterValue{
+					{Kind: &pb.FilterValue_StringValue{StringValue: value}},
+				},
+			},
+		},
+	}
+
+	results, err := c.GetObjectCollectionByFilter(ctx, objectClass, filter)
+	if err != nil {
+		if IsNotFoundError(err) {
+			return nil, nil
+		}
+		return nil, err
+	}
+
+	if len(results) == 0 {
+		return nil, nil
+	}
+
+	globalID := int64(getIntFromMapGeneric(results[0], "globalId"))
+	if globalID == 0 {
+		return nil, nil
+	}
+	return &globalID, nil
+}
+
+// GetGlobalIDByAltIDOrNull retrieves GlobalID by alternative ID, returning nil if not found
+func (c *SearchClient) GetGlobalIDByAltIDOrNull(ctx context.Context, objectClass, altID, sourceAlias string) (*int64, error) {
+	globalID, err := c.GetObjectGlobalIDByAltID(ctx, objectClass, altID, sourceAlias)
+	if err != nil {
+		if IsNotFoundError(err) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return &globalID, nil
+}
+
 // GetObjectGlobalIDByAltID retrieves GlobalID by alternative ID (external ID)
 func (c *SearchClient) GetObjectGlobalIDByAltID(ctx context.Context, objectClass, altID, sourceAlias string) (int64, error) {
 	resp, err := c.client.GetObjectGlobalIdByAltId(ctx, &pb.GetObjectGlobalIdByAltIdRequest{
@@ -126,6 +193,21 @@ func structValueToMap(v *structpb.Value) (map[string]interface{}, error) {
 	}
 
 	return result, nil
+}
+
+// getIntFromMapGeneric safely extracts an int from a map
+func getIntFromMapGeneric(m map[string]interface{}, key string) int {
+	if v, ok := m[key]; ok {
+		switch val := v.(type) {
+		case float64:
+			return int(val)
+		case int:
+			return val
+		case int64:
+			return int(val)
+		}
+	}
+	return 0
 }
 
 // IsNotFoundError checks if the error is a gRPC NotFound error

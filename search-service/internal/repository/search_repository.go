@@ -268,6 +268,14 @@ func (r *SearchRepository) FindGlobalIDByAltIDAndSourceAlias(
 	if err != nil {
 		return 0, err
 	}
+	sourceGlobalIDColumn, err := resolveMainColumn(sourceClass, "globalId")
+	if err != nil {
+		return 0, err
+	}
+	sourceClosedAtColumn, err := resolveMainColumn(sourceClass, "closedAt")
+	if err != nil {
+		return 0, err
+	}
 	parentIDColumn, err := resolveMainColumn(parentClass, "id")
 	if err != nil {
 		return 0, err
@@ -281,16 +289,18 @@ func (r *SearchRepository) FindGlobalIDByAltIDAndSourceAlias(
 		"SELECT pm." + parentGlobalIDColumn + " " +
 			"FROM " + altIndexTable + " aii " +
 			"JOIN " + altMainTable + " aim ON aim." + altMainIDColumn + " = aii." + altMainIDColumn + " " +
-			"JOIN " + sourceMainTable + " sm ON sm." + sourceIDColumn + " = aii." + altSourceIDColumn + " " +
+			"JOIN " + sourceMainTable + " sm ON sm." + sourceGlobalIDColumn + " = aii." + altSourceIDColumn + " " +
 			"JOIN " + sourceIndexTable + " si ON si.id = sm." + sourceIDColumn + " " +
 			"JOIN " + parentMainTable + " pm ON pm." + parentIDColumn + " = aim." + altParentIDColumn + " " +
 			"WHERE aii." + altValueColumn + " = ? " +
 			"AND si." + sourceAliasColumn + " = ? " +
+			"AND sm." + sourceClosedAtColumn + " = ? " +
 			"FOR SHARE",
 	)
 
+	const sourceClosedAtInfinity = "3000-01-01T00:00"
 	var globalID int64
-	if err := r.db.QueryRowContext(ctx, query, altID, sourceAlias).Scan(&globalID); err != nil {
+	if err := r.db.QueryRowContext(ctx, query, altID, sourceAlias, sourceClosedAtInfinity).Scan(&globalID); err != nil {
 		return 0, err
 	}
 	return globalID, nil

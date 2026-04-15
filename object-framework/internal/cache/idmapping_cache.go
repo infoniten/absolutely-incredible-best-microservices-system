@@ -20,35 +20,48 @@ type IdMappingCache struct {
 	ttl time.Duration
 }
 
-// NewIdMappingCache constructs a cache. If clusterNodes is non-empty, a cluster
-// client is used; otherwise the standalone redisURL is parsed.
-func NewIdMappingCache(redisURL string, clusterNodes []string, username, password string, ttlSeconds int) (*IdMappingCache, error) {
-	var rdb redis.UniversalClient
-
+// NewRedisClient creates a shared redis.UniversalClient. If clusterNodes is non-empty,
+// a cluster client is used; otherwise the standalone redisURL is parsed.
+func NewRedisClient(redisURL string, clusterNodes []string, username, password string) (redis.UniversalClient, error) {
 	if len(clusterNodes) > 0 {
-		rdb = redis.NewClusterClient(&redis.ClusterOptions{
+		return redis.NewClusterClient(&redis.ClusterOptions{
 			Addrs:    clusterNodes,
 			Username: username,
 			Password: password,
-		})
-	} else {
-		opt, err := redis.ParseURL(redisURL)
-		if err != nil {
-			return nil, fmt.Errorf("failed to parse redis URL: %w", err)
-		}
-		if username != "" {
-			opt.Username = username
-		}
-		if password != "" {
-			opt.Password = password
-		}
-		rdb = redis.NewClient(opt)
+		}), nil
 	}
 
+	opt, err := redis.ParseURL(redisURL)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse redis URL: %w", err)
+	}
+	if username != "" {
+		opt.Username = username
+	}
+	if password != "" {
+		opt.Password = password
+	}
+	return redis.NewClient(opt), nil
+}
+
+// NewIdMappingCache constructs a cache with its own Redis connection.
+func NewIdMappingCache(redisURL string, clusterNodes []string, username, password string, ttlSeconds int) (*IdMappingCache, error) {
+	rdb, err := NewRedisClient(redisURL, clusterNodes, username, password)
+	if err != nil {
+		return nil, err
+	}
 	return &IdMappingCache{
 		rdb: rdb,
 		ttl: time.Duration(ttlSeconds) * time.Second,
 	}, nil
+}
+
+// NewIdMappingCacheFromClient constructs a cache that reuses an existing Redis client.
+func NewIdMappingCacheFromClient(rdb redis.UniversalClient, ttlSeconds int) *IdMappingCache {
+	return &IdMappingCache{
+		rdb: rdb,
+		ttl: time.Duration(ttlSeconds) * time.Second,
+	}
 }
 
 func (c *IdMappingCache) Ping(ctx context.Context) error {

@@ -151,10 +151,6 @@ func (r *MoexRecord) ToFxSpotForwardTrade(productGlobalID, tradeID, tradeGlobalI
 		FxRate:            price,
 		BaseValueDate:     settleDate,
 		NotionalValueDate: settleDate,
-		// Reference fields are null for now
-		BaseCurrencyID:     nil,
-		NotionalCurrencyID: nil,
-		CounterpartyID:     nil,
 	}, nil
 }
 

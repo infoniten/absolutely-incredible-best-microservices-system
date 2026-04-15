@@ -1,6 +1,7 @@
 package config
 
 import (
+	"encoding/json"
 	"os"
 	"strconv"
 	"strings"
@@ -20,6 +21,10 @@ type Config struct {
 	TxTTLSeconds      int
 	CommitChunkSize   int
 	MaxDBConnections  int
+
+	// Enrichment filter cache: transaction-service writes enrich:filter: keys on commit
+	EnrichFilterCacheTTLSecs int
+	EnrichFilterFields       map[string]map[string]string // objectClass → {filterField → jsonKey}
 }
 
 func Load() *Config {
@@ -37,7 +42,33 @@ func Load() *Config {
 		TxTTLSeconds:      getEnvInt("TX_TTL_SECONDS", 600),
 		CommitChunkSize:   getEnvInt("COMMIT_CHUNK_SIZE", 5000),
 		MaxDBConnections:  getEnvInt("MAX_DB_CONNECTIONS", 50),
+
+		EnrichFilterCacheTTLSecs: getEnvInt("ENRICH_FILTER_CACHE_TTL_SECONDS", 86400),
+		EnrichFilterFields:       loadEnrichFilterFields(),
 	}
+}
+
+// loadEnrichFilterFields returns the mapping of objectClass → {filterField → jsonKey}.
+// Can be overridden via ENRICH_FILTER_FIELDS env var (JSON format).
+func loadEnrichFilterFields() map[string]map[string]string {
+	defaults := map[string]map[string]string{
+		"System":       {"System.code": "code"},
+		"Venue":        {"Venue.code": "code"},
+		"Currency":     {"Asset.code": "code"},
+		"Counterparty": {"Counterparty.code": "code"},
+		"FxPair":       {"Instrument.code": "code"},
+	}
+
+	raw := os.Getenv("ENRICH_FILTER_FIELDS")
+	if raw == "" {
+		return defaults
+	}
+
+	var parsed map[string]map[string]string
+	if err := json.Unmarshal([]byte(raw), &parsed); err != nil {
+		return defaults
+	}
+	return parsed
 }
 
 func getEnv(key, defaultValue string) string {

@@ -77,26 +77,31 @@ func main() {
 	}
 	log.Println("Database tables initialized")
 
-	// Initialize Redis cache for IdMapping lookups (cluster mode if REDIS_CLUSTER_NODES is set)
-	idMapCache, err := cache.NewIdMappingCache(
-		cfg.RedisURL,
-		cfg.RedisClusterNodes,
-		cfg.RedisUsername,
-		cfg.RedisPassword,
-		cfg.IdMappingCacheTTLSecs,
-	)
+	// Initialize shared Redis client (used by IdMapping cache and enrichment cache)
+	redisClient, err := cache.NewRedisClient(cfg.RedisURL, cfg.RedisClusterNodes, cfg.RedisUsername, cfg.RedisPassword)
 	if err != nil {
-		log.Fatalf("Failed to create IdMapping cache: %v", err)
+		log.Fatalf("Failed to create Redis client: %v", err)
 	}
-	defer idMapCache.Close()
-	if err := idMapCache.Ping(ctx); err != nil {
+	defer redisClient.Close()
+	if err := redisClient.Ping(ctx).Err(); err != nil {
 		log.Fatalf("Failed to ping Redis: %v", err)
 	}
-	globalIDRepo.SetCache(idMapCache)
 	if len(cfg.RedisClusterNodes) > 0 {
-		log.Printf("IdMapping Redis cache enabled (cluster mode, nodes=%v, ttl=%ds)", cfg.RedisClusterNodes, cfg.IdMappingCacheTTLSecs)
+		log.Printf("Redis connected (cluster mode, nodes=%v)", cfg.RedisClusterNodes)
 	} else {
-		log.Printf("IdMapping Redis cache enabled (standalone, url=%s, ttl=%ds)", cfg.RedisURL, cfg.IdMappingCacheTTLSecs)
+		log.Printf("Redis connected (standalone, url=%s)", cfg.RedisURL)
+	}
+
+	// IdMapping cache (reuses shared Redis client)
+	idMapCache := cache.NewIdMappingCacheFromClient(redisClient, cfg.IdMappingCacheTTLSecs)
+	globalIDRepo.SetCache(idMapCache)
+	log.Printf("IdMapping cache enabled (ttl=%ds)", cfg.IdMappingCacheTTLSecs)
+
+	// Enrichment cache (reuses shared Redis client)
+	var enrichCache *cache.EnrichmentCache
+	if cfg.EnrichCacheEnabled {
+		enrichCache = cache.NewEnrichmentCache(redisClient)
+		log.Println("Enrichment cache enabled")
 	}
 
 	// Initialize gRPC clients
@@ -136,12 +141,15 @@ func main() {
 	defer lockClient.Close()
 	log.Printf("Connected to Lock Service at %s", cfg.LockServiceAddr)
 
-	searchClient, err := client.NewSearchClient(cfg.SearchServiceAddr)
+	grpcSearchClient, err := client.NewSearchClient(cfg.SearchServiceAddr)
 	if err != nil {
 		log.Fatalf("Failed to create Search client: %v", err)
 	}
-	defer searchClient.Close()
+	defer grpcSearchClient.Close()
 	log.Printf("Connected to Search Service at %s", cfg.SearchServiceAddr)
+
+	// Wrap search client with enrichment cache
+	searchClient := client.NewCachedSearchClient(grpcSearchClient, enrichCache)
 
 	txClient, err := client.NewTransactionClient(cfg.TransactionServiceAddr)
 	if err != nil {

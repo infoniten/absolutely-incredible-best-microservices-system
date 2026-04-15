@@ -37,7 +37,7 @@ type FxSpotProcessor struct {
 	idProvider        IDProvider
 	globalIDProvider  GlobalIDProvider
 	lockClient        *client.LockClient
-	searchClient      *client.SearchClient
+	searchClient      client.EnrichmentSearchClient
 	txClient          *client.TransactionClient
 	lockTTLMs         int64
 	lockRetryInterval time.Duration
@@ -53,7 +53,7 @@ func NewFxSpotProcessor(
 	idProvider IDProvider,
 	globalIDProvider GlobalIDProvider,
 	lockClient *client.LockClient,
-	searchClient *client.SearchClient,
+	searchClient client.EnrichmentSearchClient,
 	txClient *client.TransactionClient,
 	lockTTLMs int64,
 	lockRetryIntervalMs int64,
@@ -384,6 +384,11 @@ func (p *FxSpotProcessor) processBusinessLogicOptimized(ctx context.Context, moe
 		return fmt.Errorf("failed to convert MOEX record to trade: %w", err)
 	}
 
+	// Step 4a: Enrich trade with reference data from search-service
+	if err := p.enrichTrade(ctx, moexRecord, trade); err != nil {
+		return fmt.Errorf("failed to enrich trade: %w", err)
+	}
+
 	// Step 5: Build Cashflows
 	cashflows := parser.CreateCashflows(trade, allIDs[2], allIDs[3])
 	trade.Cashflows = cashflows
@@ -502,6 +507,151 @@ func (p *FxSpotProcessor) mapToProduct(data map[string]interface{}) *domain.FxSp
 		Version:  int32(getIntFromMap(data, "version")),
 		Revision: int32(getIntFromMap(data, "revision")),
 	}
+}
+
+// enrichTrade resolves reference IDs from search-service and sets them on the trade
+func (p *FxSpotProcessor) enrichTrade(ctx context.Context, moexRecord *parser.MoexRecord, trade *domain.FxSpotForwardTrade) error {
+	_, enrichSpan := processorTracer.Start(ctx, "fxspot.enrich_trade")
+	defer enrichSpan.End()
+
+	const sourceAlias = "MOEX"
+
+	type result struct {
+		name string
+		val  *int64
+		err  error
+	}
+
+	ch := make(chan result, 10)
+	count := 0
+
+	// LegalEntity by altId
+	count++
+	go func() {
+		val, err := p.searchClient.GetGlobalIDByAltIDOrNull(ctx, "LegalEntity", moexRecord.Entity, sourceAlias)
+		ch <- result{"legalEntity", val, err}
+	}()
+
+	// Counterparty by altId (BankID), fallback to filter
+	count++
+	go func() {
+		val, err := p.resolveCounterparty(ctx, moexRecord.BankID, sourceAlias)
+		ch <- result{"counterparty", val, err}
+	}()
+
+	// SourceSystem by filter (System.code = "MC")
+	count++
+	go func() {
+		val, err := p.searchClient.FindGlobalIDByFilter(ctx, "System", "System.code", "MC")
+		ch <- result{"sourceSystem", val, err}
+	}()
+
+	// Portfolio by altId (BrdBookName)
+	count++
+	go func() {
+		val, err := p.searchClient.GetGlobalIDByAltIDOrNull(ctx, "Portfolio", moexRecord.BrdBookName, sourceAlias)
+		ch <- result{"portfolio", val, err}
+	}()
+
+	// Trader (Person) by altId: first try TraderSigmaLogin/SUDIR, fallback to UserID/MOEX
+	count++
+	go func() {
+		val, err := p.resolveTrader(ctx, moexRecord, sourceAlias)
+		ch <- result{"trader", val, err}
+	}()
+
+	// Venue by filter (Venue.code = Exchange)
+	count++
+	go func() {
+		val, err := p.searchClient.FindGlobalIDByFilter(ctx, "Venue", "Venue.code", moexRecord.Exchange)
+		ch <- result{"venue", val, err}
+	}()
+
+	// BaseCurrency by filter (Asset.code = SecuritiesFaceUnit)
+	count++
+	go func() {
+		val, err := p.searchClient.FindGlobalIDByFilter(ctx, "Currency", "Asset.code", moexRecord.SecuritiesFaceUnit)
+		ch <- result{"baseCurrency", val, err}
+	}()
+
+	// NotionalCurrency by filter (Asset.code = CurrencyID)
+	count++
+	go func() {
+		val, err := p.searchClient.FindGlobalIDByFilter(ctx, "Currency", "Asset.code", moexRecord.CurrencyID)
+		ch <- result{"notionalCurrency", val, err}
+	}()
+
+	// Instrument (FxPair) by filter (Instrument.code = SecuritiesFaceValue/CurrencyID)
+	count++
+	go func() {
+		instrumentCode := moexRecord.SecuritiesFaceValue + "/" + moexRecord.CurrencyID
+		val, err := p.searchClient.FindGlobalIDByFilter(ctx, "FxPair", "Instrument.code", instrumentCode)
+		ch <- result{"instrument", val, err}
+	}()
+
+	for i := 0; i < count; i++ {
+		r := <-ch
+		if r.err != nil {
+			return fmt.Errorf("failed to resolve %s: %w", r.name, r.err)
+		}
+		switch r.name {
+		case "legalEntity":
+			trade.LegalEntityID = r.val
+		case "counterparty":
+			trade.CounterpartyID = r.val
+		case "sourceSystem":
+			trade.SourceSystemID = r.val
+		case "portfolio":
+			trade.PortfolioID = r.val
+		case "trader":
+			trade.TraderID = r.val
+			trade.AuthorizedByID = r.val
+		case "venue":
+			trade.VenueID = r.val
+		case "baseCurrency":
+			trade.BaseCurrencyID = r.val
+		case "notionalCurrency":
+			trade.NotionalCurrencyID = r.val
+		case "instrument":
+			trade.InstrumentID = r.val
+		}
+	}
+
+	return nil
+}
+
+// resolveCounterparty resolves counterparty: first by altId, fallback to default (Counterparty.code = "NKCBN")
+func (p *FxSpotProcessor) resolveCounterparty(ctx context.Context, bankID, sourceAlias string) (*int64, error) {
+	globalID, err := p.searchClient.GetGlobalIDByAltIDOrNull(ctx, "Counterparty", bankID, sourceAlias)
+	if err != nil {
+		return nil, err
+	}
+	if globalID != nil {
+		return globalID, nil
+	}
+
+	// Fallback: find default counterparty by code
+	return p.searchClient.FindGlobalIDByFilter(ctx, "Counterparty", "Counterparty.code", "NKCBN")
+}
+
+// resolveTrader resolves trader: first by TraderSigmaLogin/SUDIR, fallback to UserID/MOEX
+func (p *FxSpotProcessor) resolveTrader(ctx context.Context, moexRecord *parser.MoexRecord, sourceAlias string) (*int64, error) {
+	if moexRecord.TraderSigmaLogin != "" {
+		globalID, err := p.searchClient.GetGlobalIDByAltIDOrNull(ctx, "Person", moexRecord.TraderSigmaLogin, "SUDIR")
+		if err != nil {
+			return nil, err
+		}
+		if globalID != nil {
+			return globalID, nil
+		}
+	}
+
+	// Fallback to UserID with MOEX source
+	if moexRecord.UserID != "" {
+		return p.searchClient.GetGlobalIDByAltIDOrNull(ctx, "Person", moexRecord.UserID, sourceAlias)
+	}
+
+	return nil, nil
 }
 
 // getIntFromMap safely extracts an int from a map

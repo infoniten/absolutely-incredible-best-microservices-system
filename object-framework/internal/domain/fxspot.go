@@ -29,9 +29,16 @@ type FxSpotForwardTrade struct {
 	FxRate             float64   `json:"fxRate"`         // PRICE
 	BaseValueDate      time.Time `json:"baseValueDate"`      // SETTLEDATE
 	NotionalValueDate  time.Time `json:"notionalValueDate"`  // SETTLEDATE
+	LegalEntityID      *int64    `json:"legalEntityId,omitempty"`
+	CounterpartyID     *int64    `json:"counterpartyId,omitempty"`
+	SourceSystemID     *int64    `json:"sourceSystemId,omitempty"`
+	PortfolioID        *int64    `json:"portfolioId,omitempty"`
+	TraderID           *int64    `json:"traderId,omitempty"`
+	AuthorizedByID     *int64    `json:"authorizedById,omitempty"`
+	VenueID            *int64    `json:"venueId,omitempty"`
 	BaseCurrencyID     *int64    `json:"baseCurrencyId,omitempty"`
 	NotionalCurrencyID *int64    `json:"notionalCurrencyId,omitempty"`
-	CounterpartyID     *int64    `json:"counterpartyId,omitempty"`
+	InstrumentID       *int64    `json:"instrumentId,omitempty"`
 	Cashflows          []TradeCashflow `json:"cashflows,omitempty"`
 }
 
