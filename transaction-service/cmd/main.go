@@ -98,7 +98,7 @@ func main() {
 		filterTTL := time.Duration(cfg.EnrichFilterCacheTTLSecs) * time.Second
 		// DB schema is "murex" — same as search-service uses
 		dbSchema := "murex"
-		go server.WarmupEnrichFilterCache(ctx, redisClient, db, dbSchema, cfg.EnrichFilterFields, filterTTL, mainTables, dataTables)
+		server.WarmupEnrichFilterCache(ctx, redisClient, db, dbSchema, cfg.EnrichFilterFields, filterTTL, mainTables, dataTables)
 	}
 
 	// Create gRPC server

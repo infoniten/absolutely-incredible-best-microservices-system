@@ -96,28 +96,35 @@ func warmupClass(
 	defer rows.Close()
 
 	count := 0
+	rowCount := 0
 	for rows.Next() {
+		rowCount++
 		var globalID int64
 		var contentRaw string
 		if err := rows.Scan(&globalID, &contentRaw); err != nil {
+			log.Printf("Enrichment warmup: %s scan error: %v", objectClass, err)
 			continue
 		}
 		if globalID == 0 {
+			log.Printf("Enrichment warmup: %s skipping row with globalID=0", objectClass)
 			continue
 		}
 
 		var content map[string]json.RawMessage
 		if err := json.Unmarshal([]byte(contentRaw), &content); err != nil {
+			log.Printf("Enrichment warmup: %s JSON parse error for globalID=%d: %v", objectClass, globalID, err)
 			continue
 		}
 
 		for filterField, jsonKey := range fieldMap {
 			raw, ok := content[jsonKey]
 			if !ok {
+				log.Printf("Enrichment warmup: %s globalID=%d missing JSON key %q", objectClass, globalID, jsonKey)
 				continue
 			}
 			var value string
 			if err := json.Unmarshal(raw, &value); err != nil {
+				log.Printf("Enrichment warmup: %s globalID=%d key %q unmarshal error: %v", objectClass, globalID, jsonKey, err)
 				continue
 			}
 			if value == "" {
@@ -126,11 +133,13 @@ func warmupClass(
 
 			key := "enrich:filter:" + objectClass + ":" + filterField + ":" + value
 			if err := redis.PutEnrichFilter(ctx, key, globalID, ttl); err != nil {
+				log.Printf("Enrichment warmup: %s failed to write key %s: %v", objectClass, key, err)
 				continue
 			}
 			count++
 		}
 	}
+	log.Printf("Enrichment warmup: %s queried %d rows from DB", objectClass, rowCount)
 
 	return count, rows.Err()
 }
@@ -147,14 +156,17 @@ func BuildTableMappings(
 	for className := range enrichFields {
 		mt, err := getMainTable(className)
 		if err != nil {
+			log.Printf("Enrichment warmup: no main table for %s: %v", className, err)
 			continue
 		}
 		dt, err := getDataTable(className)
 		if err != nil {
+			log.Printf("Enrichment warmup: no data table for %s: %v", className, err)
 			continue
 		}
 		mainTables[className] = mt
 		dataTables[className] = dt
+		log.Printf("Enrichment warmup: mapped %s -> main=%s, data=%s", className, mt, dt)
 	}
 	return
 }
