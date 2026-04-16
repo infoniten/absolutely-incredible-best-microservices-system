@@ -10,11 +10,39 @@ import (
 	"time"
 
 	"github.com/segmentio/kafka-go"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/codes"
+	"go.opentelemetry.io/otel/trace"
 
 	"github.com/quantara/object-framework/internal/domain"
 	"github.com/quantara/object-framework/internal/processor"
 	"github.com/quantara/object-framework/internal/repository"
 )
+
+var consumerTracer = otel.Tracer("object-framework/kafka")
+
+// kafkaHeadersCarrier adapts kafka.Message headers to OpenTelemetry TextMapCarrier
+// for W3C trace context propagation from upstream producers.
+type kafkaHeadersCarrier []kafka.Header
+
+func (c kafkaHeadersCarrier) Get(key string) string {
+	for _, h := range c {
+		if h.Key == key {
+			return string(h.Value)
+		}
+	}
+	return ""
+}
+
+func (c kafkaHeadersCarrier) Set(key, value string)   {} // not needed on consumer side
+func (c kafkaHeadersCarrier) Keys() []string {
+	keys := make([]string, 0, len(c))
+	for _, h := range c {
+		keys = append(keys, h.Key)
+	}
+	return keys
+}
 
 // Consumer handles Kafka message consumption with parallel processing
 type Consumer struct {
@@ -68,10 +96,19 @@ func NewConsumer(
 	}
 }
 
-// messageTask represents a message to be processed
+// fetchedMessage is what fetcher sends to preparer, carrying the per-message
+// root tracing context that spans the whole lifecycle (fetch → unlock).
+type fetchedMessage struct {
+	msg     kafka.Message
+	rootCtx context.Context
+}
+
+// messageTask represents a message to be processed. rootCtx is the per-message
+// root context that parents all processing spans (prepare, process, business_logic).
 type messageTask struct {
-	msg    kafka.Message
-	rawMsg *domain.RawMessageDto
+	msg     kafka.Message
+	rawMsg  *domain.RawMessageDto
+	rootCtx context.Context
 }
 
 // Start begins consuming messages with parallel workers
@@ -105,8 +142,8 @@ func (c *Consumer) Start(ctx context.Context) error {
 		fetcherCount = 1
 	}
 
-	// Raw message channel for fetcher → preparer pipeline
-	rawMsgChan := make(chan kafka.Message, c.workerCount*2)
+	// Raw message channel for fetcher → preparer pipeline (carries per-message root ctx)
+	rawMsgChan := make(chan fetchedMessage, c.workerCount*2)
 
 	// Start parallel preparers (do ID generation and DB operations)
 	var preparerWg sync.WaitGroup
@@ -142,9 +179,15 @@ func (c *Consumer) Start(ctx context.Context) error {
 	return c.reader.Close()
 }
 
-// fetcher continuously fetches messages from Kafka
-func (c *Consumer) fetcher(ctx context.Context, wg *sync.WaitGroup, rawMsgChan chan<- kafka.Message) {
+// fetcher continuously fetches messages from Kafka. For each message it starts
+// a per-message root span "kafka.consume" that covers the full lifecycle until
+// the worker finishes processing (fetch → prepare → process → unlock). If the
+// upstream producer injected W3C trace context into headers, we continue that
+// trace; otherwise a fresh trace is started.
+func (c *Consumer) fetcher(ctx context.Context, wg *sync.WaitGroup, rawMsgChan chan<- fetchedMessage) {
 	defer wg.Done()
+
+	propagator := otel.GetTextMapPropagator()
 
 	for {
 		select {
@@ -158,45 +201,77 @@ func (c *Consumer) fetcher(ctx context.Context, wg *sync.WaitGroup, rawMsgChan c
 				}
 				continue
 			}
+
+			// Extract upstream trace context from Kafka headers (if present).
+			parentCtx := propagator.Extract(ctx, kafkaHeadersCarrier(msg.Headers))
+			rootCtx, rootSpan := consumerTracer.Start(parentCtx, "kafka.consume",
+				trace.WithSpanKind(trace.SpanKindConsumer),
+				trace.WithAttributes(
+					attribute.String("messaging.system", "kafka"),
+					attribute.String("messaging.destination.name", msg.Topic),
+					attribute.Int("messaging.kafka.partition", msg.Partition),
+					attribute.Int64("messaging.kafka.offset", msg.Offset),
+				),
+			)
+			_ = rootSpan // span is stored in rootCtx; closed later by worker/preparer
+
 			select {
-			case rawMsgChan <- msg:
+			case rawMsgChan <- fetchedMessage{msg: msg, rootCtx: rootCtx}:
 			case <-ctx.Done():
+				rootSpan.End()
 				return
 			}
 		}
 	}
 }
 
-// preparer prepares messages (ID generation, DB operations) in parallel
-func (c *Consumer) preparer(ctx context.Context, wg *sync.WaitGroup, rawMsgChan <-chan kafka.Message, taskChan chan<- messageTask) {
+// preparer prepares messages (ID generation, DB operations) in parallel.
+// Uses the per-message root ctx from fetcher so prepare spans are children of
+// kafka.consume. If the message is a duplicate or prepare fails, the root span
+// is ended here (otherwise it's passed to the worker).
+func (c *Consumer) preparer(ctx context.Context, wg *sync.WaitGroup, rawMsgChan <-chan fetchedMessage, taskChan chan<- messageTask) {
 	defer wg.Done()
 
-	for msg := range rawMsgChan {
+	for fm := range rawMsgChan {
 		select {
 		case <-ctx.Done():
+			trace.SpanFromContext(fm.rootCtx).End()
 			return
 		default:
 		}
 
-		task, err := c.prepareMessage(ctx, msg)
+		task, err := c.prepareMessage(fm.rootCtx, fm.msg)
 		if err != nil {
 			atomic.AddUint64(&c.prepareErrors, 1)
 			log.Printf("Error preparing message: %v", err)
+			rootSpan := trace.SpanFromContext(fm.rootCtx)
+			rootSpan.RecordError(err)
+			rootSpan.SetStatus(codes.Error, "prepare failed")
+			rootSpan.End()
 			continue
 		}
-		if task != nil {
-			atomic.AddInt64(&c.inFlightCount, 1)
-			select {
-			case taskChan <- *task:
-			case <-ctx.Done():
-				return
-			}
+		if task == nil {
+			// Duplicate message — root span ends here (no further processing).
+			trace.SpanFromContext(fm.rootCtx).End()
+			continue
+		}
+
+		task.rootCtx = fm.rootCtx
+		atomic.AddInt64(&c.inFlightCount, 1)
+		select {
+		case taskChan <- *task:
+		case <-ctx.Done():
+			trace.SpanFromContext(fm.rootCtx).End()
+			return
 		}
 	}
 }
 
 // prepareMessage prepares a fetched message for processing
 func (c *Consumer) prepareMessage(ctx context.Context, msg kafka.Message) (*messageTask, error) {
+	ctx, span := consumerTracer.Start(ctx, "kafka.prepare")
+	defer span.End()
+
 	// Build messageID
 	messageID := fmt.Sprintf("%s:%d:%d:%d",
 		msg.Topic,
@@ -204,6 +279,7 @@ func (c *Consumer) prepareMessage(ctx context.Context, msg kafka.Message) (*mess
 		msg.Offset,
 		msg.Time.UnixMilli(),
 	)
+	span.SetAttributes(attribute.String("kafka.message_id", messageID))
 
 	// Check for duplicates
 	exists, err := c.rawMsgRepo.Exists(ctx, messageID)
@@ -260,17 +336,33 @@ func (c *Consumer) worker(ctx context.Context, wg *sync.WaitGroup, taskChan <-ch
 	}
 }
 
-// processTask processes a single message task
+// processTask processes a single message task. It runs the processor under the
+// per-message root span (kafka.consume) started by the fetcher, so processor
+// spans (fxspot.process, acquire_lock, enrich_trade, etc.) all link into one
+// end-to-end trace. The root span is ended here, after processing completes
+// (which includes lock release via defer inside processor.Process).
 func (c *Consumer) processTask(ctx context.Context, task messageTask, commitChan chan<- kafka.Message) {
 	defer atomic.AddInt64(&c.inFlightCount, -1)
 
-	result := c.processor.Process(ctx, task.rawMsg)
+	rootCtx := task.rootCtx
+	if rootCtx == nil {
+		rootCtx = ctx // defensive fallback
+	}
+	rootSpan := trace.SpanFromContext(rootCtx)
+	defer rootSpan.End()
+
+	result := c.processor.Process(rootCtx, task.rawMsg)
 
 	if result.Success {
 		atomic.AddUint64(&c.processedCount, 1)
+		rootSpan.SetStatus(codes.Ok, "processed")
 	} else {
 		atomic.AddUint64(&c.errorCount, 1)
 		log.Printf("Failed to process message %s: %v", task.rawMsg.MessageID, result.Error)
+		if result.Error != nil {
+			rootSpan.RecordError(result.Error)
+		}
+		rootSpan.SetStatus(codes.Error, "processing failed")
 	}
 
 	// Send to commit channel

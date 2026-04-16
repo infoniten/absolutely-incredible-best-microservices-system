@@ -256,6 +256,8 @@ services:
       REDIS_URL: "redis://redis:6379/0"
       JAEGER_ENDPOINT: "jaeger:4318"
       SERVICE_NAME: "object-framework"
+      # Sampler ratio: 0.1 = 10%. Increase for debugging (1.0 = all traces).
+      OTEL_TRACES_SAMPLER_RATIO: "0.1"
       LOCK_TTL_MS: "30000"
       WORKER_COUNT: "100"
     healthcheck:
