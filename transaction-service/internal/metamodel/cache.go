@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strings"
 	"sync"
 )
 
@@ -41,12 +42,13 @@ type IndexTable struct {
 
 // TypeInstruction holds metadata for a concrete class
 type TypeInstruction struct {
-	Name        string       `json:"name"`      // Class name
-	Loader      string       `json:"loader"`    // Algorithm name
-	MainTable   string       `json:"mainTable"` // Main table name
-	DataTable   string       `json:"dataTable"` // Data table name
-	Indexes     []IndexTable `json:"indexes"`   // Index tables
-	AlgorithmID uint32       // Computed from Loader
+	Name          string       `json:"name"`          // Class name
+	Loader        string       `json:"loader"`        // Algorithm name
+	MainTable     string       `json:"mainTable"`     // Main table name
+	DataTable     string       `json:"dataTable"`     // Data table name
+	MetadataTable string       `json:"metadataTable"` // Metadata table name (global_id -> revision/version)
+	Indexes       []IndexTable `json:"indexes"`       // Index tables
+	AlgorithmID   uint32       // Computed from Loader
 }
 
 // TransactionInstructionsResponse represents the API response
@@ -178,6 +180,31 @@ func (c *Cache) GetDataTable(className string) (string, error) {
 	return "", fmt.Errorf("type not found: %s", className)
 }
 
+// GetMetadataTable returns the metadata table name for a class.
+// If metadata table is not explicitly provided by DataDictionary, it falls back
+// to deriving `<main>_metadata` from `<main>_main`.
+func (c *Cache) GetMetadataTable(className string) (string, error) {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+
+	t, ok := c.types[className]
+	if !ok {
+		return "", fmt.Errorf("type not found: %s", className)
+	}
+
+	if strings.TrimSpace(t.MetadataTable) != "" {
+		return t.MetadataTable, nil
+	}
+
+	//TODO убрать когда будет доработан datadictionary
+	derived := deriveMetadataTableFromMain(t.MainTable)
+	if derived == "" {
+		return "", fmt.Errorf("no metadata table defined for class: %s", className)
+	}
+
+	return derived, nil
+}
+
 // GetIndexTables returns the index tables for a class
 func (c *Cache) GetIndexTables(className string) ([]IndexTable, error) {
 	c.mu.RLock()
@@ -202,4 +229,18 @@ func (c *Cache) TypeCount() int {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
 	return len(c.types)
+}
+
+//TODO убрать когда будет доработан datadictionary
+func deriveMetadataTableFromMain(mainTable string) string {
+	mainTable = strings.TrimSpace(mainTable)
+	if mainTable == "" {
+		return ""
+	}
+
+	if strings.HasSuffix(mainTable, "_main") {
+		return strings.TrimSuffix(mainTable, "_main") + "_metadata"
+	}
+
+	return mainTable + "_metadata"
 }

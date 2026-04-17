@@ -38,10 +38,11 @@ func TestCache_Load(t *testing.T) {
 			Headers: []string{"Content-Type", "Authorization"},
 			Type: []TypeInstruction{
 				{
-					Name:      "TestEntity",
-					Loader:    "RevisionedEntityRepository",
-					MainTable: "test_entity_main",
-					DataTable: "test_entity_data",
+					Name:          "TestEntity",
+					Loader:        "RevisionedEntityRepository",
+					MainTable:     "test_entity_main",
+					DataTable:     "test_entity_data",
+					MetadataTable: "explicit_test_entity_metadata",
 					Indexes: []IndexTable{
 						{
 							TableName: "test_entity_index",
@@ -269,6 +270,29 @@ func TestCache_GetIndexTables(t *testing.T) {
 	}
 }
 
+func TestCache_GetMetadataTable(t *testing.T) {
+	cache := createTestCache(t)
+
+	// Explicit metadata table from DataDictionary should be returned as-is.
+	table, err := cache.GetMetadataTable("TestEntity")
+	if err != nil {
+		t.Fatalf("GetMetadataTable failed: %v", err)
+	}
+	if table != "explicit_test_entity_metadata" {
+		t.Errorf("expected explicit metadata table, got %q", table)
+	}
+
+	// Fallback should derive <main>_metadata from <main>_main.
+	// TODO убрать когда будет доработан datadictionary
+	table, err = cache.GetMetadataTable("DraftableEntity")
+	if err != nil {
+		t.Fatalf("GetMetadataTable fallback failed: %v", err)
+	}
+	if table != "draftable_entity_metadata" {
+		t.Errorf("expected fallback metadata table 'draftable_entity_metadata', got %q", table)
+	}
+}
+
 func TestCache_GetTypeInstruction_EmptyMainTable(t *testing.T) {
 	cache := NewCache("")
 	cache.types["NoMainTable"] = &TypeInstruction{
@@ -350,10 +374,11 @@ func createTestCache(t *testing.T) *Cache {
 			Headers: []string{"Content-Type"},
 			Type: []TypeInstruction{
 				{
-					Name:      "TestEntity",
-					Loader:    "RevisionedEntityRepository",
-					MainTable: "test_entity_main",
-					DataTable: "test_entity_data",
+					Name:          "TestEntity",
+					Loader:        "RevisionedEntityRepository",
+					MainTable:     "test_entity_main",
+					DataTable:     "test_entity_data",
+					MetadataTable: "explicit_test_entity_metadata",
 					Indexes: []IndexTable{
 						{
 							TableName: "test_entity_index",

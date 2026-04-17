@@ -533,10 +533,14 @@ func committedParentKey(objectClass string, parentID int64) string {
 }
 
 func draftStatusCacheSuffix(draftStatus *string) string {
-	if draftStatus != nil && strings.EqualFold(strings.TrimSpace(*draftStatus), "DRAFT") {
+	if isDraftStatus(draftStatus) {
 		return "draft"
 	}
 	return "confirmed"
+}
+
+func isDraftStatus(draftStatus *string) bool {
+	return draftStatus != nil && strings.EqualFold(strings.TrimSpace(*draftStatus), "DRAFT")
 }
 
 // executeBatchSave executes batch save based on algorithm
@@ -789,6 +793,10 @@ func (s *Server) saveRevisioned(ctx context.Context, tx *sql.Tx, className strin
 	if err != nil {
 		return 0, nil, err
 	}
+	metadataTable, err := s.metamodel.GetMetadataTable(className)
+	if err != nil {
+		return 0, nil, err
+	}
 
 	// Parse all objects
 	parsedObjects := make([]*ObjectRequest, 0, len(objects))
@@ -806,21 +814,27 @@ func (s *Server) saveRevisioned(ctx context.Context, tx *sql.Tx, className strin
 	argIdx := 1
 
 	for _, req := range parsedObjects {
-		version := 0
-		if req.Version != nil {
-			version = int(*req.Version)
-		}
-
-		values = append(values, fmt.Sprintf("($%d::bigint, $%d::varchar, $%d::bigint, $%d::int, $%d::int, $%d::varchar)",
-			argIdx, argIdx+1, argIdx+2, argIdx+3, argIdx+4, argIdx+5))
-		args = append(args, req.ID, req.ObjectType, req.GlobalID, req.Revision, version, req.LockID)
-		argIdx += 6
+		values = append(values, fmt.Sprintf("($%d::bigint, $%d::varchar, $%d::bigint, $%d::varchar)",
+			argIdx, argIdx+1, argIdx+2, argIdx+3))
+		args = append(args, req.ID, req.ObjectType, req.GlobalID, req.LockID)
+		argIdx += 4
 	}
 
 	query := fmt.Sprintf(`
-		WITH src_from_app as (
+		WITH src_from_app_input as (
 			SELECT *
-			FROM (VALUES %s) as appTable(id, object_class, global_id, revision, version, token)
+			FROM (VALUES %s) as app_table(id, object_class, global_id, token)
+		),
+		src_from_app as (
+			SELECT
+				sfi.id,
+				sfi.object_class,
+				sfi.global_id,
+				COALESCE(mm.revision, 0) + 1 AS revision,
+				COALESCE(mm.version, 0) + 1 AS version,
+				sfi.token
+			FROM src_from_app_input sfi
+			LEFT JOIN murex.%s mm ON mm.global_id = sfi.global_id
 		),
 		records_lock_check as (
 			SELECT CASE
@@ -861,7 +875,7 @@ func (s *Server) saveRevisioned(ctx context.Context, tx *sql.Tx, className strin
 		WHEN NOT MATCHED THEN
 			INSERT (id, object_class, global_id, revision, version, saved_at, closed_at)
 			VALUES (dfm.id, dfm.object_class, dfm.global_id, dfm.revision, dfm.version, NOW(), TIMESTAMP '3000-01-01 00:00:00');
-	`, strings.Join(values, ","), mainTable, mainTable)
+	`, strings.Join(values, ","), metadataTable, mainTable, mainTable)
 
 	result, err := tx.ExecContext(ctx, query, args...)
 	if err != nil {
@@ -869,6 +883,13 @@ func (s *Server) saveRevisioned(ctx context.Context, tx *sql.Tx, className strin
 	}
 
 	affected, _ := result.RowsAffected()
+	if affected == 0 {
+		return 0, nil, nil
+	}
+
+	if err := s.upsertRevisionedMetadata(ctx, tx, metadataTable, parsedObjects); err != nil {
+		return 0, nil, err
+	}
 
 	// Insert into data table
 	if err := s.insertDataTable(ctx, tx, className, parsedObjects); err != nil {
@@ -885,6 +906,10 @@ func (s *Server) saveRevisioned(ctx context.Context, tx *sql.Tx, className strin
 
 func (s *Server) saveDraftableDateBounded(ctx context.Context, tx *sql.Tx, className string, objects []*redis.StoredObject) (int32, []*pb.ObjectResult, error) {
 	mainTable, err := s.metamodel.GetMainTable(className)
+	if err != nil {
+		return 0, nil, err
+	}
+	metadataTable, err := s.metamodel.GetMetadataTable(className)
 	if err != nil {
 		return 0, nil, err
 	}
@@ -905,32 +930,40 @@ func (s *Server) saveDraftableDateBounded(ctx context.Context, tx *sql.Tx, class
 	argIdx := 1
 
 	for _, req := range parsedObjects {
-		draftStatus := false
-		if req.DraftStatus != nil && *req.DraftStatus == "DRAFT" {
-			draftStatus = true
-		}
-
-		var version interface{} = nil
-		if req.Version != nil {
-			version = *req.Version
-		}
+		draftStatus := isDraftStatus(req.DraftStatus)
 
 		actualFrom := "2000-01-01"
 		if req.ActualFrom != nil {
 			actualFrom = *req.ActualFrom
 		}
 
-		values = append(values, fmt.Sprintf("($%d::bigint, $%d::varchar, $%d::bigint, $%d::date, $%d::bool, $%d::int, $%d::int, $%d::varchar)",
-			argIdx, argIdx+1, argIdx+2, argIdx+3, argIdx+4, argIdx+5, argIdx+6, argIdx+7))
+		values = append(values, fmt.Sprintf("($%d::bigint, $%d::varchar, $%d::bigint, $%d::date, $%d::bool, $%d::varchar)",
+			argIdx, argIdx+1, argIdx+2, argIdx+3, argIdx+4, argIdx+5))
 
-		args = append(args, req.ID, req.ObjectType, req.GlobalID, actualFrom, draftStatus, req.Revision, version, req.LockID)
-		argIdx += 8
+		args = append(args, req.ID, req.ObjectType, req.GlobalID, actualFrom, draftStatus, req.LockID)
+		argIdx += 6
 	}
 
 	query := fmt.Sprintf(`
-		WITH src_from_app as (
+		WITH src_from_app_input as (
 			SELECT *
-			FROM (VALUES %s) AS app_table(id, object_class, global_id, actual_from, draft_status, revision, version, token)
+			FROM (VALUES %s) AS app_table(id, object_class, global_id, actual_from, draft_status, token)
+		),
+		src_from_app AS (
+			SELECT
+				sfi.id,
+				sfi.object_class,
+				sfi.global_id,
+				sfi.actual_from,
+				sfi.draft_status,
+				COALESCE(mm.revision, 0) + 1 AS revision,
+				CASE
+					WHEN sfi.draft_status THEN NULL
+					ELSE COALESCE(mm.version, 0) + 1
+				END AS version,
+				sfi.token
+			FROM src_from_app_input sfi
+			LEFT JOIN murex.%s mm ON mm.global_id = sfi.global_id
 		),
 		const AS (
 			SELECT
@@ -1043,7 +1076,7 @@ func (s *Server) saveDraftableDateBounded(ctx context.Context, tx *sql.Tx, class
 			RETURNING id
 		)
 		SELECT COUNT(*) FROM ins;
-	`, strings.Join(values, ","), mainTable, mainTable, mainTable, mainTable)
+	`, strings.Join(values, ","), metadataTable, mainTable, mainTable, mainTable, mainTable)
 
 	var count int32
 	err = tx.QueryRowContext(ctx, query, args...).Scan(&count)
@@ -1056,6 +1089,10 @@ func (s *Server) saveDraftableDateBounded(ctx context.Context, tx *sql.Tx, class
 	}
 
 	if count > 0 {
+		if err := s.upsertDraftableMetadata(ctx, tx, metadataTable, parsedObjects); err != nil {
+			return 0, nil, err
+		}
+
 		// Insert into data table
 		if err := s.insertDataTable(ctx, tx, className, parsedObjects); err != nil {
 			return 0, nil, err
@@ -1068,4 +1105,100 @@ func (s *Server) saveDraftableDateBounded(ctx context.Context, tx *sql.Tx, class
 	}
 
 	return count, nil, nil
+}
+
+func (s *Server) upsertRevisionedMetadata(ctx context.Context, tx *sql.Tx, metadataTable string, objects []*ObjectRequest) error {
+	if len(objects) == 0 {
+		return nil
+	}
+
+	uniqueGlobalIDs := make(map[int64]struct{}, len(objects))
+	for _, obj := range objects {
+		uniqueGlobalIDs[obj.GlobalID] = struct{}{}
+	}
+
+	globalIDs := make([]int64, 0, len(uniqueGlobalIDs))
+	for globalID := range uniqueGlobalIDs {
+		globalIDs = append(globalIDs, globalID)
+	}
+	sort.Slice(globalIDs, func(i, j int) bool { return globalIDs[i] < globalIDs[j] })
+
+	values := make([]string, 0, len(globalIDs))
+	args := make([]interface{}, 0, len(globalIDs))
+	argIdx := 1
+	for _, globalID := range globalIDs {
+		values = append(values, fmt.Sprintf("($%d::bigint)", argIdx))
+		args = append(args, globalID)
+		argIdx++
+	}
+
+	query := fmt.Sprintf(`
+		INSERT INTO murex.%s (global_id, revision, version)
+		SELECT v.id, COALESCE(mm.revision, 0) + 1, COALESCE(mm.version, 0) + 1
+		FROM (VALUES %s) AS v(id)
+		LEFT JOIN murex.%s mm ON mm.global_id = v.id
+		ON CONFLICT (global_id) DO UPDATE
+		SET revision = EXCLUDED.revision, version = EXCLUDED.version;
+	`, metadataTable, strings.Join(values, ","), metadataTable)
+
+	if _, err := tx.ExecContext(ctx, query, args...); err != nil {
+		return fmt.Errorf("failed to upsert revisioned metadata in %s: %w", metadataTable, err)
+	}
+
+	return nil
+}
+
+func (s *Server) upsertDraftableMetadata(ctx context.Context, tx *sql.Tx, metadataTable string, objects []*ObjectRequest) error {
+	if len(objects) == 0 {
+		return nil
+	}
+
+	// If at least one record for global_id is CONFIRMED, version should increase.
+	// For draft-only updates, version is preserved.
+	allDraftByGlobalID := make(map[int64]bool, len(objects))
+	for _, obj := range objects {
+		globalID := obj.GlobalID
+		draftStatus := isDraftStatus(obj.DraftStatus)
+		if current, exists := allDraftByGlobalID[globalID]; exists {
+			allDraftByGlobalID[globalID] = current && draftStatus
+			continue
+		}
+		allDraftByGlobalID[globalID] = draftStatus
+	}
+
+	globalIDs := make([]int64, 0, len(allDraftByGlobalID))
+	for globalID := range allDraftByGlobalID {
+		globalIDs = append(globalIDs, globalID)
+	}
+	sort.Slice(globalIDs, func(i, j int) bool { return globalIDs[i] < globalIDs[j] })
+
+	values := make([]string, 0, len(globalIDs))
+	args := make([]interface{}, 0, len(globalIDs)*2)
+	argIdx := 1
+	for _, globalID := range globalIDs {
+		values = append(values, fmt.Sprintf("($%d::bigint, $%d::bool)", argIdx, argIdx+1))
+		args = append(args, globalID, allDraftByGlobalID[globalID])
+		argIdx += 2
+	}
+
+	query := fmt.Sprintf(`
+		INSERT INTO murex.%s (global_id, revision, version)
+		SELECT
+			v.id,
+			COALESCE(mm.revision, 0) + 1,
+			CASE
+				WHEN v.all_draft THEN mm.version
+				ELSE COALESCE(mm.version, 0) + 1
+			END
+		FROM (VALUES %s) AS v(id, all_draft)
+		LEFT JOIN murex.%s mm ON mm.global_id = v.id
+		ON CONFLICT (global_id) DO UPDATE
+		SET revision = EXCLUDED.revision, version = EXCLUDED.version;
+	`, metadataTable, strings.Join(values, ","), metadataTable)
+
+	if _, err := tx.ExecContext(ctx, query, args...); err != nil {
+		return fmt.Errorf("failed to upsert draftable metadata in %s: %w", metadataTable, err)
+	}
+
+	return nil
 }
