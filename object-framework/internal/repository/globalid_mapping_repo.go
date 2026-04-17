@@ -47,7 +47,7 @@ func (r *GlobalIDMappingRepository) FindByExternalID(ctx context.Context, extern
 
 	query := `
 		SELECT id, external_id, source, source_object_type, global_id
-		FROM globalid_mappings
+		FROM globalid_mappings_go
 		WHERE external_id = $1 AND source = $2 AND source_object_type = $3
 	`
 
@@ -78,7 +78,7 @@ func (r *GlobalIDMappingRepository) FindByExternalID(ctx context.Context, extern
 // Create inserts a new GlobalID mapping
 func (r *GlobalIDMappingRepository) Create(ctx context.Context, mapping *domain.GlobalIDMapping) error {
 	query := `
-		INSERT INTO globalid_mappings (id, external_id, source, source_object_type, global_id)
+		INSERT INTO globalid_mappings_go (id, external_id, source, source_object_type, global_id)
 		VALUES ($1, $2, $3, $4, $5)
 	`
 
@@ -136,10 +136,10 @@ func (r *GlobalIDMappingRepository) GetOrCreate(ctx context.Context, externalID,
 	return mapping, true, nil
 }
 
-// CreateTableIfNotExists creates the globalid_mappings table if it doesn't exist
+// CreateTableIfNotExists creates the globalid_mappings_go table if it doesn't exist
 func (r *GlobalIDMappingRepository) CreateTableIfNotExists(ctx context.Context) error {
 	query := `
-		CREATE TABLE IF NOT EXISTS globalid_mappings (
+		CREATE TABLE IF NOT EXISTS globalid_mappings_go (
 			id BIGINT PRIMARY KEY,
 			external_id VARCHAR(256) NOT NULL,
 			source VARCHAR(64) NOT NULL,
@@ -147,15 +147,15 @@ func (r *GlobalIDMappingRepository) CreateTableIfNotExists(ctx context.Context) 
 			global_id BIGINT NOT NULL,
 			UNIQUE(external_id, source, source_object_type)
 		);
-		CREATE INDEX IF NOT EXISTS idx_globalid_mappings_lookup
-			ON globalid_mappings(external_id, source, source_object_type);
-		CREATE INDEX IF NOT EXISTS idx_globalid_mappings_global_id
-			ON globalid_mappings(global_id);
+		CREATE INDEX IF NOT EXISTS idx_globalid_mappings_go_lookup
+			ON globalid_mappings_go(external_id, source, source_object_type);
+		CREATE INDEX IF NOT EXISTS idx_globalid_mappings_go_global_id
+			ON globalid_mappings_go(global_id);
 	`
 
 	_, err := r.db.ExecContext(ctx, query)
 	if err != nil {
-		return fmt.Errorf("failed to create globalid_mappings table: %w", err)
+		return fmt.Errorf("failed to create globalid_mappings_go table: %w", err)
 	}
 	return nil
 }

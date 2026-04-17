@@ -28,7 +28,7 @@ func (r *RawMessageRepository) Create(ctx context.Context, msg *domain.RawMessag
 	}
 
 	query := `
-		INSERT INTO raw_messages (id, metadata, message_id, value, source, status, created_at, updated_at)
+		INSERT INTO raw_messages_go (id, metadata, message_id, value, source, status, created_at, updated_at)
 		VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
 	`
 
@@ -55,7 +55,7 @@ func (r *RawMessageRepository) Create(ctx context.Context, msg *domain.RawMessag
 // UpdateStatus updates the status of a raw message
 func (r *RawMessageRepository) UpdateStatus(ctx context.Context, id int64, status domain.RawMessageStatus, errorMsg string) error {
 	query := `
-		UPDATE raw_messages
+		UPDATE raw_messages_go
 		SET status = $1, error = $2, updated_at = $3
 		WHERE id = $4
 	`
@@ -71,7 +71,7 @@ func (r *RawMessageRepository) UpdateStatus(ctx context.Context, id int64, statu
 func (r *RawMessageRepository) GetByMessageID(ctx context.Context, messageID string) (*domain.RawMessageDto, error) {
 	query := `
 		SELECT id, metadata, message_id, value, source, status, error, created_at, updated_at
-		FROM raw_messages
+		FROM raw_messages_go
 		WHERE message_id = $1
 	`
 
@@ -110,7 +110,7 @@ func (r *RawMessageRepository) GetByMessageID(ctx context.Context, messageID str
 
 // Exists checks if a message with the given messageID already exists
 func (r *RawMessageRepository) Exists(ctx context.Context, messageID string) (bool, error) {
-	query := `SELECT EXISTS(SELECT 1 FROM raw_messages WHERE message_id = $1)`
+	query := `SELECT EXISTS(SELECT 1 FROM raw_messages_go WHERE message_id = $1)`
 
 	var exists bool
 	err := r.db.QueryRowContext(ctx, query, messageID).Scan(&exists)
@@ -120,10 +120,10 @@ func (r *RawMessageRepository) Exists(ctx context.Context, messageID string) (bo
 	return exists, nil
 }
 
-// CreateTableIfNotExists creates the raw_messages table if it doesn't exist
+// CreateTableIfNotExists creates the raw_messages_go table if it doesn't exist
 func (r *RawMessageRepository) CreateTableIfNotExists(ctx context.Context) error {
 	query := `
-		CREATE TABLE IF NOT EXISTS raw_messages (
+		CREATE TABLE IF NOT EXISTS raw_messages_go (
 			id BIGINT PRIMARY KEY,
 			metadata JSONB NOT NULL,
 			message_id VARCHAR(512) NOT NULL UNIQUE,
@@ -134,13 +134,13 @@ func (r *RawMessageRepository) CreateTableIfNotExists(ctx context.Context) error
 			created_at TIMESTAMP NOT NULL,
 			updated_at TIMESTAMP NOT NULL
 		);
-		CREATE INDEX IF NOT EXISTS idx_raw_messages_message_id ON raw_messages(message_id);
-		CREATE INDEX IF NOT EXISTS idx_raw_messages_status ON raw_messages(status);
+		CREATE INDEX IF NOT EXISTS idx_raw_messages_go_message_id ON raw_messages_go(message_id);
+		CREATE INDEX IF NOT EXISTS idx_raw_messages_go_status ON raw_messages_go(status);
 	`
 
 	_, err := r.db.ExecContext(ctx, query)
 	if err != nil {
-		return fmt.Errorf("failed to create raw_messages table: %w", err)
+		return fmt.Errorf("failed to create raw_messages_go table: %w", err)
 	}
 	return nil
 }

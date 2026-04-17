@@ -86,7 +86,7 @@ func TestIdMappingCache_HitMissAndPrime(t *testing.T) {
 
 	// 3) Subsequent FindByExternalID resolves from cache. Drop the DB table to
 	//    prove Postgres is not consulted: a cache hit must still return globalID.
-	if _, err := db.ExecContext(ctx, "DROP TABLE globalid_mappings"); err != nil {
+	if _, err := db.ExecContext(ctx, "DROP TABLE globalid_mappings_go"); err != nil {
 		t.Fatalf("drop table: %v", err)
 	}
 

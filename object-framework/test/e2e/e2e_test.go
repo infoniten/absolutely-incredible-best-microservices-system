@@ -120,16 +120,16 @@ func TestE2E_FullProcessingFlow(t *testing.T) {
 	// Wait for processing and verify
 	t.Log("Waiting for object-framework to process...")
 
-	// 1. Check raw_messages table
+	// 1. Check raw_messages_go table
 	err = waitForCondition(ctx, 30*time.Second, func() (bool, error) {
 		return checkRawMessageExists(ctx, db, tradeNo)
 	})
 	if err != nil {
 		t.Fatalf("Raw message not found: %v", err)
 	}
-	t.Log("Raw message found in raw_messages table")
+	t.Log("Raw message found in raw_messages_go table")
 
-	// 2. Check raw_messages status is SAVED
+	// 2. Check raw_messages_go status is SAVED
 	err = waitForCondition(ctx, 60*time.Second, func() (bool, error) {
 		return checkRawMessageStatus(ctx, db, tradeNo, "SAVED")
 	})
@@ -144,7 +144,7 @@ func TestE2E_FullProcessingFlow(t *testing.T) {
 	}
 	t.Log("Raw message status is SAVED")
 
-	// 3. Check globalid_mappings table
+	// 3. Check globalid_mappings_go table
 	globalID, err := getGlobalIDMapping(ctx, db, tradeNo)
 	if err != nil {
 		t.Fatalf("GlobalID mapping not found: %v", err)
@@ -617,7 +617,7 @@ func waitForCondition(ctx context.Context, timeout time.Duration, check func() (
 func checkRawMessageExists(ctx context.Context, db *sql.DB, tradeNo string) (bool, error) {
 	var count int
 	err := db.QueryRowContext(ctx,
-		"SELECT COUNT(*) FROM raw_messages WHERE convert_from(value, 'UTF8') LIKE $1",
+		"SELECT COUNT(*) FROM raw_messages_go WHERE convert_from(value, 'UTF8') LIKE $1",
 		"%TRADENO=\""+tradeNo+"\"%",
 	).Scan(&count)
 	if err != nil {
@@ -629,7 +629,7 @@ func checkRawMessageExists(ctx context.Context, db *sql.DB, tradeNo string) (boo
 func checkRawMessageStatus(ctx context.Context, db *sql.DB, tradeNo string, status string) (bool, error) {
 	var count int
 	err := db.QueryRowContext(ctx,
-		"SELECT COUNT(*) FROM raw_messages WHERE convert_from(value, 'UTF8') LIKE $1 AND status = $2",
+		"SELECT COUNT(*) FROM raw_messages_go WHERE convert_from(value, 'UTF8') LIKE $1 AND status = $2",
 		"%TRADENO=\""+tradeNo+"\"%", status,
 	).Scan(&count)
 	if err != nil {
@@ -641,7 +641,7 @@ func checkRawMessageStatus(ctx context.Context, db *sql.DB, tradeNo string, stat
 func getRawMessageError(ctx context.Context, db *sql.DB, tradeNo string) string {
 	var errMsg sql.NullString
 	db.QueryRowContext(ctx,
-		"SELECT error FROM raw_messages WHERE convert_from(value, 'UTF8') LIKE $1",
+		"SELECT error FROM raw_messages_go WHERE convert_from(value, 'UTF8') LIKE $1",
 		"%TRADENO=\""+tradeNo+"\"%",
 	).Scan(&errMsg)
 	if errMsg.Valid {
@@ -653,7 +653,7 @@ func getRawMessageError(ctx context.Context, db *sql.DB, tradeNo string) string 
 func getGlobalIDMapping(ctx context.Context, db *sql.DB, tradeNo string) (int64, error) {
 	var globalID int64
 	err := db.QueryRowContext(ctx,
-		"SELECT global_id FROM globalid_mappings WHERE external_id = $1 AND source = 'MOEX'",
+		"SELECT global_id FROM globalid_mappings_go WHERE external_id = $1 AND source = 'MOEX'",
 		tradeNo,
 	).Scan(&globalID)
 	if err != nil {

@@ -70,10 +70,10 @@ func main() {
 
 	// Create tables if not exist
 	if err := rawMsgRepo.CreateTableIfNotExists(ctx); err != nil {
-		log.Fatalf("Failed to create raw_messages table: %v", err)
+		log.Fatalf("Failed to create raw_messages_go table: %v", err)
 	}
 	if err := globalIDRepo.CreateTableIfNotExists(ctx); err != nil {
-		log.Fatalf("Failed to create globalid_mappings table: %v", err)
+		log.Fatalf("Failed to create globalid_mappings_go table: %v", err)
 	}
 	log.Println("Database tables initialized")
 
