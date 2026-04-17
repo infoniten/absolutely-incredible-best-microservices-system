@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"sync"
-	"sync/atomic"
 	"time"
 
 	"github.com/quantara/object-framework/internal/client"
@@ -42,8 +41,9 @@ type FxSpotProcessor struct {
 	lockTTLMs         int64
 	lockRetryInterval time.Duration
 
-	// Metrics
-	lockWaitCount int64 // Number of goroutines currently waiting for lock
+	// In-memory FIFO queue per productGlobalID. Ensures messages for the same
+	// trade are processed in arrival order, without spin-lock retries.
+	fifoQueue *keyQueue
 }
 
 // NewFxSpotProcessor creates a new FxSpotProcessor
@@ -68,6 +68,7 @@ func NewFxSpotProcessor(
 		txClient:          txClient,
 		lockTTLMs:         lockTTLMs,
 		lockRetryInterval: time.Duration(lockRetryIntervalMs) * time.Millisecond,
+		fifoQueue:         newKeyQueue(),
 	}
 }
 
@@ -156,20 +157,22 @@ func (p *FxSpotProcessor) Process(ctx context.Context, rawMsg *domain.RawMessage
 
 	result.GlobalID = productGlobalID
 
-	// Step 3: Acquire lock with infinite retry (messages are ordered by trade in partition)
-	var lockToken string
-	waiting := false
-	lockAttempts := 0
+	// Step 3: Acquire in-memory FIFO queue (ensures ordering within this instance),
+	// then acquire the distributed lock (protects against Kafka rebalance races).
 	lockCtx, lockSpan := processorTracer.Start(ctx, "fxspot.acquire_lock")
 
+	// 3a: FIFO queue — blocks until all earlier messages for this productGlobalID finish.
+	fifoRelease := p.fifoQueue.Acquire(productGlobalID)
+	lockSpan.SetAttributes(attribute.Int64("fifo.queue_wait_count", p.fifoQueue.WaitCount()))
+
+	// 3b: Distributed lock — with retry, but contention is rare now (FIFO serializes locally).
+	var lockToken string
+	lockAttempts := 0
 	for {
 		lockAttempts++
-		// Check context cancellation (for graceful shutdown)
 		select {
 		case <-ctx.Done():
-			if waiting {
-				atomic.AddInt64(&p.lockWaitCount, -1)
-			}
+			fifoRelease()
 			result.Error = fmt.Errorf("context cancelled while waiting for lock: %w", ctx.Err())
 			lockSpan.RecordError(result.Error)
 			lockSpan.SetStatus(codes.Error, result.Error.Error())
@@ -182,38 +185,23 @@ func (p *FxSpotProcessor) Process(ctx context.Context, rawMsg *domain.RawMessage
 		}
 
 		lockResult, err := p.lockClient.LockWithTTL(lockCtx, productGlobalID, p.lockTTLMs)
-		if err != nil {
-			if !waiting {
-				waiting = true
-				atomic.AddInt64(&p.lockWaitCount, 1)
-			}
+		if err != nil || !lockResult.Success {
+			// Distributed lock busy (e.g., previous holder on another instance during rebalance).
+			// Retry with backoff — this should be very rare with FIFO queue in place.
 			time.Sleep(p.lockRetryInterval)
 			continue
-		}
-
-		if !lockResult.Success {
-			if !waiting {
-				waiting = true
-				atomic.AddInt64(&p.lockWaitCount, 1)
-			}
-			time.Sleep(p.lockRetryInterval)
-			continue
-		}
-
-		if waiting {
-			atomic.AddInt64(&p.lockWaitCount, -1)
 		}
 		lockToken = lockResult.Token
 		break
 	}
-	lockSpan.SetAttributes(
-		attribute.Int("attempts", lockAttempts),
-		attribute.Bool("waited", waiting),
-	)
+	lockSpan.SetAttributes(attribute.Int("lock.attempts", lockAttempts))
 	lockSpan.End()
 
-	// Ensure lock is released
-	defer p.lockClient.Unlock(ctx, productGlobalID, lockToken)
+	// Ensure both locks are released (distributed first, then FIFO).
+	defer func() {
+		p.lockClient.Unlock(ctx, productGlobalID, lockToken)
+		fifoRelease()
+	}()
 
 	// Step 4: Process business logic with optimizations
 	businessCtx, businessSpan := processorTracer.Start(ctx, "fxspot.business_logic")
@@ -494,9 +482,9 @@ func (p *FxSpotProcessor) updateRawMessageStatus(ctx context.Context, id int64, 
 	return p.rawMsgRepo.UpdateStatus(ctx, id, status, errorMsg)
 }
 
-// LockWaitCount returns the number of goroutines currently waiting for locks
+// LockWaitCount returns the number of goroutines currently waiting in FIFO queues
 func (p *FxSpotProcessor) LockWaitCount() int64 {
-	return atomic.LoadInt64(&p.lockWaitCount)
+	return p.fifoQueue.WaitCount()
 }
 
 // mapToProduct converts search result to FxSpotExchangeProduct
