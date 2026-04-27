@@ -16,6 +16,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/quantara/transaction-service/internal/config"
+	txkafka "github.com/quantara/transaction-service/internal/kafka"
 	"github.com/quantara/transaction-service/internal/metamodel"
 	"github.com/quantara/transaction-service/internal/redis"
 	pb "github.com/quantara/transaction-service/proto"
@@ -43,6 +44,7 @@ type Server struct {
 	db        *sql.DB
 	tracer    trace.Tracer
 	metrics   *transactionMetrics
+	kafka     *txkafka.Producer
 }
 
 type prefetchedData struct {
@@ -94,6 +96,7 @@ func NewServer(
 	metamodelCache *metamodel.Cache,
 	db *sql.DB,
 	tracer trace.Tracer,
+	kafkaProducer *txkafka.Producer,
 ) *Server {
 	return &Server{
 		cfg:       cfg,
@@ -102,6 +105,7 @@ func NewServer(
 		db:        db,
 		tracer:    tracer,
 		metrics:   newTransactionMetrics(),
+		kafka:     kafkaProducer,
 	}
 }
 
@@ -352,6 +356,7 @@ func (s *Server) Commit(ctx context.Context, req *pb.CommitRequest) (*pb.CommitR
 	// Clean up Redis
 	s.redis.DeleteTransaction(ctx, req.TransactionId)
 	s.writeCommittedCacheBestEffort(ctx, cachePlan)
+	s.publishTradeEventsBestEffort(ctx, req.TransactionId, cachePlan)
 	s.metrics.incCommit(ctx)
 
 	log.Printf("Transaction committed: %s, objects saved: %d", req.TransactionId, totalSaved)
@@ -518,6 +523,37 @@ func (s *Server) writeCommittedCacheBestEffort(ctx context.Context, plan *commit
 			}
 		}
 	}
+}
+
+// publishTradeEventsBestEffort publishes committed objects to Kafka.
+// Uses globalUpserts (revisioned + draftable entities) and parentAppends (embedded).
+// Best-effort: errors are logged but don't affect the commit response.
+func (s *Server) publishTradeEventsBestEffort(ctx context.Context, txID string, plan *committedCachePlan) {
+	if s.kafka == nil || plan == nil {
+		return
+	}
+
+	events := make([]txkafka.TradeEvent, 0, len(plan.globalUpserts)+len(plan.parentAppends))
+
+	for key, entry := range plan.globalUpserts {
+		events = append(events, txkafka.TradeEvent{
+			Key:         key,
+			Value:       entry.body,
+			ObjectClass: entry.objectClass,
+		})
+	}
+
+	for key, items := range plan.parentAppends {
+		for _, item := range items {
+			events = append(events, txkafka.TradeEvent{
+				Key:         key,
+				Value:       item,
+				ObjectClass: key, // parent key contains class info
+			})
+		}
+	}
+
+	s.kafka.PublishCommittedObjects(ctx, txID, events)
 }
 
 func committedGlobalKey(globalID int64) string {

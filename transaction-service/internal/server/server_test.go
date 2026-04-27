@@ -402,7 +402,7 @@ func TestNewServer(t *testing.T) {
 		CommitChunkSize: 1000,
 	}
 
-	server := NewServer(cfg, nil, nil, nil, nil)
+	server := NewServer(cfg, nil, nil, nil, nil, nil)
 
 	if server == nil {
 		t.Fatal("NewServer returned nil")

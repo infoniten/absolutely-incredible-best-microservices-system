@@ -185,11 +185,15 @@ services:
       DATABASE_URL: "postgres://postgres:postgres@postgres:5432/quantara?sslmode=disable"
       REDIS_URL: "redis://redis:6379/0"
       DATADICTIONARY_URL: "http://datadictionary:8080"
+      KAFKA_BROKERS: "kafka:9092"
+      KAFKA_TRADES_TOPIC: "TRADES.EVENTS"
       JAEGER_ENDPOINT: "jaeger:4318"
       SERVICE_NAME: "transaction-service"
       TX_TTL_SECONDS: "600"
       COMMIT_CHUNK_SIZE: "5000"
     depends_on:
+      kafka:
+        condition: service_healthy
       postgres:
         condition: service_healthy
       redis:

@@ -15,6 +15,7 @@ import (
 	_ "github.com/lib/pq"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/quantara/transaction-service/internal/config"
+	txkafka "github.com/quantara/transaction-service/internal/kafka"
 	"github.com/quantara/transaction-service/internal/metamodel"
 	"github.com/quantara/transaction-service/internal/redis"
 	"github.com/quantara/transaction-service/internal/server"
@@ -116,7 +117,20 @@ func main() {
 	if tel != nil {
 		tracer = tel.Tracer
 	}
-	txServer := server.NewServer(cfg, redisClient, metamodelCache, db, tracer)
+	// Kafka producer for trade events (nil if KAFKA_BROKERS not configured)
+	var kafkaProducer *txkafka.Producer
+	if len(cfg.KafkaBrokers) > 0 {
+		if err := txkafka.EnsureTopicExists(cfg.KafkaBrokers, cfg.KafkaTradesTopic, 10, 1); err != nil {
+			log.Printf("Warning: failed to ensure Kafka topic %s: %v", cfg.KafkaTradesTopic, err)
+		}
+		kafkaProducer = txkafka.NewProducer(cfg.KafkaBrokers, cfg.KafkaTradesTopic)
+		if kafkaProducer != nil {
+			defer kafkaProducer.Close()
+			log.Printf("Kafka producer initialized: brokers=%v, topic=%s", cfg.KafkaBrokers, cfg.KafkaTradesTopic)
+		}
+	}
+
+	txServer := server.NewServer(cfg, redisClient, metamodelCache, db, tracer, kafkaProducer)
 	pb.RegisterTransactionServiceServer(grpcServer, txServer)
 
 	// Register health service

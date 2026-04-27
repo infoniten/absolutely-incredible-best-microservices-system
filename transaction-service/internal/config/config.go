@@ -22,6 +22,10 @@ type Config struct {
 	CommitChunkSize   int
 	MaxDBConnections  int
 
+	// Kafka: publish committed trades after successful commit
+	KafkaBrokers     []string
+	KafkaTradesTopic string
+
 	// Enrichment filter cache: transaction-service writes enrich:filter: keys on commit
 	EnrichFilterCacheTTLSecs int
 	EnrichFilterFields       map[string]map[string]string // objectClass → {filterField → jsonKey}
@@ -42,6 +46,9 @@ func Load() *Config {
 		TxTTLSeconds:      getEnvInt("TX_TTL_SECONDS", 600),
 		CommitChunkSize:   getEnvInt("COMMIT_CHUNK_SIZE", 5000),
 		MaxDBConnections:  getEnvInt("MAX_DB_CONNECTIONS", 50),
+
+		KafkaBrokers:     getEnvSlice("KAFKA_BROKERS", nil),
+		KafkaTradesTopic: getEnv("KAFKA_TRADES_TOPIC", "TRADES.EVENTS"),
 
 		EnrichFilterCacheTTLSecs: getEnvInt("ENRICH_FILTER_CACHE_TTL_SECONDS", 86400),
 		EnrichFilterFields:       loadEnrichFilterFields(),

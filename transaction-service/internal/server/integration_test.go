@@ -75,7 +75,7 @@ func TestIntegration_FullTransactionFlow(t *testing.T) {
 	}
 
 	// Create server
-	server := NewServer(cfg, redisClient, metamodelCache, db, nil)
+	server := NewServer(cfg, redisClient, metamodelCache, db, nil, nil)
 
 	ctx := context.Background()
 
@@ -276,7 +276,7 @@ func TestIntegration_InvalidTransactionOperations(t *testing.T) {
 	defer redisClient.Close()
 
 	cfg := &config.Config{CommitChunkSize: 100}
-	server := NewServer(cfg, redisClient, nil, nil, nil)
+	server := NewServer(cfg, redisClient, nil, nil, nil, nil)
 	ctx := context.Background()
 
 	t.Run("SaveToNonExistentTransaction", func(t *testing.T) {
@@ -344,7 +344,7 @@ func TestIntegration_MultipleObjectTypes(t *testing.T) {
 	metamodelCache.Load(context.Background())
 
 	cfg := &config.Config{CommitChunkSize: 100}
-	server := NewServer(cfg, redisClient, metamodelCache, nil, nil)
+	server := NewServer(cfg, redisClient, metamodelCache, nil, nil, nil)
 	ctx := context.Background()
 
 	// Begin transaction
@@ -408,7 +408,7 @@ func TestIntegration_LargeTransaction(t *testing.T) {
 	metamodelCache.Load(context.Background())
 
 	cfg := &config.Config{CommitChunkSize: 100}
-	server := NewServer(cfg, redisClient, metamodelCache, nil, nil)
+	server := NewServer(cfg, redisClient, metamodelCache, nil, nil, nil)
 	ctx := context.Background()
 
 	beginResp, _ := server.BeginTransaction(ctx, &pb.BeginTxRequest{})
@@ -467,7 +467,7 @@ func setupTestServer(t *testing.T) (*Server, *sql.DB, sqlmock.Sqlmock, func()) {
 	db, mock, _ := sqlmock.New()
 
 	cfg := &config.Config{CommitChunkSize: 100}
-	server := NewServer(cfg, redisClient, metamodelCache, db, nil)
+	server := NewServer(cfg, redisClient, metamodelCache, db, nil, nil)
 
 	cleanup := func() {
 		db.Close()
