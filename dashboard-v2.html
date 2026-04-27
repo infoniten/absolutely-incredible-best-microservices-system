@@ -1,0 +1,697 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Quantara Platform — Real-time Architecture v2</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+html,body{width:100%;height:100%;overflow:hidden;background:#080818;color:#e0e0e0;font-family:'Inter',system-ui,sans-serif}
+
+body::before{content:'';position:fixed;inset:0;background-image:
+  radial-gradient(ellipse 80% 60% at 30% 40%,rgba(0,180,220,0.03),transparent),
+  radial-gradient(ellipse 60% 50% at 70% 70%,rgba(120,80,255,0.02),transparent),
+  linear-gradient(rgba(40,60,120,0.03) 1px,transparent 1px),
+  linear-gradient(90deg,rgba(40,60,120,0.03) 1px,transparent 1px);
+background-size:100% 100%,100% 100%,60px 60px,60px 60px;z-index:0;pointer-events:none}
+
+#canvas-layer{position:fixed;top:0;left:0;width:100%;height:100%;z-index:1;pointer-events:none}
+#ui-layer{position:fixed;top:0;left:0;width:100%;height:100%;z-index:2;pointer-events:none}
+#ui-layer>*{pointer-events:auto}
+#hit-layer{position:fixed;top:0;left:0;width:100%;height:100%;z-index:3;pointer-events:auto;cursor:default}
+
+/* Header */
+.header{position:fixed;top:0;left:0;right:0;height:52px;display:flex;align-items:center;justify-content:space-between;padding:0 28px;background:linear-gradient(180deg,rgba(8,8,24,0.97) 0%,rgba(8,8,24,0.80) 100%);border-bottom:1px solid rgba(80,160,255,0.07);backdrop-filter:blur(16px);z-index:20}
+.header-left{display:flex;align-items:center;gap:14px}
+.header-left .logo{width:8px;height:8px;border-radius:50%;background:radial-gradient(circle,#00e8ff,#0055ff);box-shadow:0 0 10px #00aaff66;animation:pulse-logo 2.5s ease-in-out infinite}
+@keyframes pulse-logo{0%,100%{box-shadow:0 0 10px #00aaff66}50%{box-shadow:0 0 22px #00ccffaa}}
+.header-left h1{font-size:15px;font-weight:600;letter-spacing:0.4px;color:#c8daff}
+.header-left .pipe{color:rgba(255,255,255,0.10);font-weight:300;font-size:20px;margin:0 2px}
+.header-left .sub{font-size:11px;font-weight:400;color:rgba(140,170,255,0.40);letter-spacing:1.5px;text-transform:uppercase}
+.header-right{display:flex;align-items:center;gap:18px}
+.live-badge{display:flex;align-items:center;gap:6px;font-size:10px;text-transform:uppercase;letter-spacing:1.5px;color:rgba(0,255,136,0.7)}
+.live-badge .dot{width:7px;height:7px;border-radius:50%;background:#00ff88;box-shadow:0 0 8px #00ff8866;animation:blink 1.8s ease-in-out infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:0.35}}
+.clock{font-size:12px;color:rgba(140,170,255,0.45);font-family:'JetBrains Mono',monospace;letter-spacing:0.5px}
+
+/* Stats */
+.stats-bar{position:fixed;top:52px;left:0;right:0;height:44px;display:flex;align-items:center;justify-content:flex-start;gap:0;padding:0 28px;background:rgba(8,8,24,0.6);border-bottom:1px solid rgba(80,160,255,0.05);backdrop-filter:blur(10px);z-index:19}
+.stat{display:flex;align-items:baseline;gap:8px;padding:0 18px;border-right:1px solid rgba(80,160,255,0.06)}
+.stat:last-child{border-right:none}
+.stat .lbl{font-size:9px;text-transform:uppercase;letter-spacing:1.2px;color:rgba(140,170,255,0.30)}
+.stat .val{font-size:16px;font-weight:600;font-family:'JetBrains Mono',monospace}
+.stat .val .u{font-size:9px;font-weight:400;color:rgba(140,170,255,0.30);margin-left:3px}
+.stat.c1 .val{color:#5ef0e0}
+.stat.c2 .val{color:#00ff88}
+.stat.c3 .val{color:#ffb347}
+.stat.c4 .val{color:#c084fc}
+.stat.c5 .val{color:rgba(200,210,255,0.55)}
+.stat.c6 .val{color:#5ef0e0}
+.stat.c7 .val{color:#00ff88}
+
+/* Nodes */
+.node{position:absolute;border-radius:11px;padding:12px 16px;display:flex;align-items:center;gap:11px;transition:transform 0.15s ease,box-shadow 0.15s ease;z-index:5;white-space:nowrap;transform:translate(-50%,-50%);user-select:none}
+.node:hover{transform:translate(-50%,-50%) scale(1.06);z-index:8}
+.node .ic{font-size:18px;flex-shrink:0;width:30px;height:30px;display:flex;align-items:center;justify-content:center;border-radius:7px;background:rgba(255,255,255,0.04)}
+.node .nf .nm{font-size:12px;font-weight:600;letter-spacing:0.2px}
+.node .nf .ds{font-size:9px;color:rgba(255,255,255,0.55);margin-top:1px;letter-spacing:0.3px}
+
+/* Java services — cyan/teal */
+.node.java{background:rgba(0,200,210,0.05);border:1px solid rgba(0,210,210,0.18);box-shadow:0 0 18px rgba(0,200,220,0.06),inset 0 1px 0 rgba(0,220,220,0.06)}
+.node.java:hover{box-shadow:0 0 32px rgba(0,200,220,0.15),inset 0 1px 0 rgba(0,220,220,0.10)}
+.node.java .nm{color:#78efe6}
+.node.java .ic{color:#5ee8dd;background:rgba(0,210,210,0.07)}
+
+/* Infrastructure — warm orange/amber */
+.node.infra{background:rgba(255,170,50,0.04);border:1px solid rgba(255,175,60,0.16);box-shadow:0 0 18px rgba(255,160,40,0.05),inset 0 1px 0 rgba(255,180,70,0.06)}
+.node.infra:hover{box-shadow:0 0 32px rgba(255,160,40,0.14),inset 0 1px 0 rgba(255,180,70,0.10)}
+.node.infra .nm{color:#ffc76e}
+.node.infra .ic{color:#ffb347;background:rgba(255,180,70,0.07)}
+
+/* External — dim green */
+.node.external{background:rgba(60,180,80,0.04);border:1px solid rgba(60,180,80,0.16);box-shadow:0 0 18px rgba(60,180,80,0.05),inset 0 1px 0 rgba(60,180,80,0.06)}
+.node.external:hover{box-shadow:0 0 32px rgba(60,180,80,0.14),inset 0 1px 0 rgba(60,180,80,0.10)}
+.node.external .nm{color:#80d890}
+.node.external .ic{color:#60c870;background:rgba(60,180,80,0.07)}
+
+/* UI — bright blue/white */
+.node.ui{background:rgba(100,160,255,0.06);border:1px solid rgba(100,160,255,0.22);box-shadow:0 0 22px rgba(100,160,255,0.08),inset 0 1px 0 rgba(100,180,255,0.10)}
+.node.ui:hover{box-shadow:0 0 36px rgba(100,160,255,0.18),inset 0 1px 0 rgba(100,180,255,0.14)}
+.node.ui .nm{color:#b0d4ff}
+.node.ui .ic{color:#80b8ff;background:rgba(100,160,255,0.08)}
+
+/* User — special glow */
+.node.user{background:rgba(180,200,255,0.06);border:1px solid rgba(180,200,255,0.20);box-shadow:0 0 28px rgba(180,200,255,0.10),inset 0 1px 0 rgba(200,220,255,0.08);border-radius:50%;padding:14px;width:62px;height:62px;display:flex;align-items:center;justify-content:center}
+.node.user .ic{width:auto;height:auto;font-size:24px;background:none;border-radius:0}
+.node.user .nf{display:none}
+.node.user::after{content:'Trader';position:absolute;bottom:-18px;left:50%;transform:translateX(-50%);font-size:9px;color:rgba(200,220,255,0.65);letter-spacing:0.5px;white-space:nowrap}
+
+/* WAL — small, dim */
+.node.wal{background:rgba(180,170,140,0.03);border:1px solid rgba(180,170,140,0.10);box-shadow:none;opacity:0.50;padding:8px 12px;border-radius:7px;transform:translate(-50%,-50%) rotate(45deg);width:44px;height:44px;display:flex;align-items:center;justify-content:center}
+.node.wal:hover{transform:translate(-50%,-50%) rotate(45deg) scale(1.06);opacity:0.7}
+.node.wal .ic{transform:rotate(-45deg);width:auto;height:auto;font-size:14px;background:none}
+.node.wal .nf{display:none}
+.node.wal::after{content:'WAL';position:absolute;bottom:-20px;left:50%;transform:translateX(-50%) rotate(-45deg);font-size:8px;color:rgba(200,190,160,0.55);letter-spacing:0.3px;white-space:nowrap;font-family:'JetBrains Mono',monospace}
+
+.node.big{padding:16px 22px}
+.node.big .ic{width:34px;height:34px;font-size:20px}
+.node.big .nm{font-size:14px}
+
+/* Edge Tooltip */
+.etip{position:fixed;background:rgba(12,12,36,0.96);border:1px solid rgba(80,160,255,0.18);border-radius:9px;padding:10px 14px;pointer-events:none;z-index:25;opacity:0;transition:opacity 0.15s;backdrop-filter:blur(12px);box-shadow:0 8px 32px rgba(0,0,0,0.5)}
+.etip.show{opacity:1}
+.etip .eop{color:#8ecfff;font-weight:600;font-family:'JetBrains Mono',monospace;font-size:11px;margin-bottom:3px}
+.etip .em{color:rgba(180,200,255,0.5);font-family:'JetBrains Mono',monospace;font-size:10px;line-height:1.7}
+.etip .em b{color:#dce4ff;font-weight:500}
+
+/* Edge labels */
+.elabel{position:absolute;transform:translate(-50%,-50%);font-size:8px;font-family:'JetBrains Mono',monospace;color:rgba(160,190,255,0.45);letter-spacing:0.3px;pointer-events:none;z-index:4;white-space:nowrap;text-align:center;line-height:1.4}
+.elabel .eop-text{color:rgba(170,200,255,0.55)}
+.elabel .erps{color:rgba(150,180,255,0.38)}
+
+/* Zone labels */
+.zone-label{position:absolute;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:2.5px;color:rgba(160,190,255,0.35);pointer-events:none;z-index:3;font-family:'Inter',sans-serif}
+
+/* Legend */
+.legend{position:fixed;bottom:14px;left:20px;display:flex;gap:18px;z-index:10}
+.legend .li{display:flex;align-items:center;gap:5px;font-size:9px;color:rgba(170,200,255,0.50);text-transform:uppercase;letter-spacing:0.8px}
+.legend .li .ld{width:7px;height:7px;border-radius:50%}
+.legend .li .ld.lj{background:#5ee8dd;box-shadow:0 0 5px #5ee8dd66}
+.legend .li .ld.la{background:#ffb347;box-shadow:0 0 5px #ffb34766}
+.legend .li .ld.le{background:#60c870;box-shadow:0 0 5px #60c87066}
+.legend .li .ld.lu{background:#80b8ff;box-shadow:0 0 5px #80b8ff66}
+</style>
+</head>
+<body>
+<canvas id="canvas-layer"></canvas>
+<div id="hit-layer"></div>
+<div id="ui-layer">
+  <div class="header">
+    <div class="header-left">
+      <div class="logo"></div>
+      <h1>Quantara Platform</h1>
+      <span class="pipe">|</span>
+      <span class="sub">Real-time Architecture</span>
+    </div>
+    <div class="header-right">
+      <div class="live-badge"><div class="dot"></div>LIVE</div>
+      <div class="clock" id="clock">00:00:00</div>
+    </div>
+  </div>
+
+  <div class="stats-bar">
+    <div class="stat c1"><span class="lbl">Trades Processed</span><span class="val" id="s-trades">0<span class="u">msg</span></span></div>
+    <div class="stat c2"><span class="lbl">Active Sessions</span><span class="val" id="s-sess">12<span class="u"></span></span></div>
+    <div class="stat c3"><span class="lbl">Cache Hit</span><span class="val" id="s-cache">94.0<span class="u">%</span></span></div>
+    <div class="stat c4"><span class="lbl">Calc Latency</span><span class="val" id="s-calc">48<span class="u">ms</span></span></div>
+    <div class="stat c5"><span class="lbl">Pinot Queries</span><span class="val" id="s-pinot">500<span class="u">/s</span></span></div>
+    <div class="stat c6"><span class="lbl">WS Connections</span><span class="val" id="s-ws">12<span class="u"></span></span></div>
+    <div class="stat c7"><span class="lbl">Throughput</span><span class="val" id="s-thr">850<span class="u">msg/s</span></span></div>
+  </div>
+
+  <div class="etip" id="tip"></div>
+
+  <div class="legend">
+    <div class="li"><div class="ld lj"></div>Java Services</div>
+    <div class="li"><div class="ld la"></div>Infrastructure</div>
+    <div class="li"><div class="ld le"></div>External</div>
+    <div class="li"><div class="ld lu"></div>UI / User</div>
+  </div>
+</div>
+
+<script>
+// ============================================================
+// DATA MODEL
+// ============================================================
+const NODES = [
+  // External inputs
+  {id:'kafka_moex',  label:'Kafka (MOEX)',        desc:'MOEX Trades Input',       type:'external', icon:'\u26A1'},
+
+  // Trade Ingestion Layer
+  {id:'obj',         label:'Object Framework',    desc:'Trade Processor (Java)',   type:'java', icon:'\u2615', big:true},
+  {id:'id',          label:'id-service',           desc:'Local ID Generator',      type:'java', icon:'#\uFE0F\u20E3'},
+  {id:'gid',         label:'globalid-service',     desc:'Global ID Generator',     type:'java', icon:'\uD83C\uDF10'},
+  {id:'lock',        label:'lock-service',         desc:'Distributed Locking',     type:'java', icon:'\uD83D\uDD12'},
+  {id:'search',      label:'search-service',       desc:'Search / Query',          type:'java', icon:'\uD83D\uDD0D'},
+  {id:'tx',          label:'transaction-service',  desc:'Transaction Mgmt',        type:'java', icon:'\uD83D\uDCBE'},
+
+  // Infrastructure
+  {id:'pg_active',   label:'PG Active',            desc:'PostgreSQL Active Node',  type:'infra', icon:'\uD83D\uDDC4\uFE0F'},
+  {id:'wal',         label:'WAL',                  desc:'Write-Ahead Log',         type:'wal',   icon:'\uD83D\uDCCB'},
+  {id:'pg_replica',  label:'PG Replica',           desc:'PostgreSQL Replica',      type:'infra', icon:'\uD83D\uDDC4\uFE0F'},
+  {id:'pg_obj',      label:'PG (obj-frame)',       desc:'Object Framework DB',     type:'infra', icon:'\uD83D\uDDC4\uFE0F'},
+  {id:'redis',       label:'Redis',                desc:'Caching Layer',           type:'infra', icon:'\uD83D\uDFE5'},
+
+  // Event Processing Layer
+  {id:'kafka_trades',label:'Kafka (trades)',       desc:'Committed Trades Topic',  type:'infra', icon:'\u26A1'},
+  {id:'filter',      label:'Filter Service',       desc:'Kafka Streams Filter',    type:'java', icon:'\uD83D\uDD00'},
+  {id:'enrich',      label:'Enrich Service',       desc:'Trade Enrichment',        type:'java', icon:'\u2728'},
+
+  // Real-time Processing Layer
+  {id:'reqproc',     label:'Request Processing',   desc:'Request Processor',       type:'java', icon:'\u2699\uFE0F', big:true},
+  {id:'mds',         label:'Market Data Slices',   desc:'MDS External API',        type:'external', icon:'\uD83D\uDCCA'},
+  {id:'calc',        label:'Calc Engine',          desc:'Calculation Engine',      type:'external', icon:'\uD83E\uDDEE'},
+  {id:'pinot',       label:'Apache Pinot',         desc:'OLAP Analytics',          type:'infra', icon:'\uD83D\uDCC8'},
+  {id:'websocket',   label:'WebSocket Service',    desc:'Real-time Push',          type:'java', icon:'\uD83D\uDD0C'},
+
+  // User Interface
+  {id:'frontend',    label:'Frontend UI',          desc:'Trading Dashboard',       type:'ui', icon:'\uD83D\uDDA5\uFE0F'},
+  {id:'user',        label:'User',                 desc:'Trader / Analyst',        type:'user', icon:'\uD83D\uDC64'},
+];
+
+const EDGES = [
+  // Trade Ingestion Flow
+  {from:'kafka_moex', to:'obj',     op:'moex.trades',           rps:850,   lat:2,    unit:'msg/s'},
+  {from:'obj',        to:'id',      op:'REST GetBatchID',       rps:200,   lat:1.5},
+  {from:'obj',        to:'gid',     op:'REST GetGlobalID',      rps:200,   lat:1.5},
+  {from:'obj',        to:'lock',    op:'REST Lock/Unlock',      rps:850,   lat:2},
+  {from:'obj',        to:'search',  op:'REST GetByGlobalID',    rps:400,   lat:5},
+  {from:'obj',        to:'tx',      op:'REST Save/Commit',      rps:850,   lat:18},
+  {from:'obj',        to:'pg_obj',  op:'raw_messages',          rps:1700,  lat:2},
+  {from:'obj',        to:'redis',   op:'enrichment cache',      rps:7500,  lat:0.1},
+
+  // Transaction & DB Flow
+  {from:'tx',         to:'pg_active',  op:'murex writes',       rps:3400,  lat:8},
+  {from:'tx',         to:'redis',      op:'tx cache',           rps:5000,  lat:0.2},
+  {from:'tx',         to:'kafka_trades', op:'committed trades', rps:850,   lat:3,   unit:'msg/s'},
+  {from:'lock',       to:'pg_active',  op:'object_lock',        rps:1700,  lat:1},
+  {from:'id',         to:'pg_active',  op:'id_seq',             rps:10,    lat:1},
+  {from:'gid',        to:'pg_active',  op:'version_id_seq',     rps:10,    lat:1},
+  {from:'search',     to:'pg_replica', op:'murex reads',        rps:400,   lat:5},
+  {from:'search',     to:'redis',      op:'search cache',       rps:400,   lat:0.1},
+  {from:'pg_active',  to:'wal',        op:'streaming replication', rps:3400, lat:0.5, unit:'ops/s'},
+  {from:'wal',        to:'pg_replica', op:'apply WAL',          rps:3400,  lat:1,   unit:'ops/s'},
+
+  // Event Processing Flow
+  {from:'kafka_trades', to:'filter',   op:'consume trades',     rps:850,   lat:1,   unit:'msg/s'},
+  {from:'filter',       to:'enrich',   op:'filtered trades',    rps:600,   lat:2,   unit:'msg/s'},
+  {from:'enrich',       to:'search',   op:'REST enrich lookups',rps:1200,  lat:4},
+  {from:'enrich',       to:'reqproc',  op:'enriched trades',    rps:600,   lat:3,   unit:'msg/s'},
+
+  // Real-time Processing Flow
+  {from:'reqproc',    to:'redis',   op:'trade cache (MDS buckets)',rps:3000, lat:0.2},
+  {from:'reqproc',    to:'mds',     op:'REST get MDS-ID',      rps:20,    lat:25},
+  {from:'reqproc',    to:'calc',    op:'REST calc request',     rps:600,   lat:50},
+  {from:'reqproc',    to:'search',  op:'REST initial load',     rps:50,    lat:15},
+  {from:'reqproc',    to:'pinot',   op:'push trades+math',      rps:1200,  lat:5},
+
+  // Delivery Flow
+  {from:'pinot',      to:'websocket', op:'pivot results',       rps:500,   lat:3},
+  {from:'websocket',  to:'frontend',  op:'WS push',             rps:500,   lat:1,   unit:'msg/s'},
+  {from:'frontend',   to:'reqproc',   op:'user config',         rps:2,     lat:10},
+];
+
+const LAYOUT = {
+  // Top zone - Trade Ingestion
+  kafka_moex: {fx:0.04, fy:0.20},
+  obj:        {fx:0.22, fy:0.20},
+  id:         {fx:0.42, fy:0.06},
+  gid:        {fx:0.42, fy:0.18},
+  lock:       {fx:0.42, fy:0.30},
+  search:     {fx:0.62, fy:0.14},
+  tx:         {fx:0.62, fy:0.30},
+  pg_obj:     {fx:0.10, fy:0.38},
+  redis:      {fx:0.80, fy:0.22},
+  pg_active:  {fx:0.82, fy:0.38},
+  wal:        {fx:0.90, fy:0.34},
+  pg_replica: {fx:0.94, fy:0.22},
+
+  // Middle zone - Event Processing
+  kafka_trades: {fx:0.42, fy:0.44},
+  filter:       {fx:0.42, fy:0.56},
+  enrich:       {fx:0.55, fy:0.56},
+
+  // Bottom zone - Real-time + Delivery
+  reqproc:    {fx:0.45, fy:0.70},
+  mds:        {fx:0.72, fy:0.62},
+  calc:       {fx:0.72, fy:0.78},
+  pinot:      {fx:0.30, fy:0.84},
+  websocket:  {fx:0.15, fy:0.84},
+  frontend:   {fx:0.15, fy:0.94},
+  user:       {fx:0.04, fy:0.94},
+};
+
+// ============================================================
+// STATE
+// ============================================================
+let W, H, dpr, canvas, ctx;
+const TOP_OFFSET = 96;
+let nodeMap = {};
+let edgeRuntime = [];
+let hoverEdge = null;
+const tipEl = () => document.getElementById('tip');
+let t0 = Date.now();
+let totalTrades = 0;
+let labelEls = [];
+let zoneEls = [];
+
+// ============================================================
+// INIT
+// ============================================================
+window.addEventListener('DOMContentLoaded', () => {
+  canvas = document.getElementById('canvas-layer');
+  ctx = canvas.getContext('2d');
+  createNodeEls();
+  createZoneLabels();
+  resize();
+  window.addEventListener('resize', resize);
+  document.getElementById('hit-layer').addEventListener('mousemove', onMove);
+  document.getElementById('hit-layer').addEventListener('mouseleave', () => {
+    hoverEdge = null;
+    tipEl().classList.remove('show');
+  });
+  setInterval(updateStats, 150);
+  raf(0);
+});
+
+function resize() {
+  dpr = window.devicePixelRatio || 1;
+  W = window.innerWidth;
+  H = window.innerHeight;
+  canvas.width = W * dpr;
+  canvas.height = H * dpr;
+  canvas.style.width = W + 'px';
+  canvas.style.height = H + 'px';
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  positionNodes();
+  buildEdges();
+  positionLabels();
+  positionZoneLabels();
+}
+
+// ============================================================
+// ZONE LABELS
+// ============================================================
+function createZoneLabels() {
+  const ui = document.getElementById('ui-layer');
+  const zones = [
+    {text:'Trade Ingestion', fy:0.02, fx:0.30},
+    {text:'Event Processing', fy:0.42, fx:0.28},
+    {text:'Real-time Processing & Delivery', fy:0.60, fx:0.28},
+  ];
+  zones.forEach(z => {
+    const el = document.createElement('div');
+    el.className = 'zone-label';
+    el.textContent = z.text;
+    el.dataset.fx = z.fx;
+    el.dataset.fy = z.fy;
+    ui.appendChild(el);
+    zoneEls.push(el);
+  });
+}
+
+function positionZoneLabels() {
+  const aW = W;
+  const aH = H - TOP_OFFSET;
+  zoneEls.forEach(el => {
+    el.style.left = (parseFloat(el.dataset.fx) * aW) + 'px';
+    el.style.top = (TOP_OFFSET + parseFloat(el.dataset.fy) * aH) + 'px';
+  });
+}
+
+// ============================================================
+// NODE DOM
+// ============================================================
+function createNodeEls() {
+  const ui = document.getElementById('ui-layer');
+  NODES.forEach(n => {
+    const el = document.createElement('div');
+    let cls = 'node ' + n.type + (n.big ? ' big' : '');
+    el.className = cls;
+    el.id = 'nd-' + n.id;
+
+    if (n.type === 'user') {
+      el.innerHTML = `<div class="ic">${n.icon}</div><div class="nf"><div class="nm">${n.label}</div><div class="ds">${n.desc}</div></div>`;
+    } else if (n.type === 'wal') {
+      el.innerHTML = `<div class="ic">${n.icon}</div><div class="nf"><div class="nm">${n.label}</div><div class="ds">${n.desc}</div></div>`;
+    } else {
+      el.innerHTML = `<div class="ic">${n.icon}</div><div class="nf"><div class="nm">${n.label}</div><div class="ds">${n.desc}</div></div>`;
+    }
+    ui.appendChild(el);
+    nodeMap[n.id] = {el, cx:0, cy:0, w:0, h:0};
+  });
+}
+
+function positionNodes() {
+  const aW = W;
+  const aH = H - TOP_OFFSET;
+  NODES.forEach(n => {
+    const L = LAYOUT[n.id];
+    if (!L) return;
+    const cx = L.fx * aW;
+    const cy = TOP_OFFSET + L.fy * aH;
+    const el = nodeMap[n.id].el;
+    el.style.left = cx + 'px';
+    el.style.top = cy + 'px';
+    const r = el.getBoundingClientRect();
+    nodeMap[n.id].cx = cx;
+    nodeMap[n.id].cy = cy;
+    nodeMap[n.id].w = r.width;
+    nodeMap[n.id].h = r.height;
+  });
+}
+
+// ============================================================
+// EDGE LABELS
+// ============================================================
+function positionLabels() {
+  labelEls.forEach(el => el.remove());
+  labelEls = [];
+  const ui = document.getElementById('ui-layer');
+
+  edgeRuntime.forEach(e => {
+    const mx = (e.x1 + e.x2) / 2;
+    const my = (e.y1 + e.y2) / 2;
+    const el = document.createElement('div');
+    el.className = 'elabel';
+    const u = e.def.unit || 'req/s';
+    el.innerHTML = `<span class="eop-text">${e.def.op}</span><br><span class="erps">${fmtRps(e.def.rps)} ${u}</span>`;
+    el.style.left = mx + 'px';
+    el.style.top = my + 'px';
+    ui.appendChild(el);
+    labelEls.push(el);
+  });
+}
+
+// ============================================================
+// EDGES + PARTICLES
+// ============================================================
+function getTypeColor(type) {
+  switch(type) {
+    case 'java':     return [80, 235, 220];
+    case 'infra':    return [255, 180, 65];
+    case 'wal':      return [180, 170, 140];
+    case 'external': return [80, 190, 100];
+    case 'ui':       return [120, 170, 255];
+    case 'user':     return [160, 190, 255];
+    default:         return [140, 140, 180];
+  }
+}
+
+function buildEdges() {
+  edgeRuntime = EDGES.map(ed => {
+    const fN = nodeMap[ed.from];
+    const tN = nodeMap[ed.to];
+    if (!fN || !tN) return null;
+
+    const x1 = fN.cx, y1 = fN.cy;
+    const x2 = tN.cx, y2 = tN.cy;
+
+    const cnt = ed.rps < 1 ? 1 : Math.max(2, Math.min(35, Math.round(Math.log10(ed.rps + 1) * 9)));
+    const spd = 0.0025 + Math.min(0.009, ed.rps / 100000);
+
+    const srcDef = NODES.find(n => n.id === ed.from);
+    const c = getTypeColor(srcDef.type);
+
+    const particles = [];
+    for (let i = 0; i < cnt; i++) {
+      particles.push({t: Math.random(), s: spd * (0.8 + Math.random() * 0.4)});
+    }
+    return {x1, y1, x2, y2, particles, c, def: ed};
+  }).filter(Boolean);
+}
+
+// ============================================================
+// RENDER LOOP
+// ============================================================
+let prev = 0;
+function raf(ts) {
+  const dt = prev ? Math.min((ts - prev) / 16.667, 3) : 1;
+  prev = ts;
+  ctx.clearRect(0, 0, W, H);
+  drawZoneShading();
+  drawEdges(dt);
+  drawAmbient();
+  requestAnimationFrame(raf);
+}
+
+function drawZoneShading() {
+  const aH = H - TOP_OFFSET;
+
+  // Trade Ingestion zone
+  ctx.fillStyle = 'rgba(0,200,220,0.008)';
+  ctx.fillRect(0, TOP_OFFSET, W, aH * 0.40);
+
+  // Event Processing zone
+  ctx.fillStyle = 'rgba(255,180,65,0.006)';
+  ctx.fillRect(0, TOP_OFFSET + aH * 0.40, W, aH * 0.20);
+
+  // Real-time Processing zone
+  ctx.fillStyle = 'rgba(120,170,255,0.006)';
+  ctx.fillRect(0, TOP_OFFSET + aH * 0.60, W, aH * 0.40);
+
+  // Subtle zone divider lines
+  ctx.strokeStyle = 'rgba(140,170,255,0.04)';
+  ctx.lineWidth = 1;
+  ctx.setLineDash([8, 8]);
+  ctx.beginPath();
+  ctx.moveTo(0, TOP_OFFSET + aH * 0.40);
+  ctx.lineTo(W, TOP_OFFSET + aH * 0.40);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(0, TOP_OFFSET + aH * 0.60);
+  ctx.lineTo(W, TOP_OFFSET + aH * 0.60);
+  ctx.stroke();
+  ctx.setLineDash([]);
+}
+
+function drawEdges(dt) {
+  edgeRuntime.forEach(e => {
+    const {x1, y1, x2, y2, c, particles} = e;
+    const hov = hoverEdge === e;
+
+    // Draw arrow line
+    ctx.beginPath();
+    ctx.moveTo(x1, y1);
+    ctx.lineTo(x2, y2);
+    ctx.strokeStyle = `rgba(${c[0]},${c[1]},${c[2]},${hov ? 0.22 : 0.06})`;
+    ctx.lineWidth = hov ? 1.8 : 0.8;
+    ctx.stroke();
+
+    // Small arrowhead at ~85% to indicate direction
+    const ax = x1 + (x2 - x1) * 0.85;
+    const ay = y1 + (y2 - y1) * 0.85;
+    const angle = Math.atan2(y2 - y1, x2 - x1);
+    const aLen = hov ? 8 : 5;
+    ctx.beginPath();
+    ctx.moveTo(ax, ay);
+    ctx.lineTo(ax - aLen * Math.cos(angle - 0.4), ay - aLen * Math.sin(angle - 0.4));
+    ctx.moveTo(ax, ay);
+    ctx.lineTo(ax - aLen * Math.cos(angle + 0.4), ay - aLen * Math.sin(angle + 0.4));
+    ctx.strokeStyle = `rgba(${c[0]},${c[1]},${c[2]},${hov ? 0.35 : 0.12})`;
+    ctx.lineWidth = hov ? 1.5 : 1;
+    ctx.stroke();
+
+    // Particles flowing from source to target
+    particles.forEach(p => {
+      p.t += p.s * dt;
+      if (p.t > 1) p.t -= 1;
+
+      const px = x1 + (x2 - x1) * p.t;
+      const py = y1 + (y2 - y1) * p.t;
+      const r = hov ? 2.8 : 1.8;
+      const gr = hov ? 10 : 5;
+      const a = hov ? 0.7 : 0.5;
+
+      const g = ctx.createRadialGradient(px, py, 0, px, py, gr);
+      g.addColorStop(0, `rgba(${c[0]},${c[1]},${c[2]},${a})`);
+      g.addColorStop(1, `rgba(${c[0]},${c[1]},${c[2]},0)`);
+      ctx.beginPath();
+      ctx.arc(px, py, gr, 0, Math.PI * 2);
+      ctx.fillStyle = g;
+      ctx.fill();
+
+      ctx.beginPath();
+      ctx.arc(px, py, r, 0, Math.PI * 2);
+      ctx.fillStyle = `rgba(${Math.min(255,c[0]+40)},${Math.min(255,c[1]+40)},${Math.min(255,c[2]+40)},${a + 0.2})`;
+      ctx.fill();
+    });
+  });
+}
+
+function drawAmbient() {
+  // Glow behind Object Framework
+  const o = nodeMap['obj'];
+  if (o) {
+    const g = ctx.createRadialGradient(o.cx, o.cy, 0, o.cx, o.cy, 140);
+    g.addColorStop(0, 'rgba(0,210,220,0.035)');
+    g.addColorStop(1, 'rgba(0,210,220,0)');
+    ctx.beginPath();
+    ctx.arc(o.cx, o.cy, 140, 0, Math.PI * 2);
+    ctx.fillStyle = g;
+    ctx.fill();
+  }
+  // Glow behind Request Processing
+  const rp = nodeMap['reqproc'];
+  if (rp) {
+    const g = ctx.createRadialGradient(rp.cx, rp.cy, 0, rp.cx, rp.cy, 130);
+    g.addColorStop(0, 'rgba(0,210,220,0.03)');
+    g.addColorStop(1, 'rgba(0,210,220,0)');
+    ctx.beginPath();
+    ctx.arc(rp.cx, rp.cy, 130, 0, Math.PI * 2);
+    ctx.fillStyle = g;
+    ctx.fill();
+  }
+  // Glow behind PG Active
+  const pg = nodeMap['pg_active'];
+  if (pg) {
+    const g = ctx.createRadialGradient(pg.cx, pg.cy, 0, pg.cx, pg.cy, 100);
+    g.addColorStop(0, 'rgba(255,170,50,0.025)');
+    g.addColorStop(1, 'rgba(255,170,50,0)');
+    ctx.beginPath();
+    ctx.arc(pg.cx, pg.cy, 100, 0, Math.PI * 2);
+    ctx.fillStyle = g;
+    ctx.fill();
+  }
+  // Glow behind Redis
+  const rd = nodeMap['redis'];
+  if (rd) {
+    const g = ctx.createRadialGradient(rd.cx, rd.cy, 0, rd.cx, rd.cy, 90);
+    g.addColorStop(0, 'rgba(255,170,50,0.02)');
+    g.addColorStop(1, 'rgba(255,170,50,0)');
+    ctx.beginPath();
+    ctx.arc(rd.cx, rd.cy, 90, 0, Math.PI * 2);
+    ctx.fillStyle = g;
+    ctx.fill();
+  }
+  // Glow behind Frontend UI
+  const fe = nodeMap['frontend'];
+  if (fe) {
+    const g = ctx.createRadialGradient(fe.cx, fe.cy, 0, fe.cx, fe.cy, 70);
+    g.addColorStop(0, 'rgba(100,160,255,0.03)');
+    g.addColorStop(1, 'rgba(100,160,255,0)');
+    ctx.beginPath();
+    ctx.arc(fe.cx, fe.cy, 70, 0, Math.PI * 2);
+    ctx.fillStyle = g;
+    ctx.fill();
+  }
+  // User glow - pulsing
+  const usr = nodeMap['user'];
+  if (usr) {
+    const pulse = 0.02 + Math.sin(Date.now() / 800) * 0.01;
+    const g = ctx.createRadialGradient(usr.cx, usr.cy, 0, usr.cx, usr.cy, 55);
+    g.addColorStop(0, `rgba(180,200,255,${pulse})`);
+    g.addColorStop(1, 'rgba(180,200,255,0)');
+    ctx.beginPath();
+    ctx.arc(usr.cx, usr.cy, 55, 0, Math.PI * 2);
+    ctx.fillStyle = g;
+    ctx.fill();
+  }
+}
+
+// ============================================================
+// MOUSE INTERACTION
+// ============================================================
+function onMove(ev) {
+  const mx = ev.clientX, my = ev.clientY;
+  let best = null, bestD = 16;
+
+  edgeRuntime.forEach(e => {
+    const d = ptSegDist(mx, my, e.x1, e.y1, e.x2, e.y2);
+    if (d < bestD) { bestD = d; best = e; }
+  });
+
+  hoverEdge = best;
+  const tip = tipEl();
+
+  if (best) {
+    const ed = best.def;
+    const rv = jit(ed.rps, 0.08);
+    const lv = jit(ed.lat, 0.10);
+    const u = ed.unit || 'req/s';
+    tip.innerHTML = `<div class="eop">${ed.op}</div><div class="em"><b>${fmtRps(rv)}</b> ${u} &middot; <b>${lv.toFixed(1)}</b> ms avg</div>`;
+    let tx = mx + 16, ty = my - 8;
+    if (tx + 240 > W) tx = mx - 250;
+    if (ty < 0) ty = 4;
+    tip.style.left = tx + 'px';
+    tip.style.top = ty + 'px';
+    tip.classList.add('show');
+  } else {
+    tip.classList.remove('show');
+  }
+}
+
+function ptSegDist(px, py, x1, y1, x2, y2) {
+  const dx = x2 - x1, dy = y2 - y1;
+  const l2 = dx * dx + dy * dy;
+  if (l2 === 0) return Math.hypot(px - x1, py - y1);
+  let t = ((px - x1) * dx + (py - y1) * dy) / l2;
+  t = Math.max(0, Math.min(1, t));
+  return Math.hypot(px - (x1 + t * dx), py - (y1 + t * dy));
+}
+
+// ============================================================
+// STATS UPDATES
+// ============================================================
+function updateStats() {
+  const el = (Date.now() - t0) / 1000;
+  totalTrades += jit(850, 0.10) * 0.15;
+
+  document.getElementById('s-trades').innerHTML = fmtInt(Math.floor(totalTrades)) + '<span class="u">msg</span>';
+  document.getElementById('s-sess').innerHTML = Math.round(jit(12, 0.15)) + '<span class="u"></span>';
+  document.getElementById('s-cache').innerHTML = jit(94.0, 0.01).toFixed(1) + '<span class="u">%</span>';
+  document.getElementById('s-calc').innerHTML = Math.round(jit(48, 0.08)) + '<span class="u">ms</span>';
+  document.getElementById('s-pinot').innerHTML = Math.round(jit(500, 0.06)) + '<span class="u">/s</span>';
+  document.getElementById('s-ws').innerHTML = Math.round(jit(12, 0.15)) + '<span class="u"></span>';
+  document.getElementById('s-thr').innerHTML = Math.round(jit(850, 0.08)) + '<span class="u">msg/s</span>';
+
+  const now = new Date();
+  document.getElementById('clock').textContent = now.toLocaleTimeString('en-GB');
+}
+
+// ============================================================
+// UTILS
+// ============================================================
+function jit(v, f) { return v * (1 + (Math.random() * 2 - 1) * f); }
+function fmtRps(n) {
+  if (n >= 1000) return (n / 1000).toFixed(1) + 'k';
+  if (n < 0.1) return n.toFixed(2);
+  return n.toFixed(0);
+}
+function fmtInt(n) {
+  return n.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+}
+</script>
+</body>
+</html>

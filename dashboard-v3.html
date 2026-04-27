@@ -1,0 +1,1325 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Quantara Platform — Real-time Architecture v3</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+html,body{width:100%;height:100%;overflow:hidden;background:#080818;color:#e0e0e0;font-family:'Inter',system-ui,sans-serif}
+
+body::before{content:'';position:fixed;inset:0;background-image:
+  radial-gradient(ellipse 80% 60% at 30% 40%,rgba(0,180,220,0.03),transparent),
+  radial-gradient(ellipse 60% 50% at 70% 70%,rgba(120,80,255,0.02),transparent),
+  linear-gradient(rgba(40,60,120,0.03) 1px,transparent 1px),
+  linear-gradient(90deg,rgba(40,60,120,0.03) 1px,transparent 1px);
+background-size:100% 100%,100% 100%,60px 60px,60px 60px;z-index:0;pointer-events:none}
+
+#canvas-layer{position:fixed;top:0;left:0;width:100%;height:100%;z-index:1;pointer-events:none}
+#ui-layer{position:fixed;top:0;left:0;width:100%;height:100%;z-index:2;pointer-events:none}
+#ui-layer>*{pointer-events:auto}
+#hit-layer{position:fixed;top:0;left:0;width:100%;height:100%;z-index:3;pointer-events:auto;cursor:default}
+
+/* Header */
+.header{position:fixed;top:0;left:0;right:0;height:52px;display:flex;align-items:center;justify-content:space-between;padding:0 28px;background:linear-gradient(180deg,rgba(8,8,24,0.97) 0%,rgba(8,8,24,0.80) 100%);border-bottom:1px solid rgba(80,160,255,0.07);backdrop-filter:blur(16px);z-index:20}
+.header-left{display:flex;align-items:center;gap:14px}
+.header-left .logo{width:8px;height:8px;border-radius:50%;background:radial-gradient(circle,#00e8ff,#0055ff);box-shadow:0 0 10px #00aaff66;animation:pulse-logo 2.5s ease-in-out infinite}
+@keyframes pulse-logo{0%,100%{box-shadow:0 0 10px #00aaff66}50%{box-shadow:0 0 22px #00ccffaa}}
+.header-left h1{font-size:15px;font-weight:600;letter-spacing:0.4px;color:#c8daff}
+.header-left .pipe{color:rgba(255,255,255,0.10);font-weight:300;font-size:20px;margin:0 2px}
+.header-left .sub{font-size:11px;font-weight:400;color:rgba(140,170,255,0.40);letter-spacing:1.5px;text-transform:uppercase}
+.header-right{display:flex;align-items:center;gap:18px}
+.live-badge{display:flex;align-items:center;gap:6px;font-size:10px;text-transform:uppercase;letter-spacing:1.5px;color:rgba(0,255,136,0.7)}
+.live-badge .dot{width:7px;height:7px;border-radius:50%;background:#00ff88;box-shadow:0 0 8px #00ff8866;animation:blink 1.8s ease-in-out infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:0.35}}
+.clock{font-size:12px;color:rgba(140,170,255,0.45);font-family:'JetBrains Mono',monospace;letter-spacing:0.5px}
+
+/* Stats */
+.stats-bar{position:fixed;top:52px;left:0;right:0;height:44px;display:flex;align-items:center;justify-content:flex-start;gap:0;padding:0 28px;background:rgba(8,8,24,0.6);border-bottom:1px solid rgba(80,160,255,0.05);backdrop-filter:blur(10px);z-index:19}
+.stat{display:flex;align-items:baseline;gap:8px;padding:0 18px;border-right:1px solid rgba(80,160,255,0.06)}
+.stat:last-child{border-right:none}
+.stat .lbl{font-size:9px;text-transform:uppercase;letter-spacing:1.2px;color:rgba(140,170,255,0.30)}
+.stat .val{font-size:16px;font-weight:600;font-family:'JetBrains Mono',monospace}
+.stat .val .u{font-size:9px;font-weight:400;color:rgba(140,170,255,0.30);margin-left:3px}
+.stat.c1 .val{color:#5ef0e0}
+.stat.c2 .val{color:#00ff88}
+.stat.c3 .val{color:#ffb347}
+.stat.c4 .val{color:#c084fc}
+.stat.c5 .val{color:rgba(200,210,255,0.55)}
+.stat.c6 .val{color:#5ef0e0}
+.stat.c7 .val{color:#00ff88}
+
+/* Nodes */
+.node{position:absolute;border-radius:11px;padding:12px 16px;display:flex;align-items:center;gap:11px;transition:transform 0.15s ease,box-shadow 0.15s ease;z-index:5;white-space:nowrap;transform:translate(-50%,-50%);user-select:none}
+.node:hover{transform:translate(-50%,-50%) scale(1.06);z-index:8}
+.node .ic{font-size:18px;flex-shrink:0;width:30px;height:30px;display:flex;align-items:center;justify-content:center;border-radius:7px;background:rgba(255,255,255,0.04)}
+.node .nf .nm{font-size:12px;font-weight:600;letter-spacing:0.2px}
+.node .nf .ds{font-size:9px;color:rgba(255,255,255,0.55);margin-top:1px;letter-spacing:0.3px}
+
+/* Java services */
+.node.java{background:rgba(0,200,210,0.05);border:1px solid rgba(0,210,210,0.18);box-shadow:0 0 18px rgba(0,200,220,0.06),inset 0 1px 0 rgba(0,220,220,0.06)}
+.node.java:hover{box-shadow:0 0 32px rgba(0,200,220,0.15),inset 0 1px 0 rgba(0,220,220,0.10)}
+.node.java .nm{color:#78efe6}
+.node.java .ic{color:#5ee8dd;background:rgba(0,210,210,0.07)}
+
+/* Infrastructure */
+.node.infra{background:rgba(255,170,50,0.04);border:1px solid rgba(255,175,60,0.16);box-shadow:0 0 18px rgba(255,160,40,0.05),inset 0 1px 0 rgba(255,180,70,0.06)}
+.node.infra:hover{box-shadow:0 0 32px rgba(255,160,40,0.14),inset 0 1px 0 rgba(255,180,70,0.10)}
+.node.infra .nm{color:#ffc76e}
+.node.infra .ic{color:#ffb347;background:rgba(255,180,70,0.07)}
+
+/* External */
+.node.external{background:rgba(60,180,80,0.04);border:1px solid rgba(60,180,80,0.16);box-shadow:0 0 18px rgba(60,180,80,0.05),inset 0 1px 0 rgba(60,180,80,0.06)}
+.node.external:hover{box-shadow:0 0 32px rgba(60,180,80,0.14),inset 0 1px 0 rgba(60,180,80,0.10)}
+.node.external .nm{color:#80d890}
+.node.external .ic{color:#60c870;background:rgba(60,180,80,0.07)}
+
+/* UI */
+.node.ui{background:rgba(100,160,255,0.06);border:1px solid rgba(100,160,255,0.22);box-shadow:0 0 22px rgba(100,160,255,0.08),inset 0 1px 0 rgba(100,180,255,0.10)}
+.node.ui:hover{box-shadow:0 0 36px rgba(100,160,255,0.18),inset 0 1px 0 rgba(100,180,255,0.14)}
+.node.ui .nm{color:#b0d4ff}
+.node.ui .ic{color:#80b8ff;background:rgba(100,160,255,0.08)}
+
+/* User */
+.node.user{background:rgba(180,200,255,0.06);border:1px solid rgba(180,200,255,0.20);box-shadow:0 0 28px rgba(180,200,255,0.10),inset 0 1px 0 rgba(200,220,255,0.08);border-radius:50%;padding:14px;width:62px;height:62px;display:flex;align-items:center;justify-content:center}
+.node.user .ic{width:auto;height:auto;font-size:24px;background:none;border-radius:0}
+.node.user .nf{display:none}
+.node.user::after{content:'Trader';position:absolute;bottom:-18px;left:50%;transform:translateX(-50%);font-size:9px;color:rgba(200,220,255,0.65);letter-spacing:0.5px;white-space:nowrap}
+
+/* WAL */
+.node.wal{background:rgba(180,170,140,0.03);border:1px solid rgba(180,170,140,0.10);box-shadow:none;opacity:0.50;padding:8px 12px;border-radius:7px;transform:translate(-50%,-50%) rotate(45deg);width:44px;height:44px;display:flex;align-items:center;justify-content:center}
+.node.wal:hover{transform:translate(-50%,-50%) rotate(45deg) scale(1.06);opacity:0.7}
+.node.wal .ic{transform:rotate(-45deg);width:auto;height:auto;font-size:14px;background:none}
+.node.wal .nf{display:none}
+.node.wal::after{content:'WAL';position:absolute;bottom:-20px;left:50%;transform:translateX(-50%) rotate(-45deg);font-size:8px;color:rgba(200,190,160,0.55);letter-spacing:0.3px;white-space:nowrap;font-family:'JetBrains Mono',monospace}
+
+.node.big{padding:16px 22px}
+.node.big .ic{width:34px;height:34px;font-size:20px}
+.node.big .nm{font-size:14px}
+
+/* Edge Tooltip */
+.etip{position:fixed;background:rgba(12,12,36,0.96);border:1px solid rgba(80,160,255,0.18);border-radius:9px;padding:10px 14px;pointer-events:none;z-index:25;opacity:0;transition:opacity 0.15s;backdrop-filter:blur(12px);box-shadow:0 8px 32px rgba(0,0,0,0.5)}
+.etip.show{opacity:1}
+.etip .eop{color:#8ecfff;font-weight:600;font-family:'JetBrains Mono',monospace;font-size:11px;margin-bottom:3px}
+.etip .em{color:rgba(180,200,255,0.5);font-family:'JetBrains Mono',monospace;font-size:10px;line-height:1.7}
+.etip .em b{color:#dce4ff;font-weight:500}
+
+/* Edge labels */
+.elabel{position:absolute;transform:translate(-50%,-50%);font-size:8px;font-family:'JetBrains Mono',monospace;color:rgba(160,190,255,0.45);letter-spacing:0.3px;pointer-events:none;z-index:4;white-space:nowrap;text-align:center;line-height:1.4}
+.elabel .eop-text{color:rgba(170,200,255,0.55)}
+.elabel .erps{color:rgba(150,180,255,0.38)}
+
+/* Zone labels */
+.zone-label{position:absolute;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:2.5px;color:rgba(160,190,255,0.35);pointer-events:none;z-index:3;font-family:'Inter',sans-serif}
+
+/* Legend */
+.legend{position:fixed;bottom:14px;left:20px;display:flex;gap:18px;z-index:10}
+.legend .li{display:flex;align-items:center;gap:5px;font-size:9px;color:rgba(170,200,255,0.50);text-transform:uppercase;letter-spacing:0.8px}
+.legend .li .ld{width:7px;height:7px;border-radius:50%}
+.legend .li .ld.lj{background:#5ee8dd;box-shadow:0 0 5px #5ee8dd66}
+.legend .li .ld.la{background:#ffb347;box-shadow:0 0 5px #ffb34766}
+.legend .li .ld.le{background:#60c870;box-shadow:0 0 5px #60c87066}
+.legend .li .ld.lu{background:#80b8ff;box-shadow:0 0 5px #80b8ff66}
+
+/* ====== NEW v3: Redis Cache Detail Panel ====== */
+.redis-panel{
+  position:fixed;z-index:10;
+  background:rgba(10,10,30,0.88);
+  border:1px solid rgba(0,210,220,0.15);
+  border-radius:12px;
+  backdrop-filter:blur(14px);
+  padding:14px;
+  overflow:hidden;
+  display:flex;flex-direction:column;gap:10px;
+}
+.redis-panel .rp-title{
+  font-size:12px;font-weight:600;color:#78efe6;letter-spacing:0.3px;
+  font-family:'JetBrains Mono',monospace;
+  border-bottom:1px solid rgba(0,210,220,0.10);padding-bottom:8px;
+}
+.redis-panel .rp-buckets{
+  display:flex;gap:8px;flex:1;min-height:0;
+}
+.redis-panel .rp-bucket{
+  flex:1;border-radius:8px;padding:8px;display:flex;flex-direction:column;gap:4px;
+  min-width:0;overflow:hidden;
+}
+.rp-bucket .rb-title{
+  font-size:9px;font-weight:600;text-transform:uppercase;letter-spacing:1px;
+  font-family:'JetBrains Mono',monospace;margin-bottom:2px;
+}
+.rp-bucket .rb-badge{
+  display:inline-block;font-size:8px;padding:1px 5px;border-radius:3px;
+  font-weight:600;letter-spacing:0.5px;margin-left:4px;
+}
+.rp-bucket .rb-entries{
+  font-size:9px;font-family:'JetBrains Mono',monospace;
+  color:rgba(200,210,255,0.6);line-height:1.6;flex:1;overflow:hidden;
+}
+.rp-bucket .rb-progress{
+  height:4px;border-radius:2px;background:rgba(255,255,255,0.05);margin-top:4px;overflow:hidden;
+}
+.rp-bucket .rb-progress-bar{
+  height:100%;border-radius:2px;transition:width 0.1s linear;
+}
+
+/* Bucket: Metadata */
+.rb-meta{background:rgba(0,200,220,0.04);border:1px solid rgba(0,210,220,0.12)}
+.rb-meta .rb-title{color:rgba(120,239,230,0.7)}
+
+/* Bucket: Trades */
+.rb-trades{background:rgba(0,200,220,0.04);border:1px solid rgba(0,210,220,0.12)}
+.rb-trades .rb-title{color:rgba(120,239,230,0.7)}
+.rb-trades .rb-count{font-size:9px;color:rgba(0,255,136,0.6);font-family:'JetBrains Mono',monospace}
+
+/* Bucket: MDS */
+.rb-mds{background:rgba(0,200,220,0.04);border:1px solid rgba(0,210,220,0.12);transition:border-color 0.3s,box-shadow 0.3s}
+.rb-mds.active{border-color:rgba(0,255,136,0.35);box-shadow:0 0 12px rgba(0,255,136,0.08)}
+.rb-mds.filling{border-color:rgba(255,180,50,0.30);box-shadow:0 0 12px rgba(255,180,50,0.06)}
+.rb-mds.clearing{border-color:rgba(255,60,60,0.35);box-shadow:0 0 12px rgba(255,60,60,0.08)}
+.rb-mds .rb-title{color:rgba(120,239,230,0.7)}
+
+/* MDS switch flash overlay */
+.rb-mds .mds-flash{
+  position:absolute;inset:0;border-radius:8px;pointer-events:none;
+  opacity:0;transition:opacity 0.15s;
+}
+.rb-mds{position:relative}
+
+/* Trade entry animations */
+@keyframes tradeIn{
+  0%{opacity:0;color:#00ff88;transform:translateY(-6px)}
+  50%{color:#00ff88}
+  100%{opacity:1;color:rgba(200,210,255,0.6);transform:translateY(0)}
+}
+@keyframes tradeOut{
+  0%{opacity:1;color:rgba(200,210,255,0.6)}
+  50%{color:#ff4444}
+  100%{opacity:0;color:#ff4444;transform:translateX(10px);height:0;padding:0;margin:0}
+}
+.trade-entry{animation:tradeIn 0.5s ease forwards}
+.trade-entry.removing{animation:tradeOut 0.4s ease forwards}
+
+/* MDS entry animation */
+@keyframes mdsEntryIn{
+  0%{opacity:0;color:rgba(255,180,50,0.8)}
+  100%{opacity:1;color:rgba(200,210,255,0.6)}
+}
+.mds-entry-anim{animation:mdsEntryIn 0.4s ease forwards}
+
+/* ====== NEW v3: Frontend Trading Table ====== */
+.trading-table-panel{
+  position:fixed;z-index:10;
+  background:rgba(10,10,30,0.90);
+  border:1px solid rgba(100,160,255,0.15);
+  border-radius:12px;
+  backdrop-filter:blur(14px);
+  padding:14px;
+  display:flex;flex-direction:column;gap:8px;
+  overflow:hidden;
+}
+.tt-header{
+  display:flex;align-items:center;justify-content:space-between;
+  border-bottom:1px solid rgba(100,160,255,0.10);padding-bottom:8px;
+}
+.tt-header .tt-title{
+  font-size:12px;font-weight:600;color:#b0d4ff;letter-spacing:0.3px;
+  font-family:'JetBrains Mono',monospace;
+}
+.tt-header .tt-conn{
+  display:flex;align-items:center;gap:5px;font-size:9px;color:rgba(0,255,136,0.5);
+  font-family:'JetBrains Mono',monospace;letter-spacing:0.5px;
+}
+.tt-header .tt-conn .tt-dot{
+  width:5px;height:5px;border-radius:50%;background:#00ff88;
+  box-shadow:0 0 6px #00ff8844;animation:blink 1.8s ease-in-out infinite;
+}
+.tt-header .mds-update-badge{
+  display:none;font-size:9px;padding:2px 8px;border-radius:4px;
+  background:rgba(0,255,136,0.12);color:#00ff88;
+  font-family:'JetBrains Mono',monospace;font-weight:600;letter-spacing:0.5px;
+  animation:badgeFlash 1.5s ease forwards;
+}
+.tt-header .mds-update-badge.show{display:inline-block}
+@keyframes badgeFlash{
+  0%{opacity:0;transform:scale(0.9)}
+  15%{opacity:1;transform:scale(1.05)}
+  30%{transform:scale(1)}
+  80%{opacity:1}
+  100%{opacity:0}
+}
+
+.tt-table{
+  width:100%;border-collapse:collapse;font-family:'JetBrains Mono',monospace;font-size:10px;
+}
+.tt-table th{
+  text-align:left;padding:4px 8px;font-size:8px;font-weight:600;
+  text-transform:uppercase;letter-spacing:1px;
+  color:rgba(140,170,255,0.40);border-bottom:1px solid rgba(100,160,255,0.08);
+}
+.tt-table td{
+  padding:4px 8px;border-bottom:1px solid rgba(100,160,255,0.04);
+  color:rgba(200,210,255,0.65);transition:color 0.3s,background 0.3s;
+}
+.tt-table tr:hover td{background:rgba(100,160,255,0.03)}
+.tt-table .num{text-align:right}
+.tt-table .status-live{color:rgba(0,255,136,0.6)}
+.tt-table td.flash-green{background:rgba(0,255,136,0.15) !important;color:#00ff88 !important;transition:none}
+.tt-table td.flash-red{background:rgba(255,60,60,0.15) !important;color:#ff6666 !important;transition:none}
+
+/* ====== Connection line pulse ====== */
+@keyframes connPulse{
+  0%{opacity:0.3}
+  50%{opacity:0.8}
+  100%{opacity:0.3}
+}
+</style>
+</head>
+<body>
+<canvas id="canvas-layer"></canvas>
+<div id="hit-layer"></div>
+<div id="ui-layer">
+  <div class="header">
+    <div class="header-left">
+      <div class="logo"></div>
+      <h1>Quantara Platform</h1>
+      <span class="pipe">|</span>
+      <span class="sub">Real-time Architecture</span>
+    </div>
+    <div class="header-right">
+      <div class="live-badge"><div class="dot"></div>LIVE</div>
+      <div class="clock" id="clock">00:00:00</div>
+    </div>
+  </div>
+
+  <div class="stats-bar">
+    <div class="stat c1"><span class="lbl">Trades Processed</span><span class="val" id="s-trades">0<span class="u">msg</span></span></div>
+    <div class="stat c2"><span class="lbl">Active Sessions</span><span class="val" id="s-sess">12<span class="u"></span></span></div>
+    <div class="stat c3"><span class="lbl">Cache Hit</span><span class="val" id="s-cache">94.0<span class="u">%</span></span></div>
+    <div class="stat c4"><span class="lbl">Calc Latency</span><span class="val" id="s-calc">48<span class="u">ms</span></span></div>
+    <div class="stat c5"><span class="lbl">Pinot Queries</span><span class="val" id="s-pinot">500<span class="u">/s</span></span></div>
+    <div class="stat c6"><span class="lbl">WS Connections</span><span class="val" id="s-ws">12<span class="u"></span></span></div>
+    <div class="stat c7"><span class="lbl">Throughput</span><span class="val" id="s-thr">850<span class="u">msg/s</span></span></div>
+  </div>
+
+  <div class="etip" id="tip"></div>
+
+  <!-- Redis Cache Detail Panel -->
+  <div class="redis-panel" id="redis-panel">
+    <div class="rp-title">Redis Cache &mdash; Session #192347</div>
+    <div class="rp-buckets">
+      <div class="rp-bucket rb-meta">
+        <div class="rb-title">Metadata</div>
+        <div class="rb-entries" style="color:rgba(160,180,210,0.45);font-size:9px;line-height:1.8">
+          UserQuery<br>CalcFields<br>UserSession<br>Pivots
+        </div>
+      </div>
+      <div class="rp-bucket rb-trades">
+        <div class="rb-title">Trades <span class="rb-count" id="trade-count">12 trades</span></div>
+        <div class="rb-entries" id="trade-list"></div>
+      </div>
+      <div class="rp-bucket rb-mds" id="mds1-bucket">
+        <div class="rb-title">MDS-1 <span class="rb-badge" id="mds1-badge">ACTIVE</span></div>
+        <div class="rb-entries" id="mds1-entries"></div>
+        <div class="rb-progress"><div class="rb-progress-bar" id="mds1-progress"></div></div>
+        <div class="mds-flash" id="mds1-flash"></div>
+      </div>
+      <div class="rp-bucket rb-mds" id="mds2-bucket">
+        <div class="rb-title">MDS-2 <span class="rb-badge" id="mds2-badge">FILLING</span></div>
+        <div class="rb-entries" id="mds2-entries"></div>
+        <div class="rb-progress"><div class="rb-progress-bar" id="mds2-progress"></div></div>
+        <div class="mds-flash" id="mds2-flash"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Frontend Trading Table -->
+  <div class="trading-table-panel" id="trading-table">
+    <div class="tt-header">
+      <span class="tt-title">Trading Dashboard &mdash; Live</span>
+      <span class="mds-update-badge" id="mds-badge-table">MDS Update</span>
+      <span class="tt-conn"><span class="tt-dot"></span>Connected</span>
+    </div>
+    <table class="tt-table">
+      <thead>
+        <tr>
+          <th>Trade</th>
+          <th>Type</th>
+          <th>Notional</th>
+          <th class="num">PV</th>
+          <th class="num">Delta</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody id="tt-body"></tbody>
+    </table>
+  </div>
+
+  <div class="legend">
+    <div class="li"><div class="ld lj"></div>Java Services</div>
+    <div class="li"><div class="ld la"></div>Infrastructure</div>
+    <div class="li"><div class="ld le"></div>External</div>
+    <div class="li"><div class="ld lu"></div>UI / User</div>
+  </div>
+</div>
+
+<script>
+// ============================================================
+// DATA MODEL
+// ============================================================
+const NODES = [
+  {id:'kafka_moex',  label:'Kafka (MOEX)',        desc:'MOEX Trades Input',       type:'external', icon:'\u26A1'},
+  {id:'obj',         label:'Object Framework',    desc:'Trade Processor (Java)',   type:'java', icon:'\u2615', big:true},
+  {id:'id',          label:'id-service',           desc:'Local ID Generator',      type:'java', icon:'#\uFE0F\u20E3'},
+  {id:'gid',         label:'globalid-service',     desc:'Global ID Generator',     type:'java', icon:'\uD83C\uDF10'},
+  {id:'lock',        label:'lock-service',         desc:'Distributed Locking',     type:'java', icon:'\uD83D\uDD12'},
+  {id:'search',      label:'search-service',       desc:'Search / Query',          type:'java', icon:'\uD83D\uDD0D'},
+  {id:'tx',          label:'transaction-service',  desc:'Transaction Mgmt',        type:'java', icon:'\uD83D\uDCBE'},
+  {id:'pg_active',   label:'PG Active',            desc:'PostgreSQL Active Node',  type:'infra', icon:'\uD83D\uDDC4\uFE0F'},
+  {id:'wal',         label:'WAL',                  desc:'Write-Ahead Log',         type:'wal',   icon:'\uD83D\uDCCB'},
+  {id:'pg_replica',  label:'PG Replica',           desc:'PostgreSQL Replica',      type:'infra', icon:'\uD83D\uDDC4\uFE0F'},
+  {id:'pg_obj',      label:'PG (obj-frame)',       desc:'Object Framework DB',     type:'infra', icon:'\uD83D\uDDC4\uFE0F'},
+  {id:'redis',       label:'Redis',                desc:'Ingestion Cache',         type:'infra', icon:'\uD83D\uDFE5'},
+  {id:'redis_rp',    label:'Redis Cache',          desc:'Sessions / MDS Buckets',  type:'infra', icon:'\uD83D\uDFE5'},
+  {id:'kafka_trades',label:'Kafka (trades)',       desc:'Committed Trades Topic',  type:'infra', icon:'\u26A1'},
+  {id:'filter',      label:'Filter Service',       desc:'Kafka Streams Filter',    type:'java', icon:'\uD83D\uDD00'},
+  {id:'enrich',      label:'Enrich Service',       desc:'Trade Enrichment',        type:'java', icon:'\u2728'},
+  {id:'reqproc',     label:'Request Processing',   desc:'Request Processor',       type:'java', icon:'\u2699\uFE0F', big:true},
+  {id:'mds',         label:'Market Data Slices',   desc:'MDS External API',        type:'external', icon:'\uD83D\uDCCA'},
+  {id:'calc',        label:'Calc Engine',          desc:'Calculation Engine',      type:'external', icon:'\uD83E\uDDEE'},
+  {id:'pinot',       label:'Apache Pinot',         desc:'OLAP Analytics',          type:'infra', icon:'\uD83D\uDCC8'},
+  {id:'websocket',   label:'WebSocket Service',    desc:'Real-time Push',          type:'java', icon:'\uD83D\uDD0C'},
+  // frontend node removed - replaced by trading table panel
+  {id:'user',        label:'User',                 desc:'Trader / Analyst',        type:'user', icon:'\uD83D\uDC64'},
+];
+
+const EDGES = [
+  {from:'kafka_moex', to:'obj',     op:'moex.trades',           rps:850,   lat:2,    unit:'msg/s'},
+  {from:'obj',        to:'id',      op:'REST GetBatchID',       rps:200,   lat:1.5},
+  {from:'obj',        to:'gid',     op:'REST GetGlobalID',      rps:200,   lat:1.5},
+  {from:'obj',        to:'lock',    op:'REST Lock/Unlock',      rps:850,   lat:2},
+  {from:'obj',        to:'search',  op:'REST GetByGlobalID',    rps:400,   lat:5},
+  {from:'obj',        to:'tx',      op:'REST Save/Commit',      rps:850,   lat:18},
+  {from:'obj',        to:'pg_obj',  op:'raw_messages',          rps:1700,  lat:2},
+  {from:'obj',        to:'redis',   op:'enrichment cache',      rps:7500,  lat:0.1},
+  {from:'tx',         to:'pg_active',  op:'murex writes',       rps:3400,  lat:8},
+  {from:'tx',         to:'redis',      op:'tx cache',           rps:5000,  lat:0.2},
+  {from:'tx',         to:'kafka_trades', op:'committed trades', rps:850,   lat:3,   unit:'msg/s'},
+  {from:'lock',       to:'pg_active',  op:'object_lock',        rps:1700,  lat:1},
+  {from:'id',         to:'pg_active',  op:'id_seq',             rps:10,    lat:1},
+  {from:'gid',        to:'pg_active',  op:'version_id_seq',     rps:10,    lat:1},
+  {from:'search',     to:'pg_replica', op:'murex reads',        rps:400,   lat:5},
+  {from:'search',     to:'redis',      op:'search cache',       rps:400,   lat:0.1},
+  {from:'pg_active',  to:'wal',        op:'streaming replication', rps:3400, lat:0.5, unit:'ops/s'},
+  {from:'wal',        to:'pg_replica', op:'apply WAL',          rps:3400,  lat:1,   unit:'ops/s'},
+  {from:'kafka_trades', to:'filter',   op:'consume trades',     rps:850,   lat:1,   unit:'msg/s'},
+  {from:'filter',       to:'enrich',   op:'filtered trades',    rps:600,   lat:2,   unit:'msg/s'},
+  {from:'enrich',       to:'search',   op:'REST enrich lookups',rps:1200,  lat:4},
+  {from:'enrich',       to:'reqproc',  op:'enriched trades',    rps:600,   lat:3,   unit:'msg/s'},
+  {from:'reqproc',    to:'redis_rp', op:'trade cache (MDS buckets)',rps:3000, lat:0.2},
+  {from:'reqproc',    to:'mds',     op:'REST get MDS-ID',      rps:20,    lat:25},
+  {from:'reqproc',    to:'calc',    op:'REST calc request',     rps:600,   lat:50},
+  {from:'reqproc',    to:'search',  op:'REST initial load',     rps:50,    lat:15},
+  {from:'reqproc',    to:'pinot',   op:'push trades+math',      rps:1200,  lat:5},
+  {from:'pinot',      to:'websocket', op:'pivot results',       rps:500,   lat:3},
+  // websocket now conceptually feeds the trading table (no frontend node)
+  {from:'websocket',  to:'user',     op:'WS push',             rps:500,   lat:1,   unit:'msg/s'},
+];
+
+// Layout: architecture compressed to left ~55% of screen
+const LAYOUT = {
+  // Trade Ingestion (top, fits within 0-0.52)
+  kafka_moex: {fx:0.03, fy:0.16},
+  obj:        {fx:0.14, fy:0.16},
+  id:         {fx:0.26, fy:0.04},
+  gid:        {fx:0.26, fy:0.16},
+  lock:       {fx:0.26, fy:0.28},
+  search:     {fx:0.38, fy:0.10},
+  tx:         {fx:0.38, fy:0.28},
+  pg_obj:     {fx:0.03, fy:0.34},
+  redis:      {fx:0.50, fy:0.10},
+  pg_active:  {fx:0.50, fy:0.28},
+  wal:        {fx:0.50, fy:0.38},
+  pg_replica: {fx:0.42, fy:0.38},
+
+  // Event Processing (middle)
+  kafka_trades: {fx:0.26, fy:0.46},
+  filter:       {fx:0.26, fy:0.56},
+  enrich:       {fx:0.38, fy:0.56},
+
+  // Real-time Processing (bottom, fits within 0-0.52)
+  redis_rp:   {fx:0.14, fy:0.70},
+  reqproc:    {fx:0.30, fy:0.70},
+  mds:        {fx:0.46, fy:0.62},
+  calc:       {fx:0.46, fy:0.78},
+  pinot:      {fx:0.18, fy:0.86},
+  websocket:  {fx:0.06, fy:0.86},
+  user:       {fx:0.06, fy:0.96},
+};
+
+// ============================================================
+// STATE
+// ============================================================
+let W, H, dpr, canvas, ctx;
+const TOP_OFFSET = 96;
+let nodeMap = {};
+let edgeRuntime = [];
+let hoverEdge = null;
+const tipEl = () => document.getElementById('tip');
+let t0 = Date.now();
+let totalTrades = 0;
+let labelEls = [];
+let zoneEls = [];
+
+// MDS state
+let mdsPhase = 1; // 1 = MDS-1 active, MDS-2 filling; 2 = MDS-2 active, MDS-1 filling
+let mdsFillProgress = 0;
+let mdsPhaseStartTime = Date.now();
+const MDS_CYCLE_MS = 2000;
+let lastMdsSwitchTime = 0;
+let mdsSwitchFlashAlpha = 0;
+
+// Connection pulse state
+let connPulseAlpha = 0.15;
+
+// Trading table data
+const TRADE_ROWS = [
+  {id:'FX-8834', type:'FxSpot', notional:'250M CNY', pv:1.23,  delta:0.34, status:'Live'},
+  {id:'FX-8835', type:'FxFwd',  notional:'180M EUR', pv:2.45,  delta:0.56, status:'Live'},
+  {id:'FX-8836', type:'FxSpot', notional:'120M USD', pv:0.89,  delta:0.78, status:'Live'},
+  {id:'IRS-2201',type:'IRS',    notional:'100M USD', pv:5.67,  delta:-0.12,status:'Live'},
+  {id:'IRS-2202',type:'IRS',    notional:'300M EUR', pv:8.34,  delta:-0.45,status:'Live'},
+  {id:'CDS-1104',type:'CDS',    notional:'50M USD',  pv:0.42,  delta:0.09, status:'Live'},
+  {id:'FX-8837', type:'FxNDF',  notional:'200M BRL', pv:1.78,  delta:-0.23,status:'Live'},
+  {id:'IRS-2203',type:'IRS',    notional:'500M GBP', pv:12.10, delta:0.91, status:'Live'},
+];
+
+// Trade list for Redis bucket
+let tradeListItems = [
+  'FX-8834','FX-8835','IRS-2201','FX-8836','IRS-2202',
+  'CDS-1104','FX-8837','IRS-2203','FX-8838','FX-8839'
+];
+let nextTradeNum = 8840;
+let nextIrsNum = 2204;
+
+// MDS entry templates
+const MDS_ENTRIES_TEMPLATE = [
+  {id:'FX-8834', pv:'1.23M', delta:'0.34'},
+  {id:'IRS-2201',pv:'5.67M', delta:'-0.12'},
+  {id:'FX-8836', pv:'0.89M', delta:'0.78'},
+  {id:'FX-8835', pv:'2.45M', delta:'0.56'},
+  {id:'CDS-1104',pv:'0.42M', delta:'0.09'},
+];
+
+// ============================================================
+// INIT
+// ============================================================
+window.addEventListener('DOMContentLoaded', () => {
+  canvas = document.getElementById('canvas-layer');
+  ctx = canvas.getContext('2d');
+  createNodeEls();
+  createZoneLabels();
+  initTradingTable();
+  initTradeList();
+  resize();
+  window.addEventListener('resize', resize);
+  document.getElementById('hit-layer').addEventListener('mousemove', onMove);
+  document.getElementById('hit-layer').addEventListener('mouseleave', () => {
+    hoverEdge = null;
+    tipEl().classList.remove('show');
+  });
+  setInterval(updateStats, 150);
+  setInterval(updateTradeList, 200);
+  startMdsCycle();
+  raf(0);
+});
+
+function resize() {
+  dpr = window.devicePixelRatio || 1;
+  W = window.innerWidth;
+  H = window.innerHeight;
+  canvas.width = W * dpr;
+  canvas.height = H * dpr;
+  canvas.style.width = W + 'px';
+  canvas.style.height = H + 'px';
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  positionNodes();
+  buildEdges();
+  positionLabels();
+  positionZoneLabels();
+  positionPanels();
+}
+
+// ============================================================
+// ZONE LABELS
+// ============================================================
+function createZoneLabels() {
+  const ui = document.getElementById('ui-layer');
+  const zones = [
+    {text:'Trade Ingestion', fy:0.01, fx:0.18},
+    {text:'Event Processing', fy:0.43, fx:0.18},
+    {text:'Real-time Processing & Delivery', fy:0.60, fx:0.12},
+  ];
+  zones.forEach(z => {
+    const el = document.createElement('div');
+    el.className = 'zone-label';
+    el.textContent = z.text;
+    el.dataset.fx = z.fx;
+    el.dataset.fy = z.fy;
+    ui.appendChild(el);
+    zoneEls.push(el);
+  });
+}
+
+function positionZoneLabels() {
+  const aW = W;
+  const aH = H - TOP_OFFSET;
+  zoneEls.forEach(el => {
+    el.style.left = (parseFloat(el.dataset.fx) * aW) + 'px';
+    el.style.top = (TOP_OFFSET + parseFloat(el.dataset.fy) * aH) + 'px';
+  });
+}
+
+// ============================================================
+// POSITION PANELS
+// ============================================================
+function positionPanels() {
+  const rp = document.getElementById('redis-panel');
+  const tt = document.getElementById('trading-table');
+
+  // Redis panel: right side top half
+  const rpLeft = W * 0.54;
+  const rpTop = TOP_OFFSET + 8;
+  const rpWidth = W * 0.44;
+  const rpHeight = (H - TOP_OFFSET) * 0.48;
+  rp.style.left = rpLeft + 'px';
+  rp.style.top = rpTop + 'px';
+  rp.style.width = rpWidth + 'px';
+  rp.style.height = rpHeight + 'px';
+
+  // Trading table: right side bottom half
+  const ttLeft = W * 0.54;
+  const ttTop = TOP_OFFSET + (H - TOP_OFFSET) * 0.52;
+  const ttWidth = W * 0.44;
+  const ttHeight = (H - TOP_OFFSET) * 0.46;
+  tt.style.left = ttLeft + 'px';
+  tt.style.top = ttTop + 'px';
+  tt.style.width = ttWidth + 'px';
+  tt.style.height = ttHeight + 'px';
+}
+
+// ============================================================
+// NODE DOM
+// ============================================================
+function createNodeEls() {
+  const ui = document.getElementById('ui-layer');
+  NODES.forEach(n => {
+    const el = document.createElement('div');
+    let cls = 'node ' + n.type + (n.big ? ' big' : '');
+    el.className = cls;
+    el.id = 'nd-' + n.id;
+    el.innerHTML = `<div class="ic">${n.icon}</div><div class="nf"><div class="nm">${n.label}</div><div class="ds">${n.desc}</div></div>`;
+    ui.appendChild(el);
+    nodeMap[n.id] = {el, cx:0, cy:0, w:0, h:0};
+  });
+}
+
+function positionNodes() {
+  const aW = W;
+  const aH = H - TOP_OFFSET;
+  NODES.forEach(n => {
+    const L = LAYOUT[n.id];
+    if (!L) return;
+    const cx = L.fx * aW;
+    const cy = TOP_OFFSET + L.fy * aH;
+    const el = nodeMap[n.id].el;
+    el.style.left = cx + 'px';
+    el.style.top = cy + 'px';
+    const r = el.getBoundingClientRect();
+    nodeMap[n.id].cx = cx;
+    nodeMap[n.id].cy = cy;
+    nodeMap[n.id].w = r.width;
+    nodeMap[n.id].h = r.height;
+  });
+}
+
+// ============================================================
+// EDGE LABELS
+// ============================================================
+function positionLabels() {
+  labelEls.forEach(el => el.remove());
+  labelEls = [];
+  const ui = document.getElementById('ui-layer');
+
+  edgeRuntime.forEach(e => {
+    const mx = (e.x1 + e.x2) / 2;
+    const my = (e.y1 + e.y2) / 2;
+    const el = document.createElement('div');
+    el.className = 'elabel';
+    const u = e.def.unit || 'req/s';
+    el.innerHTML = `<span class="eop-text">${e.def.op}</span><br><span class="erps">${fmtRps(e.def.rps)} ${u}</span>`;
+    el.style.left = mx + 'px';
+    el.style.top = my + 'px';
+    ui.appendChild(el);
+    labelEls.push(el);
+  });
+}
+
+// ============================================================
+// EDGES + PARTICLES
+// ============================================================
+function getTypeColor(type) {
+  switch(type) {
+    case 'java':     return [80, 235, 220];
+    case 'infra':    return [255, 180, 65];
+    case 'wal':      return [180, 170, 140];
+    case 'external': return [80, 190, 100];
+    case 'ui':       return [120, 170, 255];
+    case 'user':     return [160, 190, 255];
+    default:         return [140, 140, 180];
+  }
+}
+
+function buildEdges() {
+  edgeRuntime = EDGES.map(ed => {
+    const fN = nodeMap[ed.from];
+    const tN = nodeMap[ed.to];
+    if (!fN || !tN) return null;
+
+    const x1 = fN.cx, y1 = fN.cy;
+    const x2 = tN.cx, y2 = tN.cy;
+
+    const cnt = ed.rps < 1 ? 1 : Math.max(2, Math.min(35, Math.round(Math.log10(ed.rps + 1) * 9)));
+    const spd = 0.0025 + Math.min(0.009, ed.rps / 100000);
+
+    const srcDef = NODES.find(n => n.id === ed.from);
+    const c = getTypeColor(srcDef.type);
+
+    const particles = [];
+    for (let i = 0; i < cnt; i++) {
+      particles.push({t: Math.random(), s: spd * (0.8 + Math.random() * 0.4)});
+    }
+    return {x1, y1, x2, y2, particles, c, def: ed};
+  }).filter(Boolean);
+}
+
+// ============================================================
+// RENDER LOOP
+// ============================================================
+let prev = 0;
+function raf(ts) {
+  const dt = prev ? Math.min((ts - prev) / 16.667, 3) : 1;
+  prev = ts;
+  ctx.clearRect(0, 0, W, H);
+  drawZoneShading();
+  drawEdges(dt);
+  drawConnectionLines();
+  drawAmbient();
+  updateMdsFillProgress();
+  requestAnimationFrame(raf);
+}
+
+function drawZoneShading() {
+  const aH = H - TOP_OFFSET;
+  const archW = W * 0.56;
+
+  ctx.fillStyle = 'rgba(0,200,220,0.008)';
+  ctx.fillRect(0, TOP_OFFSET, archW, aH * 0.40);
+
+  ctx.fillStyle = 'rgba(255,180,65,0.006)';
+  ctx.fillRect(0, TOP_OFFSET + aH * 0.40, archW, aH * 0.20);
+
+  ctx.fillStyle = 'rgba(120,170,255,0.006)';
+  ctx.fillRect(0, TOP_OFFSET + aH * 0.60, archW, aH * 0.40);
+
+  ctx.strokeStyle = 'rgba(140,170,255,0.04)';
+  ctx.lineWidth = 1;
+  ctx.setLineDash([8, 8]);
+  ctx.beginPath();
+  ctx.moveTo(0, TOP_OFFSET + aH * 0.40);
+  ctx.lineTo(archW, TOP_OFFSET + aH * 0.40);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(0, TOP_OFFSET + aH * 0.60);
+  ctx.lineTo(archW, TOP_OFFSET + aH * 0.60);
+  ctx.stroke();
+  ctx.setLineDash([]);
+}
+
+function drawEdges(dt) {
+  edgeRuntime.forEach(e => {
+    const {x1, y1, x2, y2, c, particles} = e;
+    const hov = hoverEdge === e;
+
+    ctx.beginPath();
+    ctx.moveTo(x1, y1);
+    ctx.lineTo(x2, y2);
+    ctx.strokeStyle = `rgba(${c[0]},${c[1]},${c[2]},${hov ? 0.22 : 0.06})`;
+    ctx.lineWidth = hov ? 1.8 : 0.8;
+    ctx.stroke();
+
+    const ax = x1 + (x2 - x1) * 0.85;
+    const ay = y1 + (y2 - y1) * 0.85;
+    const angle = Math.atan2(y2 - y1, x2 - x1);
+    const aLen = hov ? 8 : 5;
+    ctx.beginPath();
+    ctx.moveTo(ax, ay);
+    ctx.lineTo(ax - aLen * Math.cos(angle - 0.4), ay - aLen * Math.sin(angle - 0.4));
+    ctx.moveTo(ax, ay);
+    ctx.lineTo(ax - aLen * Math.cos(angle + 0.4), ay - aLen * Math.sin(angle + 0.4));
+    ctx.strokeStyle = `rgba(${c[0]},${c[1]},${c[2]},${hov ? 0.35 : 0.12})`;
+    ctx.lineWidth = hov ? 1.5 : 1;
+    ctx.stroke();
+
+    particles.forEach(p => {
+      p.t += p.s * dt;
+      if (p.t > 1) p.t -= 1;
+
+      const px = x1 + (x2 - x1) * p.t;
+      const py = y1 + (y2 - y1) * p.t;
+      const r = hov ? 2.8 : 1.8;
+      const gr = hov ? 10 : 5;
+      const a = hov ? 0.7 : 0.5;
+
+      const g = ctx.createRadialGradient(px, py, 0, px, py, gr);
+      g.addColorStop(0, `rgba(${c[0]},${c[1]},${c[2]},${a})`);
+      g.addColorStop(1, `rgba(${c[0]},${c[1]},${c[2]},0)`);
+      ctx.beginPath();
+      ctx.arc(px, py, gr, 0, Math.PI * 2);
+      ctx.fillStyle = g;
+      ctx.fill();
+
+      ctx.beginPath();
+      ctx.arc(px, py, r, 0, Math.PI * 2);
+      ctx.fillStyle = `rgba(${Math.min(255,c[0]+40)},${Math.min(255,c[1]+40)},${Math.min(255,c[2]+40)},${a + 0.2})`;
+      ctx.fill();
+    });
+  });
+}
+
+// ============================================================
+// CONNECTION LINES: Redis -> Table, Redis node -> Redis panel
+// ============================================================
+function drawConnectionLines() {
+  const redisNode = nodeMap['redis_rp'] || nodeMap['redis'];
+  if (!redisNode) return;
+
+  const rp = document.getElementById('redis-panel');
+  const tt = document.getElementById('trading-table');
+  const rpRect = rp.getBoundingClientRect();
+  const ttRect = tt.getBoundingClientRect();
+
+  // Decay switch flash
+  if (mdsSwitchFlashAlpha > 0) {
+    mdsSwitchFlashAlpha = Math.max(0, mdsSwitchFlashAlpha - 0.008);
+  }
+
+  // 1) Redis node -> Redis panel (left edge)
+  const rNx = redisNode.cx;
+  const rNy = redisNode.cy;
+  const rpLx = rpRect.left;
+  const rpLy = rpRect.top + rpRect.height * 0.3;
+
+  const baseAlpha1 = 0.08 + mdsSwitchFlashAlpha * 0.3;
+  ctx.beginPath();
+  ctx.moveTo(rNx, rNy);
+  // Curve to panel
+  const cp1x = rNx + (rpLx - rNx) * 0.5;
+  const cp1y = rNy;
+  const cp2x = rpLx - 30;
+  const cp2y = rpLy;
+  ctx.bezierCurveTo(cp1x, cp1y, cp2x, cp2y, rpLx, rpLy);
+  ctx.strokeStyle = `rgba(255,180,65,${baseAlpha1})`;
+  ctx.lineWidth = 1;
+  ctx.setLineDash([4, 4]);
+  ctx.stroke();
+  ctx.setLineDash([]);
+
+  // Particle on this line
+  drawConnParticles(rNx, rNy, cp1x, cp1y, cp2x, cp2y, rpLx, rpLy, [255, 180, 65], 3);
+
+  // 2) Redis panel bottom -> Trading table top (data flow)
+  const rpBx = rpRect.left + rpRect.width * 0.5;
+  const rpBy = rpRect.bottom;
+  const ttTx = ttRect.left + ttRect.width * 0.5;
+  const ttTy = ttRect.top;
+
+  const baseAlpha2 = 0.06 + mdsSwitchFlashAlpha * 0.4;
+  ctx.beginPath();
+  ctx.moveTo(rpBx, rpBy);
+  ctx.lineTo(ttTx, ttTy);
+  ctx.strokeStyle = `rgba(100,170,255,${baseAlpha2})`;
+  ctx.lineWidth = 1;
+  ctx.setLineDash([3, 5]);
+  ctx.stroke();
+  ctx.setLineDash([]);
+
+  // Particles on this line
+  drawLineParticles(rpBx, rpBy, ttTx, ttTy, [100, 170, 255], 2);
+}
+
+// Simple bezier particle system
+let connParticleState = {};
+function drawConnParticles(x1, y1, cx1, cy1, cx2, cy2, x2, y2, color, count) {
+  const key = `${Math.round(x1)}_${Math.round(y1)}_${Math.round(x2)}_${Math.round(y2)}`;
+  if (!connParticleState[key]) {
+    connParticleState[key] = [];
+    for (let i = 0; i < count; i++) {
+      connParticleState[key].push({t: Math.random(), s: 0.003 + Math.random() * 0.002});
+    }
+  }
+  const ps = connParticleState[key];
+  ps.forEach(p => {
+    p.t += p.s;
+    if (p.t > 1) p.t -= 1;
+    const t = p.t;
+    const mt = 1 - t;
+    const px = mt*mt*mt*x1 + 3*mt*mt*t*cx1 + 3*mt*t*t*cx2 + t*t*t*x2;
+    const py = mt*mt*mt*y1 + 3*mt*mt*t*cy1 + 3*mt*t*t*cy2 + t*t*t*y2;
+    const alpha = 0.4 + mdsSwitchFlashAlpha * 0.5;
+    const g = ctx.createRadialGradient(px, py, 0, px, py, 5);
+    g.addColorStop(0, `rgba(${color[0]},${color[1]},${color[2]},${alpha})`);
+    g.addColorStop(1, `rgba(${color[0]},${color[1]},${color[2]},0)`);
+    ctx.beginPath();
+    ctx.arc(px, py, 5, 0, Math.PI * 2);
+    ctx.fillStyle = g;
+    ctx.fill();
+    ctx.beginPath();
+    ctx.arc(px, py, 1.5, 0, Math.PI * 2);
+    ctx.fillStyle = `rgba(${Math.min(255,color[0]+50)},${Math.min(255,color[1]+50)},${Math.min(255,color[2]+50)},${alpha + 0.2})`;
+    ctx.fill();
+  });
+}
+
+let lineParticleState = {};
+function drawLineParticles(x1, y1, x2, y2, color, count) {
+  const key = `L${Math.round(x1)}_${Math.round(y1)}_${Math.round(x2)}_${Math.round(y2)}`;
+  if (!lineParticleState[key]) {
+    lineParticleState[key] = [];
+    for (let i = 0; i < count; i++) {
+      lineParticleState[key].push({t: Math.random(), s: 0.002 + Math.random() * 0.002});
+    }
+  }
+  const ps = lineParticleState[key];
+  ps.forEach(p => {
+    p.t += p.s;
+    if (p.t > 1) p.t -= 1;
+    const px = x1 + (x2 - x1) * p.t;
+    const py = y1 + (y2 - y1) * p.t;
+    const alpha = 0.35 + mdsSwitchFlashAlpha * 0.5;
+    const g = ctx.createRadialGradient(px, py, 0, px, py, 4);
+    g.addColorStop(0, `rgba(${color[0]},${color[1]},${color[2]},${alpha})`);
+    g.addColorStop(1, `rgba(${color[0]},${color[1]},${color[2]},0)`);
+    ctx.beginPath();
+    ctx.arc(px, py, 4, 0, Math.PI * 2);
+    ctx.fillStyle = g;
+    ctx.fill();
+    ctx.beginPath();
+    ctx.arc(px, py, 1.2, 0, Math.PI * 2);
+    ctx.fillStyle = `rgba(${Math.min(255,color[0]+50)},${Math.min(255,color[1]+50)},${Math.min(255,color[2]+50)},${alpha + 0.2})`;
+    ctx.fill();
+  });
+}
+
+function drawAmbient() {
+  const o = nodeMap['obj'];
+  if (o) {
+    const g = ctx.createRadialGradient(o.cx, o.cy, 0, o.cx, o.cy, 140);
+    g.addColorStop(0, 'rgba(0,210,220,0.035)');
+    g.addColorStop(1, 'rgba(0,210,220,0)');
+    ctx.beginPath();
+    ctx.arc(o.cx, o.cy, 140, 0, Math.PI * 2);
+    ctx.fillStyle = g;
+    ctx.fill();
+  }
+  const rp = nodeMap['reqproc'];
+  if (rp) {
+    const g = ctx.createRadialGradient(rp.cx, rp.cy, 0, rp.cx, rp.cy, 130);
+    g.addColorStop(0, 'rgba(0,210,220,0.03)');
+    g.addColorStop(1, 'rgba(0,210,220,0)');
+    ctx.beginPath();
+    ctx.arc(rp.cx, rp.cy, 130, 0, Math.PI * 2);
+    ctx.fillStyle = g;
+    ctx.fill();
+  }
+  const pg = nodeMap['pg_active'];
+  if (pg) {
+    const g = ctx.createRadialGradient(pg.cx, pg.cy, 0, pg.cx, pg.cy, 100);
+    g.addColorStop(0, 'rgba(255,170,50,0.025)');
+    g.addColorStop(1, 'rgba(255,170,50,0)');
+    ctx.beginPath();
+    ctx.arc(pg.cx, pg.cy, 100, 0, Math.PI * 2);
+    ctx.fillStyle = g;
+    ctx.fill();
+  }
+  const rd = nodeMap['redis'];
+  if (rd) {
+    const g = ctx.createRadialGradient(rd.cx, rd.cy, 0, rd.cx, rd.cy, 90);
+    g.addColorStop(0, 'rgba(255,170,50,0.02)');
+    g.addColorStop(1, 'rgba(255,170,50,0)');
+    ctx.beginPath();
+    ctx.arc(rd.cx, rd.cy, 90, 0, Math.PI * 2);
+    ctx.fillStyle = g;
+    ctx.fill();
+  }
+  const usr = nodeMap['user'];
+  if (usr) {
+    const pulse = 0.02 + Math.sin(Date.now() / 800) * 0.01;
+    const g = ctx.createRadialGradient(usr.cx, usr.cy, 0, usr.cx, usr.cy, 55);
+    g.addColorStop(0, `rgba(180,200,255,${pulse})`);
+    g.addColorStop(1, 'rgba(180,200,255,0)');
+    ctx.beginPath();
+    ctx.arc(usr.cx, usr.cy, 55, 0, Math.PI * 2);
+    ctx.fillStyle = g;
+    ctx.fill();
+  }
+}
+
+// ============================================================
+// MOUSE INTERACTION
+// ============================================================
+function onMove(ev) {
+  const mx = ev.clientX, my = ev.clientY;
+  let best = null, bestD = 16;
+
+  edgeRuntime.forEach(e => {
+    const d = ptSegDist(mx, my, e.x1, e.y1, e.x2, e.y2);
+    if (d < bestD) { bestD = d; best = e; }
+  });
+
+  hoverEdge = best;
+  const tip = tipEl();
+
+  if (best) {
+    const ed = best.def;
+    const rv = jit(ed.rps, 0.08);
+    const lv = jit(ed.lat, 0.10);
+    const u = ed.unit || 'req/s';
+    tip.innerHTML = `<div class="eop">${ed.op}</div><div class="em"><b>${fmtRps(rv)}</b> ${u} &middot; <b>${lv.toFixed(1)}</b> ms avg</div>`;
+    let tx = mx + 16, ty = my - 8;
+    if (tx + 240 > W) tx = mx - 250;
+    if (ty < 0) ty = 4;
+    tip.style.left = tx + 'px';
+    tip.style.top = ty + 'px';
+    tip.classList.add('show');
+  } else {
+    tip.classList.remove('show');
+  }
+}
+
+function ptSegDist(px, py, x1, y1, x2, y2) {
+  const dx = x2 - x1, dy = y2 - y1;
+  const l2 = dx * dx + dy * dy;
+  if (l2 === 0) return Math.hypot(px - x1, py - y1);
+  let t = ((px - x1) * dx + (py - y1) * dy) / l2;
+  t = Math.max(0, Math.min(1, t));
+  return Math.hypot(px - (x1 + t * dx), py - (y1 + t * dy));
+}
+
+// ============================================================
+// STATS UPDATES
+// ============================================================
+function updateStats() {
+  totalTrades += jit(850, 0.10) * 0.15;
+
+  document.getElementById('s-trades').innerHTML = fmtInt(Math.floor(totalTrades)) + '<span class="u">msg</span>';
+  document.getElementById('s-sess').innerHTML = Math.round(jit(12, 0.15)) + '<span class="u"></span>';
+  document.getElementById('s-cache').innerHTML = jit(94.0, 0.01).toFixed(1) + '<span class="u">%</span>';
+  document.getElementById('s-calc').innerHTML = Math.round(jit(48, 0.08)) + '<span class="u">ms</span>';
+  document.getElementById('s-pinot').innerHTML = Math.round(jit(500, 0.06)) + '<span class="u">/s</span>';
+  document.getElementById('s-ws').innerHTML = Math.round(jit(12, 0.15)) + '<span class="u"></span>';
+  document.getElementById('s-thr').innerHTML = Math.round(jit(850, 0.08)) + '<span class="u">msg/s</span>';
+
+  const now = new Date();
+  document.getElementById('clock').textContent = now.toLocaleTimeString('en-GB');
+}
+
+// ============================================================
+// REDIS PANEL: TRADE LIST
+// ============================================================
+function initTradeList() {
+  renderTradeList();
+}
+
+function renderTradeList() {
+  const el = document.getElementById('trade-list');
+  el.innerHTML = '';
+  tradeListItems.forEach(tid => {
+    const div = document.createElement('div');
+    div.className = 'trade-entry';
+    div.textContent = tid;
+    div.dataset.tid = tid;
+    el.appendChild(div);
+  });
+  document.getElementById('trade-count').textContent = tradeListItems.length + ' trades';
+}
+
+function updateTradeList() {
+  const el = document.getElementById('trade-list');
+
+  // Add a new trade
+  if (Math.random() < 0.6) {
+    let newId;
+    if (Math.random() < 0.6) {
+      newId = 'FX-' + nextTradeNum++;
+    } else {
+      newId = 'IRS-' + nextIrsNum++;
+    }
+    tradeListItems.unshift(newId);
+
+    const div = document.createElement('div');
+    div.className = 'trade-entry';
+    div.textContent = newId;
+    div.dataset.tid = newId;
+    el.insertBefore(div, el.firstChild);
+  }
+
+  // Remove a random trade (less frequently)
+  if (tradeListItems.length > 8 && Math.random() < 0.3) {
+    const idx = Math.floor(Math.random() * tradeListItems.length);
+    const children = el.querySelectorAll('.trade-entry:not(.removing)');
+    if (children[idx]) {
+      children[idx].classList.add('removing');
+      const tid = tradeListItems[idx];
+      tradeListItems.splice(idx, 1);
+      setTimeout(() => {
+        if (children[idx] && children[idx].parentNode) {
+          children[idx].remove();
+        }
+      }, 400);
+    }
+  }
+
+  // Keep list manageable
+  while (tradeListItems.length > 12) {
+    tradeListItems.pop();
+    if (el.lastChild) el.lastChild.remove();
+  }
+
+  document.getElementById('trade-count').textContent = tradeListItems.length + ' trades';
+}
+
+// ============================================================
+// MDS CYCLE
+// ============================================================
+function startMdsCycle() {
+  mdsPhaseStartTime = Date.now();
+  mdsPhase = 1;
+  setMdsState();
+
+  // Start the fill animation for the filling bucket
+  startMdsFilling();
+}
+
+function setMdsState() {
+  const b1 = document.getElementById('mds1-bucket');
+  const b2 = document.getElementById('mds2-bucket');
+  const badge1 = document.getElementById('mds1-badge');
+  const badge2 = document.getElementById('mds2-badge');
+  const prog1 = document.getElementById('mds1-progress');
+  const prog2 = document.getElementById('mds2-progress');
+  const entries1 = document.getElementById('mds1-entries');
+  const entries2 = document.getElementById('mds2-entries');
+
+  if (mdsPhase === 1) {
+    // MDS-1 ACTIVE, MDS-2 FILLING
+    b1.className = 'rp-bucket rb-mds active';
+    b2.className = 'rp-bucket rb-mds filling';
+    badge1.textContent = 'ACTIVE';
+    badge1.style.background = 'rgba(0,255,136,0.15)';
+    badge1.style.color = '#00ff88';
+    badge2.textContent = 'FILLING';
+    badge2.style.background = 'rgba(255,180,50,0.15)';
+    badge2.style.color = '#ffb347';
+    prog1.style.width = '100%';
+    prog1.style.background = '#00ff8844';
+    prog2.style.width = '0%';
+    prog2.style.background = '#ffb34788';
+
+    // Fill MDS-1 with calc entries
+    entries1.innerHTML = generateMdsEntries();
+  } else {
+    // MDS-2 ACTIVE, MDS-1 FILLING
+    b2.className = 'rp-bucket rb-mds active';
+    b1.className = 'rp-bucket rb-mds filling';
+    badge2.textContent = 'ACTIVE';
+    badge2.style.background = 'rgba(0,255,136,0.15)';
+    badge2.style.color = '#00ff88';
+    badge1.textContent = 'FILLING';
+    badge1.style.background = 'rgba(255,180,50,0.15)';
+    badge1.style.color = '#ffb347';
+    prog2.style.width = '100%';
+    prog2.style.background = '#00ff8844';
+    prog1.style.width = '0%';
+    prog1.style.background = '#ffb34788';
+
+    // Fill MDS-2 with calc entries
+    entries2.innerHTML = generateMdsEntries();
+  }
+}
+
+function generateMdsEntries() {
+  return MDS_ENTRIES_TEMPLATE.map(e => {
+    const pv = (parseFloat(e.pv) * (0.9 + Math.random() * 0.2)).toFixed(2) + 'M';
+    const d = (parseFloat(e.delta) * (0.85 + Math.random() * 0.3)).toFixed(2);
+    return `<div class="mds-entry-anim">${e.id}: PV=${pv} \u0394=${d}</div>`;
+  }).join('');
+}
+
+let fillingIntervalId = null;
+let fillingEntryCount = 0;
+
+function startMdsFilling() {
+  fillingEntryCount = 0;
+  if (fillingIntervalId) clearInterval(fillingIntervalId);
+
+  // Gradually add entries to the filling bucket
+  fillingIntervalId = setInterval(() => {
+    const fillingBucket = mdsPhase === 1 ? 'mds2-entries' : 'mds1-entries';
+    const fillingProg = mdsPhase === 1 ? 'mds2-progress' : 'mds1-progress';
+    const el = document.getElementById(fillingBucket);
+    const prog = document.getElementById(fillingProg);
+
+    if (fillingEntryCount < MDS_ENTRIES_TEMPLATE.length) {
+      const e = MDS_ENTRIES_TEMPLATE[fillingEntryCount];
+      const pv = (parseFloat(e.pv) * (0.9 + Math.random() * 0.2)).toFixed(2) + 'M';
+      const d = (parseFloat(e.delta) * (0.85 + Math.random() * 0.3)).toFixed(2);
+      const div = document.createElement('div');
+      div.className = 'mds-entry-anim';
+      div.textContent = `${e.id}: PV=${pv} \u0394=${d}`;
+      el.appendChild(div);
+      fillingEntryCount++;
+    }
+  }, 200);
+
+  // Schedule the SWITCH
+  setTimeout(doMdsSwitch, MDS_CYCLE_MS);
+}
+
+function updateMdsFillProgress() {
+  const elapsed = Date.now() - mdsPhaseStartTime;
+  const progress = Math.min(1, elapsed / MDS_CYCLE_MS);
+  const fillingProg = mdsPhase === 1 ? 'mds2-progress' : 'mds1-progress';
+  const prog = document.getElementById(fillingProg);
+  prog.style.width = (progress * 100) + '%';
+}
+
+function doMdsSwitch() {
+  if (fillingIntervalId) clearInterval(fillingIntervalId);
+
+  // DRAMATIC FLASH
+  mdsSwitchFlashAlpha = 1.0;
+  lastMdsSwitchTime = Date.now();
+
+  const flash1 = document.getElementById('mds1-flash');
+  const flash2 = document.getElementById('mds2-flash');
+  flash1.style.background = 'rgba(255,255,255,0.15)';
+  flash1.style.opacity = '1';
+  flash2.style.background = 'rgba(255,255,255,0.15)';
+  flash2.style.opacity = '1';
+
+  setTimeout(() => {
+    flash1.style.opacity = '0';
+    flash2.style.opacity = '0';
+  }, 100);
+
+  // Brief "CLEARING" state on the previously active bucket
+  const clearingBucket = mdsPhase === 1 ? 'mds1-bucket' : 'mds2-bucket';
+  const clearingEntries = mdsPhase === 1 ? 'mds1-entries' : 'mds2-entries';
+  const clearingBadge = mdsPhase === 1 ? 'mds1-badge' : 'mds2-badge';
+
+  document.getElementById(clearingBucket).className = 'rp-bucket rb-mds clearing';
+  document.getElementById(clearingBadge).textContent = 'CLEARING';
+  document.getElementById(clearingBadge).style.background = 'rgba(255,60,60,0.15)';
+  document.getElementById(clearingBadge).style.color = '#ff6666';
+
+  setTimeout(() => {
+    document.getElementById(clearingEntries).innerHTML = '';
+    // Switch phase
+    mdsPhase = mdsPhase === 1 ? 2 : 1;
+    mdsPhaseStartTime = Date.now();
+    setMdsState();
+    startMdsFilling();
+  }, 250);
+
+  // Update trading table on MDS switch
+  updateTradingTableOnSwitch();
+}
+
+// ============================================================
+// FRONTEND TRADING TABLE
+// ============================================================
+function initTradingTable() {
+  const tbody = document.getElementById('tt-body');
+  TRADE_ROWS.forEach((row, i) => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td>${row.id}</td>
+      <td>${row.type}</td>
+      <td class="num">${row.notional}</td>
+      <td class="num" id="pv-${i}">${row.pv.toFixed(2)}M</td>
+      <td class="num" id="delta-${i}">${row.delta.toFixed(2)}</td>
+      <td class="status-live">${row.status}</td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+
+function updateTradingTableOnSwitch() {
+  // Show MDS Update badge
+  const badge = document.getElementById('mds-badge-table');
+  badge.classList.remove('show');
+  // Force reflow to restart animation
+  void badge.offsetWidth;
+  badge.classList.add('show');
+  setTimeout(() => badge.classList.remove('show'), 750);
+
+  // Update PV and Delta values with small random changes
+  TRADE_ROWS.forEach((row, i) => {
+    const pvChange = row.pv * (Math.random() * 0.24 - 0.12); // +/- 12%
+    const deltaChange = (Math.random() * 0.3 - 0.15); // +/- 0.15
+    const oldPv = row.pv;
+    const oldDelta = row.delta;
+    row.pv = Math.max(0.01, row.pv + pvChange);
+    row.delta = row.delta + deltaChange;
+
+    const pvEl = document.getElementById('pv-' + i);
+    const deltaEl = document.getElementById('delta-' + i);
+
+    pvEl.textContent = row.pv.toFixed(2) + 'M';
+    deltaEl.textContent = row.delta.toFixed(2);
+
+    // Flash color based on direction
+    const pvUp = row.pv > oldPv;
+    const deltaUp = row.delta > oldDelta;
+
+    pvEl.classList.remove('flash-green', 'flash-red');
+    deltaEl.classList.remove('flash-green', 'flash-red');
+    void pvEl.offsetWidth; // reflow
+
+    pvEl.classList.add(pvUp ? 'flash-green' : 'flash-red');
+    deltaEl.classList.add(deltaUp ? 'flash-green' : 'flash-red');
+
+    setTimeout(() => {
+      pvEl.classList.remove('flash-green', 'flash-red');
+      deltaEl.classList.remove('flash-green', 'flash-red');
+    }, 400);
+  });
+}
+
+// ============================================================
+// UTILS
+// ============================================================
+function jit(v, f) { return v * (1 + (Math.random() * 2 - 1) * f); }
+function fmtRps(n) {
+  if (n >= 1000) return (n / 1000).toFixed(1) + 'k';
+  if (n < 0.1) return n.toFixed(2);
+  return n.toFixed(0);
+}
+function fmtInt(n) {
+  return n.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+}
+</script>
+</body>
+</html>
