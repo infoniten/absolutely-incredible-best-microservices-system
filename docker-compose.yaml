@@ -239,6 +239,33 @@ services:
       - quantara-network
     restart: unless-stopped
 
+  enricher-service:
+    build:
+      context: ./enricher-service
+      dockerfile: Dockerfile
+    container_name: quantara-enricher-service
+    ports:
+      - "8089:8089"
+    environment:
+      SPRING_DATASOURCE_URL: "jdbc:postgresql://postgres:5432/transactions"
+      SPRING_DATASOURCE_USERNAME: "postgres"
+      SPRING_DATASOURCE_PASSWORD: "postgres123"
+      SPRING_DATA_REDIS_CLUSTER_NODES: "redis:6379"
+      ENRICHER_SEARCH_SERVICE_BASE_URL: "http://host.docker.internal:8081"
+      ENRICHER_METADATA_URL: "http://datadictionary:8080/api/search-service/metadata/v2"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      datadictionary:
+        condition: service_healthy
+      datadictionary-seed:
+        condition: service_completed_successfully
+    networks:
+      - quantara-network
+    restart: unless-stopped
+
   object-framework:
     build:
       context: ./object-framework
