@@ -1,0 +1,2034 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RTMDB Platform — Real-time Market Data Bus v4</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+html,body{width:100%;height:100%;overflow:hidden;background:#A3B1C0;color:#19245A;font-family:'Inter',system-ui,sans-serif}
+body{transform-origin:0 0;transition:none}
+
+body::before{content:'';position:fixed;inset:0;background-image:
+  linear-gradient(rgba(25,36,90,0.18) 1px,transparent 1px),
+  linear-gradient(90deg,rgba(25,36,90,0.18) 1px,transparent 1px);
+background-size:60px 60px,60px 60px;z-index:0;pointer-events:none}
+
+#canvas-layer{position:fixed;top:0;left:0;width:100%;height:100%;z-index:1;pointer-events:none}
+#ui-layer{position:fixed;top:0;left:0;width:100%;height:100%;z-index:2;pointer-events:none}
+#ui-layer>*{pointer-events:auto}
+#hit-layer{position:fixed;top:0;left:0;width:100%;height:100%;z-index:3;pointer-events:auto;cursor:grab}
+
+/* Header */
+.header{position:fixed;top:0;left:0;right:0;height:52px;display:flex;align-items:center;justify-content:space-between;padding:0 28px;background:linear-gradient(180deg,rgba(20,28,52,0.97) 0%,rgba(20,28,52,0.80) 100%);border-bottom:1px solid rgba(120,160,255,0.10);backdrop-filter:blur(16px);z-index:20}
+
+/* Top-panel toggle button (always visible) */
+.panel-toggle{position:fixed;top:8px;right:14px;z-index:30;background:rgba(20,30,60,0.80);border:1px solid rgba(140,180,255,0.35);color:#c8daff;width:30px;height:30px;border-radius:7px;font-size:14px;line-height:1;cursor:pointer;backdrop-filter:blur(10px);display:flex;align-items:center;justify-content:center;padding:0;transition:transform 0.18s ease, background 0.18s ease, color 0.18s ease}
+.panel-toggle:hover{background:rgba(50,80,140,0.92);color:#eef3ff;border-color:rgba(160,200,255,0.55)}
+.panel-toggle .icon{display:inline-block;transition:transform 0.18s ease}
+.theme-toggle{position:fixed;top:8px;right:50px;z-index:30;background:rgba(20,30,60,0.80);border:1px solid rgba(140,180,255,0.35);color:#c8daff;width:30px;height:30px;border-radius:7px;font-size:13px;line-height:1;cursor:pointer;backdrop-filter:blur(10px);display:flex;align-items:center;justify-content:center;padding:0;transition:background 0.18s ease, color 0.18s ease}
+.theme-toggle:hover{background:rgba(50,80,140,0.92);color:#eef3ff;border-color:rgba(160,200,255,0.55)}
+.save-btn,.reset-btn{position:fixed;top:8px;z-index:30;background:rgba(20,30,60,0.80);border:1px solid rgba(140,180,255,0.35);color:#c8daff;width:30px;height:30px;border-radius:7px;font-size:13px;line-height:1;cursor:pointer;backdrop-filter:blur(10px);display:flex;align-items:center;justify-content:center;padding:0;transition:background 0.18s ease, color 0.18s ease}
+.save-btn{right:86px}
+.reset-btn{right:122px}
+.save-btn:hover,.reset-btn:hover{background:rgba(50,80,140,0.92);color:#eef3ff;border-color:rgba(160,200,255,0.55)}
+.save-btn.flash{background:rgba(0,180,120,0.85);color:#fff;border-color:rgba(60,220,160,0.7)}
+body.theme-white{background:#FFFFFF}
+body.theme-white::before{background-image:
+  linear-gradient(rgba(160,170,185,0.45) 1px,transparent 1px),
+  linear-gradient(90deg,rgba(160,170,185,0.45) 1px,transparent 1px)}
+
+/* White theme — semi-transparent type-tinted fills (matching dark theme's 0.78 alpha) */
+body.theme-white .node.java{background:rgba(110,195,185,0.60)}
+body.theme-white .node.java .nm{color:#063e3b}
+body.theme-white .node.java .ds{color:rgba(10,55,52,0.85)}
+body.theme-white .node.java .ic{color:#063e3b;background:rgba(0,140,135,0.25)}
+
+body.theme-white .node.infra{background:rgba(240,180,90,0.60)}
+body.theme-white .node.infra .nm{color:#4a2d00}
+body.theme-white .node.infra .ds{color:rgba(70,42,5,0.85)}
+body.theme-white .node.infra .ic{color:#4a2d00;background:rgba(180,110,20,0.25)}
+
+body.theme-white .node.external{background:rgba(140,205,160,0.60)}
+body.theme-white .node.external .nm{color:#0d3f1c}
+body.theme-white .node.external .ds{color:rgba(15,50,25,0.85)}
+body.theme-white .node.external .ic{color:#0d3f1c;background:rgba(40,140,75,0.25)}
+
+body.theme-white .node.ui{background:rgba(150,180,235,0.60)}
+body.theme-white .node.ui .nm{color:#0f2a55}
+body.theme-white .node.ui .ds{color:rgba(20,40,75,0.85)}
+body.theme-white .node.ui .ic{color:#0f2a55;background:rgba(70,120,210,0.25)}
+
+body.theme-white .node.user{background:rgba(180,195,235,0.60)}
+body.theme-white .node.user .nm{color:#19245A}
+body.theme-white .node.user .ic{color:#19245A;background:rgba(120,150,210,0.25)}
+
+/* White theme — AC clients popup */
+body.theme-white .client-popup{background:rgba(255,255,255,0.97);border-color:rgba(0,130,130,0.45);box-shadow:0 12px 36px rgba(25,36,90,0.18)}
+body.theme-white .client-popup .cp-title{color:#0a6b66;border-bottom-color:rgba(0,130,130,0.30)}
+body.theme-white .client-popup .cp-row{background:rgba(0,140,135,0.08);border-color:rgba(0,140,135,0.30)}
+body.theme-white .client-popup .cp-name{color:#0d3a78}
+body.theme-white .client-popup .cp-line{color:rgba(15,40,75,0.85)}
+body.theme-white .client-popup .cp-line .cp-label{color:#0a6b66}
+body.theme-white .client-popup .cp-line .cp-empty{color:rgba(15,40,75,0.40)}
+body.theme-white .client-popup .cp-freq{color:rgba(15,80,75,0.75)}
+
+/* White theme — edge tooltip */
+body.theme-white .etip{background:rgba(255,255,255,0.97);border-color:rgba(0,130,130,0.30);box-shadow:0 8px 32px rgba(25,36,90,0.18)}
+body.theme-white .etip .eop{color:#0a6b66}
+body.theme-white .etip .em{color:rgba(15,40,75,0.7)}
+body.theme-white .etip .em b{color:#0d3a78}
+body.panels-hidden .header,
+body.panels-hidden .stats-bar{display:none !important}
+body.panels-hidden .panel-toggle .icon{transform:rotate(180deg)}
+.header-left{display:flex;align-items:center;gap:14px}
+.header-left .logo{width:8px;height:8px;border-radius:50%;background:radial-gradient(circle,#00e8ff,#0055ff);box-shadow:0 0 10px #00aaff66;animation:pulse-logo 2.5s ease-in-out infinite}
+@keyframes pulse-logo{0%,100%{box-shadow:0 0 10px #00aaff66}50%{box-shadow:0 0 22px #00ccffaa}}
+.header-left h1{font-size:15px;font-weight:600;letter-spacing:0.4px;color:#c8daff}
+.header-left .pipe{color:rgba(255,255,255,0.10);font-weight:300;font-size:20px;margin:0 2px}
+.header-left .sub{font-size:11px;font-weight:400;color:rgba(140,170,255,0.40);letter-spacing:1.5px;text-transform:uppercase}
+.header-right{display:flex;align-items:center;gap:18px}
+.live-badge{display:flex;align-items:center;gap:6px;font-size:10px;text-transform:uppercase;letter-spacing:1.5px;color:rgba(0,255,136,0.7)}
+.live-badge .dot{width:7px;height:7px;border-radius:50%;background:#00ff88;box-shadow:0 0 8px #00ff8866;animation:blink 1.8s ease-in-out infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:0.35}}
+.clock{font-size:12px;color:rgba(140,170,255,0.45);font-family:'JetBrains Mono',monospace;letter-spacing:0.5px}
+
+/* Stats */
+.stats-bar{position:fixed;top:52px;left:0;right:0;height:44px;display:flex;align-items:center;justify-content:flex-start;gap:0;padding:0 28px;background:rgba(8,8,24,0.6);border-bottom:1px solid rgba(80,160,255,0.05);backdrop-filter:blur(10px);z-index:19}
+.stat{display:flex;align-items:baseline;gap:8px;padding:0 18px;border-right:1px solid rgba(80,160,255,0.06)}
+.stat:last-child{border-right:none}
+.stat .lbl{font-size:9px;text-transform:uppercase;letter-spacing:1.2px;color:rgba(140,170,255,0.30)}
+.stat .val{font-size:16px;font-weight:600;font-family:'JetBrains Mono',monospace}
+.stat .val .u{font-size:9px;font-weight:400;color:rgba(140,170,255,0.30);margin-left:3px}
+.stat.c1 .val{color:#5ef0e0}
+.stat.c2 .val{color:#00ff88}
+.stat.c3 .val{color:#ffb347}
+.stat.c4 .val{color:#c084fc}
+.stat.c5 .val{color:rgba(200,210,255,0.55)}
+.stat.c6 .val{color:#5ef0e0}
+.stat.c7 .val{color:#00ff88}
+
+/* Nodes — compact by default, scale up on hover/highlight so labels stay readable */
+.node{position:absolute;border-radius:9px;padding:7px 10px;display:flex;align-items:center;gap:7px;transition:transform 0.15s ease,box-shadow 0.15s ease,padding 0.15s ease;z-index:5;white-space:nowrap;transform:translate(-50%,-50%);user-select:none}
+.node:hover{transform:translate(-50%,-50%) scale(1.10);z-index:8}
+.node .ic{font-size:13px;flex-shrink:0;width:22px;height:22px;display:flex;align-items:center;justify-content:center;border-radius:6px;background:rgba(255,255,255,0.04);transition:font-size 0.15s ease, width 0.15s ease, height 0.15s ease}
+.node .nf .nm{font-size:10px;font-weight:600;letter-spacing:0.2px;transition:font-size 0.15s ease}
+.node .nf .ds{font-size:8px;color:rgba(255,255,255,0.55);margin-top:1px;letter-spacing:0.3px;transition:font-size 0.15s ease}
+
+/* Java services */
+.node.java{background:rgba(8,16,30,0.78);border:1px solid rgba(0,220,220,0.45);box-shadow:0 0 18px rgba(0,200,220,0.18),inset 0 1px 0 rgba(0,220,220,0.10),0 4px 14px rgba(0,0,0,0.35)}
+.node.java:hover{box-shadow:0 0 32px rgba(0,200,220,0.30),inset 0 1px 0 rgba(0,220,220,0.16),0 6px 18px rgba(0,0,0,0.45)}
+.node.java .nm{color:#9af5ec}
+.node.java .ic{color:#6cf0e2;background:rgba(0,210,210,0.16)}
+
+/* Infrastructure */
+.node.infra{background:rgba(28,18,8,0.78);border:1px solid rgba(255,180,70,0.45);box-shadow:0 0 18px rgba(255,170,50,0.18),inset 0 1px 0 rgba(255,200,90,0.10),0 4px 14px rgba(0,0,0,0.35)}
+.node.infra:hover{box-shadow:0 0 32px rgba(255,170,50,0.30),inset 0 1px 0 rgba(255,200,90,0.16),0 6px 18px rgba(0,0,0,0.45)}
+.node.infra .nm{color:#ffd07a}
+.node.infra .ic{color:#ffc266;background:rgba(255,180,70,0.18)}
+
+/* External */
+.node.external{background:rgba(8,22,12,0.78);border:1px solid rgba(80,210,110,0.45);box-shadow:0 0 18px rgba(60,180,80,0.18),inset 0 1px 0 rgba(80,220,110,0.10),0 4px 14px rgba(0,0,0,0.35)}
+.node.external:hover{box-shadow:0 0 32px rgba(60,180,80,0.30),inset 0 1px 0 rgba(80,220,110,0.16),0 6px 18px rgba(0,0,0,0.45)}
+.node.external .nm{color:#9ee5a8}
+.node.external .ic{color:#74d684;background:rgba(60,180,80,0.18)}
+
+/* UI */
+.node.ui{background:rgba(8,16,30,0.78);border:1px solid rgba(120,180,255,0.45);box-shadow:0 0 22px rgba(100,160,255,0.20),inset 0 1px 0 rgba(120,190,255,0.14),0 4px 14px rgba(0,0,0,0.35)}
+.node.ui:hover{box-shadow:0 0 36px rgba(100,160,255,0.32),inset 0 1px 0 rgba(120,190,255,0.18),0 6px 18px rgba(0,0,0,0.45)}
+.node.ui .nm{color:#cce0ff}
+.node.ui .ic{color:#9ac2ff;background:rgba(100,160,255,0.18)}
+
+/* User */
+.node.user{background:rgba(14,18,38,0.78);border:1px solid rgba(200,220,255,0.50);box-shadow:0 0 22px rgba(180,200,255,0.20),inset 0 1px 0 rgba(220,230,255,0.14),0 4px 14px rgba(0,0,0,0.35);border-radius:8px;padding:10px 14px}
+.node.user .ic{color:#cfe0ff;background:rgba(180,200,255,0.18)}
+.node.user .nm{color:#e2eaff}
+
+/* WAL */
+.node.wal{background:rgba(180,170,140,0.03);border:1px solid rgba(180,170,140,0.10);box-shadow:none;opacity:0.50;padding:8px 12px;border-radius:7px;transform:translate(-50%,-50%) rotate(45deg);width:44px;height:44px;display:flex;align-items:center;justify-content:center}
+.node.wal:hover{transform:translate(-50%,-50%) rotate(45deg) scale(1.06);opacity:0.7}
+.node.wal .ic{transform:rotate(-45deg);width:auto;height:auto;font-size:14px;background:none}
+.node.wal .nf{display:none}
+.node.wal::after{content:'WAL';position:absolute;bottom:-20px;left:50%;transform:translateX(-50%) rotate(-45deg);font-size:8px;color:rgba(200,190,160,0.55);letter-spacing:0.3px;white-space:nowrap;font-family:'JetBrains Mono',monospace}
+
+.node.big{padding:9px 13px}
+.node.big .ic{width:26px;height:26px;font-size:15px}
+.node.big .nm{font-size:11px}
+
+/* Small variant — used for HW Pub sub-services so a 3-block group fits in the same vertical slot */
+.node.small{padding:3px 6px;gap:4px}
+.node.small .ic{width:14px;height:14px;font-size:9px;border-radius:3px}
+.node.small .nm{font-size:7.5px;letter-spacing:0.05px;line-height:1.15}
+.node.small .ds{font-size:6.5px;margin-top:0;line-height:1.1}
+
+
+/* Expanded detail panel (shown on hover for nodes with sub-blocks) */
+.expand-detail{display:none;position:fixed;transform:translateX(-50%);background:rgba(8,16,30,0.97);border:1px solid rgba(0,220,220,0.45);border-radius:9px;padding:10px;width:260px;z-index:40;backdrop-filter:blur(10px);box-shadow:0 10px 32px rgba(0,0,0,0.55);pointer-events:none;flex-direction:column;gap:6px;white-space:normal}
+.expand-detail.show{display:flex}
+.expand-detail .ed-title{font-size:9px;font-weight:700;color:#9af5ec;letter-spacing:0.6px;text-transform:uppercase;font-family:'JetBrains Mono',monospace;padding-bottom:6px;border-bottom:1px solid rgba(0,220,220,0.18);margin-bottom:2px}
+.expand-detail .ed-sub{background:rgba(0,220,220,0.07);border:1px solid rgba(0,220,220,0.20);border-radius:6px;padding:6px 8px}
+.expand-detail .ed-sub .ed-name{font-size:9px;color:#cce0ff;font-family:'JetBrains Mono',monospace;line-height:1.35;letter-spacing:0.1px}
+.expand-detail .ed-sub .ed-mode{font-size:8px;color:#7fd9c8;margin-top:3px;letter-spacing:0.5px;font-family:'JetBrains Mono',monospace;text-transform:uppercase}
+
+/* AC client subscription topics popup (shown on hover for ac_sub / gmsb_sub_req / gmsb_sub_data) */
+.client-popup{display:none;position:fixed;background:rgba(8,16,30,0.97);border:1px solid rgba(0,220,220,0.45);border-radius:9px;padding:12px;width:380px;max-height:420px;overflow-y:auto;z-index:50;backdrop-filter:blur(10px);box-shadow:0 12px 36px rgba(0,0,0,0.6);pointer-events:auto;font-family:'JetBrains Mono',monospace}
+.client-popup.show{display:block}
+.client-popup .cp-title{font-size:10px;font-weight:700;color:#9af5ec;letter-spacing:0.6px;text-transform:uppercase;padding-bottom:8px;border-bottom:1px solid rgba(0,220,220,0.18);margin-bottom:8px}
+.client-popup .cp-row{padding:6px 8px;background:rgba(0,220,220,0.06);border:1px solid rgba(0,220,220,0.18);border-radius:5px;margin-bottom:5px}
+.client-popup .cp-name{font-size:9px;color:#cce0ff;font-weight:700;margin-bottom:3px;letter-spacing:0.2px}
+.client-popup .cp-line{font-size:8px;color:rgba(255,255,255,0.72);line-height:1.4;word-break:break-all}
+.client-popup .cp-line .cp-label{color:#7fd9c8;display:inline-block;width:32px;font-weight:600}
+.client-popup .cp-line .cp-empty{color:rgba(255,255,255,0.35);font-style:italic}
+.client-popup .cp-freq{font-size:7px;color:rgba(120,200,180,0.75);margin-top:3px;letter-spacing:0.3px}
+
+/* Edge Tooltip */
+.etip{position:fixed;background:rgba(12,12,36,0.96);border:1px solid rgba(80,160,255,0.18);border-radius:9px;padding:10px 14px;pointer-events:none;z-index:25;opacity:0;transition:opacity 0.15s;backdrop-filter:blur(12px);box-shadow:0 8px 32px rgba(0,0,0,0.5)}
+.etip.show{opacity:1}
+.etip .eop{color:#8ecfff;font-weight:600;font-family:'JetBrains Mono',monospace;font-size:11px;margin-bottom:3px}
+.etip .em{color:rgba(180,200,255,0.5);font-family:'JetBrains Mono',monospace;font-size:10px;line-height:1.7}
+.etip .em b{color:#dce4ff;font-weight:500}
+
+/* Edge labels */
+.elabel{position:absolute;transform:translate(-50%,-50%);font-size:8px;font-family:'JetBrains Mono',monospace;color:rgba(25,36,90,0.65);letter-spacing:0.3px;pointer-events:none;z-index:4;white-space:nowrap;text-align:center;line-height:1.4;transition:opacity 0.18s ease, color 0.18s ease}
+.elabel .eop-text{color:rgba(25,36,90,0.80)}
+.elabel .erps{color:rgba(25,36,90,0.55)}
+
+/* Hover-edge focus: dim everything except connected nodes / hovered edge */
+.node.node-dim{opacity:0.18;filter:saturate(0.45)}
+.node.node-highlight{z-index:9;transform:translate(-50%,-50%) scale(1.10)}
+.node.node-highlight.java{box-shadow:0 0 38px rgba(0,200,220,0.55),inset 0 1px 0 rgba(0,220,220,0.2);border-color:rgba(0,230,230,0.7)}
+.node.node-highlight.infra{box-shadow:0 0 38px rgba(255,170,50,0.55),inset 0 1px 0 rgba(255,200,90,0.2);border-color:rgba(255,200,90,0.7)}
+.node.node-highlight.external{box-shadow:0 0 38px rgba(60,200,90,0.55),inset 0 1px 0 rgba(80,220,110,0.2);border-color:rgba(80,220,110,0.7)}
+.node.node-highlight.user{box-shadow:0 0 38px rgba(180,200,255,0.55),inset 0 1px 0 rgba(200,220,255,0.2);border-color:rgba(200,220,255,0.7)}
+.elabel.elabel-dim{opacity:0.10}
+.elabel.elabel-highlight{opacity:1;color:#19245A;font-weight:700}
+.elabel.elabel-highlight .eop-text{color:#19245A}
+.elabel.elabel-highlight .erps{color:rgba(25,36,90,0.85)}
+
+/* Zone labels */
+.zone-label{position:absolute;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:2.5px;color:#19245A;pointer-events:none;z-index:3;font-family:'Inter',sans-serif}
+
+/* Legend */
+.legend{position:fixed;bottom:14px;left:20px;display:flex;gap:18px;z-index:10}
+.legend .li{display:flex;align-items:center;gap:5px;font-size:9px;color:rgba(25,36,90,0.75);text-transform:uppercase;letter-spacing:0.8px;font-weight:600}
+.legend .li .ld{width:7px;height:7px;border-radius:50%}
+.legend .li .ld.lj{background:#5ee8dd;box-shadow:0 0 5px #5ee8dd66}
+.legend .li .ld.la{background:#ffb347;box-shadow:0 0 5px #ffb34766}
+.legend .li .ld.le{background:#60c870;box-shadow:0 0 5px #60c87066}
+.legend .li .ld.lu{background:#80b8ff;box-shadow:0 0 5px #80b8ff66}
+
+/* ====== NEW v3: Redis Cache Detail Panel ====== */
+.redis-panel{
+  position:fixed;z-index:10;
+  background:rgba(10,10,30,0.88);
+  border:1px solid rgba(0,210,220,0.15);
+  border-radius:12px;
+  backdrop-filter:blur(14px);
+  padding:14px;
+  overflow:hidden;
+  display:flex;flex-direction:column;gap:10px;
+}
+.redis-panel .rp-title{
+  font-size:12px;font-weight:600;color:#78efe6;letter-spacing:0.3px;
+  font-family:'JetBrains Mono',monospace;
+  border-bottom:1px solid rgba(0,210,220,0.10);padding-bottom:8px;
+}
+.redis-panel .rp-buckets{
+  display:flex;gap:8px;flex:1;min-height:0;
+}
+.redis-panel .rp-bucket{
+  flex:1;border-radius:8px;padding:8px;display:flex;flex-direction:column;gap:4px;
+  min-width:0;overflow:hidden;
+}
+.rp-bucket .rb-title{
+  font-size:9px;font-weight:600;text-transform:uppercase;letter-spacing:1px;
+  font-family:'JetBrains Mono',monospace;margin-bottom:2px;
+}
+.rp-bucket .rb-badge{
+  display:inline-block;font-size:8px;padding:1px 5px;border-radius:3px;
+  font-weight:600;letter-spacing:0.5px;margin-left:4px;
+}
+.rp-bucket .rb-entries{
+  font-size:9px;font-family:'JetBrains Mono',monospace;
+  color:rgba(200,210,255,0.6);line-height:1.6;flex:1;overflow:hidden;
+}
+.rp-bucket .rb-progress{
+  height:4px;border-radius:2px;background:rgba(255,255,255,0.05);margin-top:4px;overflow:hidden;
+}
+.rp-bucket .rb-progress-bar{
+  height:100%;border-radius:2px;transition:width 0.1s linear;
+}
+
+/* Bucket: Metadata */
+.rb-meta{background:rgba(0,200,220,0.04);border:1px solid rgba(0,210,220,0.12)}
+.rb-meta .rb-title{color:rgba(120,239,230,0.7)}
+
+/* Bucket: Trades */
+.rb-trades{background:rgba(0,200,220,0.04);border:1px solid rgba(0,210,220,0.12)}
+.rb-trades .rb-title{color:rgba(120,239,230,0.7)}
+.rb-trades .rb-count{font-size:9px;color:rgba(0,255,136,0.6);font-family:'JetBrains Mono',monospace}
+
+/* Bucket: MDS */
+.rb-mds{background:rgba(0,200,220,0.04);border:1px solid rgba(0,210,220,0.12);transition:border-color 0.3s,box-shadow 0.3s}
+.rb-mds.active{border-color:rgba(0,255,136,0.35);box-shadow:0 0 12px rgba(0,255,136,0.08)}
+.rb-mds.filling{border-color:rgba(255,180,50,0.30);box-shadow:0 0 12px rgba(255,180,50,0.06)}
+.rb-mds.clearing{border-color:rgba(255,60,60,0.35);box-shadow:0 0 12px rgba(255,60,60,0.08)}
+.rb-mds .rb-title{color:rgba(120,239,230,0.7)}
+
+/* MDS switch flash overlay */
+.rb-mds .mds-flash{
+  position:absolute;inset:0;border-radius:8px;pointer-events:none;
+  opacity:0;transition:opacity 0.15s;
+}
+.rb-mds{position:relative}
+
+/* Trade entry animations */
+@keyframes tradeIn{
+  0%{opacity:0;color:#00ff88;transform:translateY(-6px)}
+  50%{color:#00ff88}
+  100%{opacity:1;color:rgba(200,210,255,0.6);transform:translateY(0)}
+}
+@keyframes tradeOut{
+  0%{opacity:1;color:rgba(200,210,255,0.6)}
+  50%{color:#ff4444}
+  100%{opacity:0;color:#ff4444;transform:translateX(10px);height:0;padding:0;margin:0}
+}
+.trade-entry{animation:tradeIn 0.5s ease forwards}
+.trade-entry.removing{animation:tradeOut 0.4s ease forwards}
+
+/* MDS entry animation */
+@keyframes mdsEntryIn{
+  0%{opacity:0;color:rgba(255,180,50,0.8)}
+  100%{opacity:1;color:rgba(200,210,255,0.6)}
+}
+.mds-entry-anim{animation:mdsEntryIn 0.4s ease forwards}
+
+/* ====== NEW v3: Frontend Trading Table ====== */
+.trading-table-panel{
+  position:fixed;z-index:10;
+  background:rgba(10,10,30,0.90);
+  border:1px solid rgba(100,160,255,0.15);
+  border-radius:12px;
+  backdrop-filter:blur(14px);
+  padding:14px;
+  display:flex;flex-direction:column;gap:8px;
+  overflow:hidden;
+}
+.tt-header{
+  display:flex;align-items:center;justify-content:space-between;
+  border-bottom:1px solid rgba(100,160,255,0.10);padding-bottom:8px;
+}
+.tt-header .tt-title{
+  font-size:12px;font-weight:600;color:#b0d4ff;letter-spacing:0.3px;
+  font-family:'JetBrains Mono',monospace;
+}
+.tt-header .tt-conn{
+  display:flex;align-items:center;gap:5px;font-size:9px;color:rgba(0,255,136,0.5);
+  font-family:'JetBrains Mono',monospace;letter-spacing:0.5px;
+}
+.tt-header .tt-conn .tt-dot{
+  width:5px;height:5px;border-radius:50%;background:#00ff88;
+  box-shadow:0 0 6px #00ff8844;animation:blink 1.8s ease-in-out infinite;
+}
+.tt-header .mds-update-badge{
+  display:none;font-size:9px;padding:2px 8px;border-radius:4px;
+  background:rgba(0,255,136,0.12);color:#00ff88;
+  font-family:'JetBrains Mono',monospace;font-weight:600;letter-spacing:0.5px;
+  animation:badgeFlash 1.5s ease forwards;
+}
+.tt-header .mds-update-badge.show{display:inline-block}
+@keyframes badgeFlash{
+  0%{opacity:0;transform:scale(0.9)}
+  15%{opacity:1;transform:scale(1.05)}
+  30%{transform:scale(1)}
+  80%{opacity:1}
+  100%{opacity:0}
+}
+
+.tt-table{
+  width:100%;border-collapse:collapse;font-family:'JetBrains Mono',monospace;font-size:10px;
+}
+.tt-table th{
+  text-align:left;padding:4px 8px;font-size:8px;font-weight:600;
+  text-transform:uppercase;letter-spacing:1px;
+  color:rgba(140,170,255,0.40);border-bottom:1px solid rgba(100,160,255,0.08);
+}
+.tt-table td{
+  padding:4px 8px;border-bottom:1px solid rgba(100,160,255,0.04);
+  color:rgba(200,210,255,0.65);transition:color 0.3s,background 0.3s;
+}
+.tt-table tr:hover td{background:rgba(100,160,255,0.03)}
+.tt-table .num{text-align:right}
+.tt-table .status-live{color:rgba(0,255,136,0.6)}
+.tt-table td.flash-green{background:rgba(0,255,136,0.15) !important;color:#00ff88 !important;transition:none}
+.tt-table td.flash-red{background:rgba(255,60,60,0.15) !important;color:#ff6666 !important;transition:none}
+
+/* ====== Connection line pulse ====== */
+@keyframes connPulse{
+  0%{opacity:0.3}
+  50%{opacity:0.8}
+  100%{opacity:0.3}
+}
+</style>
+</head>
+<body class="panels-hidden theme-white">
+<canvas id="canvas-layer"></canvas>
+<div id="hit-layer"></div>
+<button id="panel-toggle" class="panel-toggle" title="Toggle top panel"><span class="icon">▾</span></button>
+<button id="theme-toggle" class="theme-toggle" title="Toggle background"><span class="icon">◐</span></button>
+<button id="save-btn" class="save-btn" title="Save block positions"><span class="icon">💾</span></button>
+<button id="reset-btn" class="reset-btn" title="Reset block positions to default"><span class="icon">↺</span></button>
+<div id="ui-layer">
+  <div class="header">
+    <div class="header-left">
+      <div class="logo"></div>
+      <h1>RTMDB Platform</h1>
+      <span class="pipe">|</span>
+      <span class="sub">Real-time Market Data Bus</span>
+    </div>
+    <div class="header-right">
+      <div class="live-badge"><div class="dot"></div>LIVE</div>
+      <div class="clock" id="clock">00:00:00</div>
+    </div>
+  </div>
+
+  <div class="stats-bar">
+    <div class="stat c1"><span class="lbl">MD Throughput</span><span class="val" id="s-trades">0<span class="u">msg</span></span></div>
+    <div class="stat c2"><span class="lbl">AC Subscribers</span><span class="val" id="s-sess">48<span class="u"></span></span></div>
+    <div class="stat c3"><span class="lbl">Ignite Hit Rate</span><span class="val" id="s-cache">98.5<span class="u">%</span></span></div>
+    <div class="stat c4"><span class="lbl">HW Replication</span><span class="val" id="s-calc">8<span class="u">ms</span></span></div>
+    <div class="stat c5"><span class="lbl">GMSB Topics</span><span class="val" id="s-pinot">12<span class="u"></span></span></div>
+    <div class="stat c6"><span class="lbl">Active Subs</span><span class="val" id="s-ws">128<span class="u"></span></span></div>
+    <div class="stat c7"><span class="lbl">MOEX Feed</span><span class="val" id="s-thr">850<span class="u">msg/s</span></span></div>
+  </div>
+
+  <div class="etip" id="tip"></div>
+
+  <!-- Redis Cache Detail Panel (hidden in v4) -->
+  <div class="redis-panel" id="redis-panel" style="display:none">
+    <div class="rp-title">Redis Cache &mdash; Session #192347</div>
+    <div class="rp-buckets">
+      <div class="rp-bucket rb-meta">
+        <div class="rb-title">Metadata</div>
+        <div class="rb-entries" style="color:rgba(160,180,210,0.45);font-size:9px;line-height:1.8">
+          UserQuery<br>CalcFields<br>UserSession<br>Pivots
+        </div>
+      </div>
+      <div class="rp-bucket rb-trades">
+        <div class="rb-title">Trades <span class="rb-count" id="trade-count">12 trades</span></div>
+        <div class="rb-entries" id="trade-list"></div>
+      </div>
+      <div class="rp-bucket rb-mds" id="mds1-bucket">
+        <div class="rb-title">MDS-1 <span class="rb-badge" id="mds1-badge">ACTIVE</span></div>
+        <div class="rb-entries" id="mds1-entries"></div>
+        <div class="rb-progress"><div class="rb-progress-bar" id="mds1-progress"></div></div>
+        <div class="mds-flash" id="mds1-flash"></div>
+      </div>
+      <div class="rp-bucket rb-mds" id="mds2-bucket">
+        <div class="rb-title">MDS-2 <span class="rb-badge" id="mds2-badge">FILLING</span></div>
+        <div class="rb-entries" id="mds2-entries"></div>
+        <div class="rb-progress"><div class="rb-progress-bar" id="mds2-progress"></div></div>
+        <div class="mds-flash" id="mds2-flash"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Frontend Trading Table (hidden in v4) -->
+  <div class="trading-table-panel" id="trading-table" style="display:none">
+    <div class="tt-header">
+      <span class="tt-title">Trading Dashboard &mdash; Live</span>
+      <span class="mds-update-badge" id="mds-badge-table">MDS Update</span>
+      <span class="tt-conn"><span class="tt-dot"></span>Connected</span>
+    </div>
+    <table class="tt-table">
+      <thead>
+        <tr>
+          <th>Trade</th>
+          <th>Type</th>
+          <th>Notional</th>
+          <th class="num">PV</th>
+          <th class="num">Delta</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody id="tt-body"></tbody>
+    </table>
+  </div>
+
+  <div class="legend">
+    <div class="li"><div class="ld lj"></div>RTMDB Services</div>
+    <div class="li"><div class="ld la"></div>Ignite / Kafka / DB</div>
+    <div class="li"><div class="ld le"></div>External / AC</div>
+    <div class="li"><div class="ld lu"></div>Operators</div>
+  </div>
+</div>
+
+<script>
+// ============================================================
+// DATA MODEL
+// ============================================================
+
+// AC MD source clients — MS subscription topics (shown on hover for ac_md_sub / gmsb_ms_req / gmsb_md_sub)
+const AC_MS_CLIENTS = [
+  {name:'GMOMS', in:'GMOMS.SUBSCRIPTIONS.MS', out:'MS.MARKETDATA.GMOMS'},
+  {name:'MDH',   in:'MDH.SUBSCRIPTIONS.MS',   out:'MS.MARKETDATA.MDH'},
+];
+
+// AC MD source — feed topics (shown on hover for ac_md_in)
+// "Интернет" used as the source when topic is shared (not tied to a single AC), otherwise first word before the dot.
+const AC_MD_SOURCE_CLIENTS = [
+  {name:'Интернет', out:'CBR.ALLDATAINFO.HIGHWAY'},
+  {name:'Интернет', out:'CBR.KEYRATE.HIGHWAY'},
+  {name:'Интернет', out:'CBR.RUBCBRAUC.HIGHWAY'},
+  {name:'Интернет', out:'CBR.RUBCBRGU.HIGHWAY'},
+  {name:'Интернет', out:'CBR.RUONIA.HIGHWAY'},
+  {name:'GMTA',     out:'GMTA.PRICES.HIGHWAY'},
+  {name:'ICE',      out:'ICE.PROD.QUOTES.HIGHWAY'},
+  {name:'KFI',      out:'KFI.RATES.HIGHWAY'},
+  {name:'Интернет', out:'LBMA.METAL.PRICES.HIGHWAY'},
+  {name:'MOEX',     out:'MOEX.DEPO.PRICES.HIGHWAY'},
+  {name:'Интернет', out:'MOEX.PARAMS.HIGHWAY'},
+  {name:'Интернет', out:'MOEX.SECURITIES-WHCPT.HIGHWAY'},
+  {name:'Интернет', out:'MOEX.YEARYIELDS.HIGHWAY'},
+  {name:'MUREX',    out:'MUREX.MARKETDATA.HIGHWAY'},
+  {name:'Интернет', out:'NPA.ROISFIX.HIGHWAY'},
+  {name:'Интернет', out:'NPA.RUREPO.HIGHWAY'},
+  {name:'PKAPGR',   out:'PKAPGR.EVENTS.HIGHWAY'},
+  {name:'Интернет', out:'SPIMEX.FUTURESMARKET.HIGHWAY'},
+  {name:'Интернет', out:'SPIMEX.OILMARKET.HIGHWAY'},
+  {name:'FITP',     out:'FITP.PRICES.MS'},
+];
+
+// AC client subscription topics (shown on hover for ac_sub / gmsb_sub_req / gmsb_sub_data)
+const AC_CLIENTS = [
+  {name:'KFI-REQ',                    in:'KFI.SUBSCRIPTION.REQ.KFI',                  out:'HIGHWAY.FX.KFI',                              freq:2000},
+  {name:'KFI-REQ-FX',                 in:'KFI.SUBSCRIPTION.REQ.FX.KFI',               out:'HIGHWAY.FX.KFI',                              freq:2000},
+  {name:'BROKCTRL-PM-RATESINDEX',     in:'BROKCTRL-PM.SUBSCRIPTION.RATESINDEX.HIGHWAY', out:'HIGHWAY.RATESINDEX.BROKCTRL-PM',            freq:2000},
+  {name:'SCTWEB-PRICES',              in:'SCTWEB.SUBSCRIPTIONS.HIGHWAY',              out:'HIGHWAY.PRICES.SCTWEB',                       freq:15000},
+  {name:'GMDFA-PRICES',               in:'GMDFA.SUBSCRIPTION.PRICES.HIGHWAY',         out:'HIGHWAY.PRICES.GMDFA',                        freq:2000},
+  {name:'ZEUS-RATES',                 in:'ZEUS.SUBSCRIPTION.RATES.HIGHWAY',           out:'HIGHWAY.RATES.ZEUS',                          freq:300000, note:'каждые 5 минут'},
+  {name:'ZEUS-PRICES',                in:'ZEUS.SUBSCRIPTION.PRICES.HIGHWAY',          out:'HIGHWAY.PRICES.ZEUS',                         freq:2000},
+  {name:'INTERPORTAL-NEW',            in:'INTERPORTAL-NEW.SUBSCRIPTION.HIGHWAY',      out:'INTERPORTAL.PRICES.HIGHWAY.INTERPORTAL-NEW',  freq:900000, note:'15 минут'},
+  {name:'LIMS-PRICES',                in:'LIMS.MANAGE.SUBSCRIPTIONS.HIGHWAY',         out:'HIGHWAY.SUBSCRIPTION.PRICES.LIMS',            freq:2000},
+  {name:'PPRB-BROK-PORTFOLIO-QUOTES', in:'PPRB-BROK-PORTFOLIO.QUOTES.HIGHWAY',        out:'HIGHWAY.QUOTES.PPRB-BROK-PORTFOLIO',          freq:2000},
+  {name:'FITP-PRICES',                in:'FITP.SUBSCRIPTIONS.MS',                     out:'MS.PRICES.FITP',                              freq:2000},
+  {name:'MANUAL-SEND-HYPERION',       in:'',                                          out:'HIGHWAY.PRICES.HYPERION',                     freq:2000},
+];
+
+const NODES = [
+  // ===== internet =====
+  {id:'moex',          label:'MOEX',                       desc:'Exchange \u00B7 ASTS / Plaza2',          type:'external', icon:'\uD83C\uDFDB\uFE0F'},
+
+  // ===== dmz-trade =====
+  {id:'hw_systematica',label:'HW Systematica',             desc:'active-passive',                    type:'infra',    icon:'\uD83D\uDDA5\uFE0F'},
+  {id:'sk_curr_gw',    label:'MOEX curr GateWay',          desc:'rtmdb-moex-asts-to-ignite-curr',    type:'java',     icon:'\u26A1', big:true},
+  {id:'sk_fund_gw',    label:'MOEX fund GateWay',          desc:'rtmdb-moex-asts-to-ignite-fund',    type:'java',     icon:'\u26A1', big:true},
+  {id:'sk_forts_gw',   label:'MOEX forts GateWay',         desc:'rtmdb-moex-plaza2-to-ignite-base',  type:'java',     icon:'\u26A1', big:true},
+  {id:'mc_curr_gw',    label:'MOEX curr GateWay',          desc:'rtmdb-moex-asts-to-ignite-curr',    type:'java',     icon:'\u26A1', big:true},
+  {id:'mc_fund_gw',    label:'MOEX fund GateWay',          desc:'rtmdb-moex-asts-to-ignite-fund',    type:'java',     icon:'\u26A1', big:true},
+  {id:'mc_forts_gw',   label:'MOEX forts GateWay',         desc:'rtmdb-moex-plaza2-to-ignite-base',  type:'java',     icon:'\u26A1', big:true},
+  {id:'ignite_hw_sk',  label:'Apache Ignite HW',           desc:'Skolkovo \u00B7 ignite-filters/sync',    type:'infra',    icon:'\uD83D\uDD25', big:true},
+  {id:'ignite_hw_mc',  label:'Apache Ignite HW',           desc:'MegaCOD \u00B7 ignite-filters/sync',     type:'infra',    icon:'\uD83D\uDD25', big:true},
+  {id:'kafka_hw',      label:'Kafka HW',                   desc:'Highway Bus',                       type:'infra',    icon:'\uD83D\uDCE8'},
+
+  // ===== eaz-trade :: top \u2014 HW publishers / replicators =====
+  // Skolkovo HW Pub group (publish, subscribe, replicate HW\u2192Ignite)
+  {id:'sk_pub_prod',   label:'rtmdb-kafka-data-highway-<br>producer-app',  desc:'active-active',  type:'java', icon:'\uD83D\uDCE1', small:true, group:'skolkovo_pub', groupLabel:'Skolkovo HW Pub'},
+  {id:'sk_pub_sub',    label:'rtmdb-subscribing-to-<br>highway-data-app',  desc:'active-passive', type:'java', icon:'\uD83D\uDCE1', small:true, group:'skolkovo_pub', groupLabel:'Skolkovo HW Pub'},
+  {id:'sk_pub_repl',   label:'rtmdb-highway-to-ignite-<br>replicator',     desc:'active-passive', type:'java', icon:'\uD83D\uDCE1', small:true, group:'skolkovo_pub', groupLabel:'Skolkovo HW Pub'},
+  // MegaCOD HW Pub group (4 sub-services: producer / subscribing / replicator / ignite-to-highway-base)
+  {id:'mc_pub_prod',   label:'rtmdb-kafka-data-highway-<br>producer-app', desc:'active-active',  type:'java', icon:'\uD83D\uDCE1', small:true, group:'megacod_pub',  groupLabel:'MegaCOD HW Pub'},
+  {id:'mc_pub_sub',    label:'rtmdb-subscribing-to-<br>highway-data-app', desc:'active-active',  type:'java', icon:'\uD83D\uDCE1', small:true, group:'megacod_pub',  groupLabel:'MegaCOD HW Pub'},
+  {id:'mc_pub_repl',   label:'rtmdb-highway-to-ignite-<br>replicator',    desc:'active-passive', type:'java', icon:'\uD83D\uDCE1', small:true, group:'megacod_pub',  groupLabel:'MegaCOD HW Pub'},
+  {id:'mc_pub_base',   label:'rtmdb-ignite-to-highway-<br>base',          desc:'active-active',  type:'java', icon:'\uD83D\uDCE1', small:true, group:'megacod_pub',  groupLabel:'MegaCOD HW Pub'},
+  {id:'kafka_gmsb_md1',label:'Kafka GMSB',                 desc:'MD \u00B7 Skolkovo',                     type:'infra',    icon:'\uD83D\uDCE2'},
+  {id:'kafka_gmsb_md2',label:'Kafka GMSB',                 desc:'MD \u00B7 MegaCOD',                      type:'infra',    icon:'\uD83D\uDCE2'},
+  {id:'ac_md1',        label:'AC',                         desc:'MD consumer',                       type:'external', icon:'\uD83D\uDDA5\uFE0F'},
+  {id:'ac_md2',        label:'AC',                         desc:'MD consumer',                       type:'external', icon:'\uD83D\uDDA5\uFE0F'},
+
+  // ===== eaz-trade :: subscription mgmt =====
+  {id:'db_subs',       label:'\u0411\u0414 \u0421\u043E\u0441\u0442\u0430\u0432 \u043F\u043E\u0434\u043F\u0438\u0441\u043E\u043A',         desc:'Subscriptions DB',                  type:'infra',    icon:'\uD83D\uDDC4\uFE0F'},
+  {id:'db_subs_ms',    label:'\u0411\u0414 \u0421\u043E\u0441\u0442\u0430\u0432 \u043F\u043E\u0434\u043F\u0438\u0441\u043E\u043A',         desc:'Subscriptions DB \u00B7 MS',             type:'infra',    icon:'\uD83D\uDDC4\uFE0F'},
+  // Subscription mgmt service (3 sub-services in a row, container labeled below)
+  {id:'sub_mgr',       label:'rtmdb-subscription-<br>manager',       desc:'active-active',  type:'java', icon:'\uD83C\uDF9B\uFE0F', small:true, group:'sub_mgmt_grp', groupLabel:'\u0421\u0435\u0440\u0432\u0438\u0441 \u0443\u043F\u0440\u0430\u0432\u043B\u0435\u043D\u0438\u044F \u043F\u043E\u0434\u043F\u0438\u0441\u043A\u0430\u043C\u0438 \u0438 \u043F\u0443\u0431\u043B\u0438\u043A\u0430\u0446\u0438\u0438 \u0434\u0430\u043D\u043D\u044B\u0445 \u0432 \u0444\u043E\u0440\u043C\u0430\u0442\u0435 HW'},
+  {id:'sub_orch',      label:'rtmdb-subscription-<br>orchestrator',  desc:'active-active',  type:'java', icon:'\uD83C\uDF9B\uFE0F', small:true, group:'sub_mgmt_grp', groupLabel:'\u0421\u0435\u0440\u0432\u0438\u0441 \u0443\u043F\u0440\u0430\u0432\u043B\u0435\u043D\u0438\u044F \u043F\u043E\u0434\u043F\u0438\u0441\u043A\u0430\u043C\u0438 \u0438 \u043F\u0443\u0431\u043B\u0438\u043A\u0430\u0446\u0438\u0438 \u0434\u0430\u043D\u043D\u044B\u0445 \u0432 \u0444\u043E\u0440\u043C\u0430\u0442\u0435 HW'},
+  {id:'sub_pub',       label:'rtmdb-subscription-<br>data-publisher',desc:'active-passive', type:'java', icon:'\uD83C\uDF9B\uFE0F', small:true, group:'sub_mgmt_grp', groupLabel:'\u0421\u0435\u0440\u0432\u0438\u0441 \u0443\u043F\u0440\u0430\u0432\u043B\u0435\u043D\u0438\u044F \u043F\u043E\u0434\u043F\u0438\u0441\u043A\u0430\u043C\u0438 \u0438 \u043F\u0443\u0431\u043B\u0438\u043A\u0430\u0446\u0438\u0438 \u0434\u0430\u043D\u043D\u044B\u0445 \u0432 \u0444\u043E\u0440\u043C\u0430\u0442\u0435 HW'},
+  {id:'app_pub_ms',    label:'app-publisher-to-ms',        desc:'active-active',                     type:'java',     icon:'\u2728'},
+  {id:'app_sub_new_aa',label:'app-subscription-new',       desc:'active-active',                     type:'java',     icon:'\u2728'},
+  {id:'app_sub_new_ap',label:'app-subscription-new',       desc:'active-passive',                    type:'java',     icon:'\u2728'},
+
+  // ===== eaz-trade :: GMSB subscription topics =====
+  {id:'gmsb_sub_req',  label:'GMSB Kafka',                 desc:'\u0417\u0430\u043F\u0440\u043E\u0441 \u043F\u043E\u0434\u043F\u0438\u0441\u043E\u043A',                   type:'infra',    icon:'\uD83D\uDCE5'},
+  {id:'gmsb_sub_data', label:'GMSB Kafka',                 desc:'\u0414\u0430\u043D\u043D\u044B\u0435 \u043F\u043E \u043F\u043E\u0434\u043F\u0438\u0441\u043A\u0435',                type:'infra',    icon:'\uD83D\uDCE4'},
+  {id:'gmsb_md_ac',    label:'GMSB Kafka',                 desc:'MD \u043E\u0442 AC',                          type:'infra',    icon:'\uD83D\uDCE5'},
+  {id:'gmsb_ms_req',   label:'GMSB Kafka',                 desc:'\u0417\u0430\u043F\u0440\u043E\u0441 \u043F\u043E\u0434\u043F\u0438\u0441\u043E\u043A (MS)',              type:'infra',    icon:'\uD83D\uDCE5'},
+  {id:'gmsb_md_sub',   label:'GMSB Kafka',                 desc:'MD \u043F\u043E \u043F\u043E\u0434\u043F\u0438\u0441\u043A\u0435',                    type:'infra',    icon:'\uD83D\uDCE4'},
+  {id:'ac_sub',        label:'AC',                         desc:'subscriber',                        type:'external', icon:'\uD83D\uDDA5\uFE0F'},
+  {id:'ac_md_in',      label:'AC',                         desc:'MD source',                         type:'external', icon:'\uD83D\uDDA5\uFE0F'},
+  //{id:'ac_req',        label:'AC',                         desc:'sub req sender',                    type:'external', icon:'\uD83D\uDDA5\uFE0F'},
+  {id:'ac_md_sub',     label:'AC',                         desc:'MD by subscription',                type:'external', icon:'\uD83D\uDDA5\uFE0F'},
+
+  // ===== eaz-trade :: lower services =====
+  {id:'murex_pub',     label:'rtmdb-ignite-to-murex-<br>soap-publisher-app', desc:'active-passive', type:'java', icon:'\uD83C\uDF10'},
+  {id:'rtd_server',    label:'rtmdb-rtd-server-k8s',       desc:'RTD server \u00B7 active-active',        type:'java',     icon:'\uD83D\uDD0C'},
+  {id:'perm_mgr',      label:'rtmdb-permission-manager',   desc:'Permissions \u00B7 active-active',       type:'java',     icon:'\uD83D\uDD12'},
+  {id:'instr_mgr',     label:'rtmdb-ignite-<br>instruments-manager-ap',  desc:'Instruments \u00B7 active-passive', type:'java', icon:'\uD83D\uDCC8'},
+  {id:'scim_agent',    label:'rtmdb-scim-agent-k8s',       desc:'SCIM agent \u00B7 active-active',        type:'java',     icon:'\uD83D\uDC65'},
+  {id:'db_perm',       label:'\u0411\u0414 \u041F\u0440\u0430\u0432\u0430 \u043F\u043E\u043B\u044C\u0437\u043E\u0432\u0430\u0442\u0435\u043B\u044F',      desc:'Permissions DB',                    type:'infra',    icon:'\uD83D\uDDC4\uFE0F'},
+
+  // ===== eaz-trade :: external destinations =====
+  {id:'excel',         label:'Excel',                      desc:'RTD Client \u00B7 Trader UI',            type:'external', icon:'\uD83D\uDCCA'},
+  {id:'murex',         label:'MUREX',                      desc:'Trading System',                    type:'external', icon:'\uD83D\uDCBC'},
+  {id:'sudir',         label:'\u0421\u0423\u0414\u0418\u0420',                      desc:'Identity System',                   type:'external', icon:'\uD83C\uDD94'},
+
+  // ===== users =====
+  {id:'actor',         label:'Actor',                      desc:'Trader',                            type:'user',     icon:'\uD83D\uDC64'},
+  {id:'admin',         label:'admin',                      desc:'Administrator',                     type:'user',     icon:'\uD83D\uDC68'},
+];
+
+const EDGES = [
+  // MOEX → Skolkovo Gateways (ASTS curr / ASTS fund / Plaza2 forts)
+  {from:'moex',        to:'sk_curr_gw',      op:'ASTS',                  rps:300, lat:2, unit:'msg/s'},
+  {from:'moex',        to:'sk_fund_gw',      op:'ASTS',                  rps:300, lat:2, unit:'msg/s'},
+  {from:'moex',        to:'sk_forts_gw',     op:'Plaza2',                rps:250, lat:2, unit:'msg/s'},
+  {from:'moex',        to:'mc_curr_gw',      op:'ASTS',                  rps:300, lat:2, unit:'msg/s'},
+  {from:'moex',        to:'mc_fund_gw',      op:'ASTS',                  rps:300, lat:2, unit:'msg/s'},
+  {from:'moex',        to:'mc_forts_gw',     op:'Plaza2',                rps:250, lat:2, unit:'msg/s'},
+
+  // Skolkovo / MegaCOD Gateways → Apache Ignite HW (TCP)
+  {from:'sk_curr_gw',  to:'ignite_hw_sk',    op:'TCP',                   rps:300, lat:1, unit:'msg/s'},
+  {from:'sk_fund_gw',  to:'ignite_hw_sk',    op:'TCP',                   rps:300, lat:1, unit:'msg/s'},
+  {from:'sk_forts_gw', to:'ignite_hw_sk',    op:'TCP',                   rps:250, lat:1, unit:'msg/s'},
+  {from:'mc_curr_gw',  to:'ignite_hw_mc',    op:'TCP',                   rps:300, lat:1, unit:'msg/s'},
+  {from:'mc_fund_gw',  to:'ignite_hw_mc',    op:'TCP',                   rps:300, lat:1, unit:'msg/s'},
+  {from:'mc_forts_gw', to:'ignite_hw_mc',    op:'TCP',                   rps:250, lat:1, unit:'msg/s'},
+
+  // Ignite cross-DC sync via Kafka HW (bidirectional bus, color-coded by direction)
+  {from:'ignite_hw_sk', to:'kafka_hw',       op:'sync SK→MC',            rps:600, lat:0.5, unit:'msg/s', color:[80,235,220]},
+  {from:'kafka_hw',     to:'ignite_hw_mc',   op:'sync SK→MC',            rps:600, lat:0.5, unit:'msg/s', color:[80,235,220]},
+  {from:'ignite_hw_mc', to:'kafka_hw',       op:'sync MC→SK',            rps:600, lat:0.5, unit:'msg/s', color:[240,110,200]},
+  {from:'kafka_hw',     to:'ignite_hw_sk',   op:'sync MC→SK',            rps:600, lat:0.5, unit:'msg/s', color:[240,110,200]},
+
+  // ===== Skolkovo HW Pub flows =====
+  // Producer publishes to HW Systematica; reads its data feed from GMSB Kafka
+  {from:'sk_pub_prod', to:'hw_systematica', op:'Публикация данных в HW',rps:600, lat:1, unit:'msg/s'},
+  {from:'kafka_gmsb_md1', to:'sk_pub_prod', op:'data feed',             rps:600, lat:2, unit:'msg/s'},
+
+  // ===== MegaCOD HW Pub flows =====
+  // Kafka GMSB MD Skolkovo also feeds MegaCOD producer-app
+  {from:'kafka_gmsb_md1', to:'mc_pub_prod', op:'data feed',              rps:600, lat:2, unit:'msg/s'},
+  // Producer publishes to HW Systematica
+  {from:'mc_pub_prod',  to:'hw_systematica', op:'Публикация данных в HW',rps:600, lat:2, unit:'msg/s'},
+  // Subscribing app: gets sub data from HW Systematica + bidirectional with Kafka GMSB MD · MegaCOD
+  {from:'hw_systematica', to:'mc_pub_sub',   op:'Данные по подписке',    rps:120, lat:2, unit:'msg/s'},
+  {from:'mc_pub_sub',   to:'kafka_gmsb_md2', op:'запись данных',         rps:100, lat:1, unit:'msg/s'},
+  {from:'kafka_gmsb_md2', to:'mc_pub_sub',   op:'чтение данных',         rps:100, lat:1, unit:'msg/s'},
+  // ignite-to-highway-base sends data from Ignite to HW Systematica
+  {from:'mc_pub_base',  to:'hw_systematica', op:'Отправка данных из Ignite в HW', rps:200, lat:2, unit:'msg/s'},
+  // highway-to-ignite-replicator gets HW broadcasts from Systematica and pushes to Apache Ignite
+  {from:'hw_systematica', to:'mc_pub_repl',  op:'Бродкасты HW в Ignite', rps:200, lat:2, unit:'msg/s'},
+  {from:'mc_pub_repl',  to:'ignite_hw_mc',   op:'Бродкасты HW в Ignite', rps:200, lat:1, unit:'msg/s'},
+  {from:'kafka_gmsb_md1', to:'ac_md1',       op:'MD stream',             rps:600, lat:1, unit:'msg/s'},
+  {from:'kafka_gmsb_md2', to:'ac_md2',       op:'MD stream',             rps:600, lat:1, unit:'msg/s'},
+
+  // ===== Subscription mgmt service flow =====
+  // Manager persists / loads subscription state
+  {from:'sub_mgr',      to:'db_subs',        op:'persist subscriptions', rps:5,   lat:3},
+  {from:'db_subs',      to:'sub_orch',       op:'load subscriptions',    rps:10,  lat:2},
+  // Manager → Orchestrator → Publisher pipeline
+  {from:'sub_mgr',      to:'sub_orch',       op:'subscription state',    rps:10,  lat:1, unit:'msg/s'},
+  {from:'sub_orch',     to:'sub_pub',        op:'data ready',            rps:120, lat:1, unit:'msg/s'},
+  // Publisher → GMSB → AC (одно направление)
+  {from:'sub_pub',      to:'gmsb_sub_req',   op:'Запрос на подписку',    rps:5,   lat:2, unit:'msg/s'},
+  {from:'gmsb_sub_req', to:'ac_sub',         op:'subscription request',  rps:5,   lat:1, unit:'msg/s'},
+  // Reverse: AC → GMSB data → Manager
+  {from:'ac_sub',       to:'gmsb_sub_data',  op:'Данные по подписке',    rps:120, lat:2, unit:'msg/s'},
+  {from:'gmsb_sub_data',to:'sub_mgr',        op:'subscription data',     rps:120, lat:1, unit:'msg/s'},
+
+  {from:'ac_md_in',     to:'gmsb_md_ac',     op:'MD от AC',              rps:600, lat:1, unit:'msg/s'},
+  {from:'gmsb_md_ac',   to:'app_pub_ms',     op:'consume MD от AC',      rps:600, lat:1, unit:'msg/s'},
+  {from:'app_pub_ms',   to:'ignite_hw_sk',   op:'publish to Ignite SK',  rps:600, lat:2, unit:'msg/s'},
+  {from:'app_pub_ms',   to:'ignite_hw_mc',   op:'publish to Ignite MC',  rps:600, lat:2, unit:'msg/s'},
+  // GMSB Kafka Запрос подписок (MS) → app-subscription-new (active-active) → its own subscriptions DB
+  {from:'gmsb_ms_req',  to:'app_sub_new_aa', op:'consume sub req (MS)',  rps:5,   lat:1, unit:'msg/s'},
+  {from:'app_sub_new_aa', to:'db_subs_ms',   op:'persist subscriptions', rps:5,   lat:3},
+  {from:'app_sub_new_ap', to:'gmsb_md_sub',  op:'MD по подписке',        rps:120, lat:2, unit:'msg/s'},
+
+  // MUREX path: Ignite (sk + mc) ↔ SOAP publisher → MUREX
+  {from:'ignite_hw_sk', to:'murex_pub',      op:'data fetch (sk)',       rps:50,  lat:3, unit:'msg/s'},
+  {from:'murex_pub',    to:'ignite_hw_sk',   op:'data write (sk)',       rps:20,  lat:3, unit:'msg/s'},
+  {from:'ignite_hw_mc', to:'murex_pub',      op:'data fetch (mc)',       rps:50,  lat:3, unit:'msg/s'},
+  {from:'murex_pub',    to:'ignite_hw_mc',   op:'data write (mc)',       rps:20,  lat:3, unit:'msg/s'},
+  {from:'murex_pub',    to:'murex',          op:'SOAP push',             rps:50,  lat:8, unit:'msg/s'},
+
+  // Excel RTD path (server → client push from Ignite)
+  {from:'ignite_hw_mc', to:'rtd_server',     op:'data fetch',            rps:200, lat:2, unit:'msg/s'},
+  {from:'rtd_server',   to:'excel',          op:'RTD push',              rps:200, lat:2, unit:'msg/s'},
+  {from:'excel',        to:'rtd_server',     op:'RTD subscribe / req',   rps:20,  lat:3, unit:'msg/s'},
+
+  // Permissions: services → perm-mgr → DB
+  {from:'rtd_server',   to:'perm_mgr',       op:'Запрос прав АС',        rps:50,  lat:1.5},
+  {from:'perm_mgr',     to:'db_perm',        op:'permissions',           rps:60,  lat:1},
+
+  // active-passive: reads from sub-DB, bidirectional with perm-mgr, bidirectional with both Ignite
+  {from:'db_subs_ms',   to:'app_sub_new_ap', op:'load subscriptions',    rps:10,  lat:2},
+  {from:'app_sub_new_ap', to:'perm_mgr',     op:'Запрос прав АС',        rps:5,   lat:1.5},
+  {from:'perm_mgr',     to:'app_sub_new_ap', op:'permissions',           rps:5,   lat:1.5},
+  {from:'app_sub_new_ap', to:'ignite_hw_sk', op:'read MD by filter (sk)', rps:200, lat:1, unit:'msg/s'},
+  {from:'ignite_hw_sk', to:'app_sub_new_ap', op:'MD data (sk)',          rps:200, lat:1, unit:'msg/s'},
+  {from:'app_sub_new_ap', to:'ignite_hw_mc', op:'read MD by filter (mc)', rps:200, lat:1, unit:'msg/s'},
+  {from:'ignite_hw_mc', to:'app_sub_new_ap', op:'MD data (mc)',          rps:200, lat:1, unit:'msg/s'},
+
+  // New ACs for sub-req and MD-by-subscription kafka topics
+  //{from:'ac_req',       to:'gmsb_sub_req',   op:'sub request',           rps:5,   lat:2, unit:'msg/s'},
+  {from:'gmsb_md_sub',  to:'ac_md_sub',      op:'MD по подписке',        rps:120, lat:1, unit:'msg/s'},
+  // AC MD also sends data into kafka запрос подписок (MS)
+  {from:'ac_md_sub',    to:'gmsb_ms_req',    op:'sub request (MS)',      rps:5,   lat:2, unit:'msg/s'},
+
+  // SCIM agent ↔ DB прав пользователей (REST, bidirectional)
+  {from:'scim_agent',   to:'db_perm',        op:'REST · sync users',     rps:5,   lat:2},
+  {from:'db_perm',      to:'scim_agent',     op:'REST · load users',     rps:3,   lat:2},
+  // SCIM agent ↔ СУДИР (REST, bidirectional)
+  {from:'scim_agent',   to:'sudir',          op:'REST',                  rps:1,   lat:50},
+  {from:'sudir',        to:'scim_agent',     op:'REST · identity sync',  rps:1,   lat:50},
+  // Admin ↔ Instruments manager (bidirectional)
+  {from:'admin',        to:'instr_mgr',      op:'manage instruments',    rps:0.2, lat:30},
+  {from:'instr_mgr',    to:'admin',          op:'instruments status',    rps:0.2, lat:30},
+
+  // Instruments mgr
+  {from:'instr_mgr',    to:'ignite_hw_mc',   op:'instruments cache',     rps:5,   lat:5, unit:'msg/s'},
+
+  // Trader ↔ Excel (bidirectional, color-coded by direction)
+  {from:'actor',        to:'excel',          op:'commands · WS',         rps:2,   lat:5, unit:'msg/s', color:[255,180,80]},
+  {from:'excel',        to:'actor',          op:'live data',             rps:5,   lat:5, unit:'msg/s', color:[120,220,240]},
+];
+
+// Layout: 3 vertical zones — internet | dmz-trade | eaz-trade
+const LAYOUT = {
+  // ===== internet =====
+  moex:           {fx:0.04, fy:0.55},
+
+  // ===== dmz-trade =====
+  sk_curr_gw:     {fx:0.18, fy:0.30},
+  sk_fund_gw:     {fx:0.18, fy:0.40},
+  sk_forts_gw:    {fx:0.18, fy:0.50},
+  mc_curr_gw:     {fx:0.18, fy:0.62},
+  mc_fund_gw:     {fx:0.18, fy:0.72},
+  mc_forts_gw:    {fx:0.18, fy:0.82},
+
+  // ===== eaz-trade :: HW infra (publishers feed) =====
+  hw_systematica: {fx:0.32, fy:0.10},
+  ignite_hw_sk:   {fx:0.35, fy:0.40},
+  kafka_hw:       {fx:0.32, fy:0.56},
+  ignite_hw_mc:   {fx:0.35, fy:0.72},
+
+  // ===== eaz-trade :: top — HW publishers / replicators =====
+  // Skolkovo: producer top-right, subscribing middle-right, replicator bottom-left
+  sk_pub_prod:    {fx:0.50, fy:0.03},
+  sk_pub_sub:     {fx:0.50, fy:0.08},
+  sk_pub_repl:    {fx:0.42, fy:0.13},
+  // MegaCOD: producer top-right, subscribing middle-right, replicator bottom-left, ignite-base bottom-right
+  mc_pub_prod:    {fx:0.55, fy:0.21},
+  mc_pub_sub:     {fx:0.55, fy:0.26},
+  mc_pub_repl:    {fx:0.49, fy:0.31},
+  mc_pub_base:    {fx:0.59, fy:0.31},
+  // ===== eaz-trade :: GMSB Kafka column (single column) =====
+  kafka_gmsb_md1: {fx:0.74, fy:0.06},
+  kafka_gmsb_md2: {fx:0.74, fy:0.22},
+  gmsb_sub_req:   {fx:0.74, fy:0.30},
+  gmsb_sub_data:  {fx:0.74, fy:0.38},
+  gmsb_md_ac:     {fx:0.74, fy:0.46},
+  gmsb_ms_req:    {fx:0.74, fy:0.54},
+  gmsb_md_sub:    {fx:0.74, fy:0.62},
+
+  // ===== eaz-trade :: AC column (right of GMSB) =====
+  ac_md1:         {fx:0.86, fy:0.06},
+  ac_md2:         {fx:0.86, fy:0.22},
+  ac_sub:         {fx:0.86, fy:0.38},
+  ac_md_in:       {fx:0.86, fy:0.46},
+  ac_req:         {fx:0.86, fy:0.30},
+  ac_md_sub:      {fx:0.86, fy:0.54},
+
+  // ===== eaz-trade :: subscription mgmt =====
+  db_subs:        {fx:0.69, fy:0.32},
+  db_subs_ms:     {fx:0.50, fy:0.48},
+  sub_mgr:        {fx:0.48, fy:0.40},
+  sub_orch:       {fx:0.565, fy:0.40},
+  sub_pub:        {fx:0.65, fy:0.40},
+  app_pub_ms:     {fx:0.60, fy:0.46},
+  app_sub_new_aa: {fx:0.60, fy:0.54},
+  app_sub_new_ap: {fx:0.60, fy:0.62},
+
+  // ===== eaz-trade :: lower services =====
+  murex_pub:      {fx:0.60, fy:0.72},
+  rtd_server:     {fx:0.56, fy:0.80},
+  perm_mgr:       {fx:0.45, fy:0.78},
+  instr_mgr:      {fx:0.56, fy:0.88},
+  scim_agent:     {fx:0.45, fy:0.94},
+  db_perm:        {fx:0.32, fy:0.92},
+
+  // ===== users / right column =====
+  murex:          {fx:0.86, fy:0.66},
+  excel:          {fx:0.86, fy:0.78},
+  actor:          {fx:0.95, fy:0.78},
+  admin:          {fx:0.95, fy:0.90},
+  sudir:          {fx:0.86, fy:0.94},
+};
+
+// Snapshot of the as-coded layout (used for the rollback button).
+const ORIGINAL_LAYOUT = JSON.parse(JSON.stringify(LAYOUT));
+
+// Apply any saved overrides from localStorage so dragged positions survive reloads.
+try {
+  const saved = localStorage.getItem('rtmdb-layout');
+  if (saved) Object.assign(LAYOUT, JSON.parse(saved));
+} catch (e) { /* ignore parse errors */ }
+
+// ============================================================
+// STATE
+// ============================================================
+let W, H, dpr, canvas, ctx;
+let TOP_OFFSET = 16;
+const DESIGN_W = 1500;
+const DESIGN_H = 850;
+let displayScale = 1;
+let nodeMap = {};
+let edgeRuntime = [];
+let hoverEdge = null;
+let hoverNode = null;
+let dragNode = null;
+let dragOffsetX = 0, dragOffsetY = 0;
+const tipEl = () => document.getElementById('tip');
+
+// AC client topics popup (shown on hover of ac_sub / gmsb_sub_req / gmsb_sub_data)
+let clientPopupEl = null;
+const POPUP_NODES = {
+  ac_sub:        {title:'AC clients · subscription topics',         mode:'full', clients:'AC_CLIENTS'},
+  gmsb_sub_req:  {title:'GMSB · Запрос подписок · in-topics',       mode:'in',   clients:'AC_CLIENTS'},
+  gmsb_sub_data: {title:'GMSB · Данные по подписке · out-topics',   mode:'out',  clients:'AC_CLIENTS'},
+  ac_md_sub:     {title:'AC MD by subscription · MS topics',        mode:'full', clients:'AC_MS_CLIENTS'},
+  gmsb_ms_req:   {title:'GMSB · Запрос подписок (MS) · in-topics',  mode:'in',   clients:'AC_MS_CLIENTS'},
+  gmsb_md_sub:   {title:'GMSB · MD по подписке · out-topics',       mode:'out',  clients:'AC_MS_CLIENTS'},
+  ac_md_in:      {title:'AC MD source · feed topics',                mode:'out',  clients:'AC_MD_SOURCE_CLIENTS'},
+};
+function getPopupClients(name) {
+  if (name === 'AC_MS_CLIENTS') return AC_MS_CLIENTS;
+  if (name === 'AC_MD_SOURCE_CLIENTS') return AC_MD_SOURCE_CLIENTS;
+  return AC_CLIENTS;
+}
+let popupHideTimer = null;
+function createClientPopup() {
+  // Append to body (above hit-layer at z-index 3) so the popup itself catches scroll events
+  clientPopupEl = document.createElement('div');
+  clientPopupEl.className = 'client-popup';
+  document.body.appendChild(clientPopupEl);
+  // Cancel pending hide while pointer is on popup; hide when leaving
+  clientPopupEl.addEventListener('mouseenter', () => {
+    if (popupHideTimer) { clearTimeout(popupHideTimer); popupHideTimer = null; }
+  });
+  clientPopupEl.addEventListener('mouseleave', () => {
+    clientPopupEl.classList.remove('show');
+  });
+}
+function renderClientPopup(nodeId) {
+  const cfg = POPUP_NODES[nodeId];
+  if (!cfg) return;
+  let html = `<div class="cp-title">${cfg.title}</div>`;
+  getPopupClients(cfg.clients).forEach(c => {
+    html += '<div class="cp-row">';
+    html += `<div class="cp-name">${c.name}</div>`;
+    if (cfg.mode === 'full' || cfg.mode === 'in') {
+      const inVal = c.in ? c.in : '<span class="cp-empty">—</span>';
+      html += `<div class="cp-line"><span class="cp-label">in:</span>${inVal}</div>`;
+    }
+    if (cfg.mode === 'full' || cfg.mode === 'out') {
+      html += `<div class="cp-line"><span class="cp-label">out:</span>${c.out}</div>`;
+    }
+    if (c.freq) html += `<div class="cp-freq">freq: ${c.freq}ms${c.note ? ' · ' + c.note : ''}</div>`;
+    html += '</div>';
+  });
+  clientPopupEl.innerHTML = html;
+}
+
+function getGroupIds(nodeId) {
+  const n = NODES.find(x => x.id === nodeId);
+  if (!n) return [nodeId];
+  if (n.group) return NODES.filter(x => x.group === n.group).map(x => x.id);
+  return [nodeId];
+}
+let t0 = Date.now();
+let totalTrades = 0;
+let labelEls = [];
+let zoneEls = [];
+
+// MDS state
+let mdsPhase = 1; // 1 = MDS-1 active, MDS-2 filling; 2 = MDS-2 active, MDS-1 filling
+let mdsFillProgress = 0;
+let mdsPhaseStartTime = Date.now();
+const MDS_CYCLE_MS = 2000;
+let lastMdsSwitchTime = 0;
+let mdsSwitchFlashAlpha = 0;
+
+// Connection pulse state
+let connPulseAlpha = 0.15;
+
+// Trading table data
+const TRADE_ROWS = [
+  {id:'FX-8834', type:'FxSpot', notional:'250M CNY', pv:1.23,  delta:0.34, status:'Live'},
+  {id:'FX-8835', type:'FxFwd',  notional:'180M EUR', pv:2.45,  delta:0.56, status:'Live'},
+  {id:'FX-8836', type:'FxSpot', notional:'120M USD', pv:0.89,  delta:0.78, status:'Live'},
+  {id:'IRS-2201',type:'IRS',    notional:'100M USD', pv:5.67,  delta:-0.12,status:'Live'},
+  {id:'IRS-2202',type:'IRS',    notional:'300M EUR', pv:8.34,  delta:-0.45,status:'Live'},
+  {id:'CDS-1104',type:'CDS',    notional:'50M USD',  pv:0.42,  delta:0.09, status:'Live'},
+  {id:'FX-8837', type:'FxNDF',  notional:'200M BRL', pv:1.78,  delta:-0.23,status:'Live'},
+  {id:'IRS-2203',type:'IRS',    notional:'500M GBP', pv:12.10, delta:0.91, status:'Live'},
+];
+
+// Trade list for Redis bucket
+let tradeListItems = [
+  'FX-8834','FX-8835','IRS-2201','FX-8836','IRS-2202',
+  'CDS-1104','FX-8837','IRS-2203','FX-8838','FX-8839'
+];
+let nextTradeNum = 8840;
+let nextIrsNum = 2204;
+
+// MDS entry templates
+const MDS_ENTRIES_TEMPLATE = [
+  {id:'FX-8834', pv:'1.23M', delta:'0.34'},
+  {id:'IRS-2201',pv:'5.67M', delta:'-0.12'},
+  {id:'FX-8836', pv:'0.89M', delta:'0.78'},
+  {id:'FX-8835', pv:'2.45M', delta:'0.56'},
+  {id:'CDS-1104',pv:'0.42M', delta:'0.09'},
+];
+
+// ============================================================
+// INIT
+// ============================================================
+window.addEventListener('DOMContentLoaded', () => {
+  canvas = document.getElementById('canvas-layer');
+  ctx = canvas.getContext('2d');
+  createNodeEls();
+  createZoneLabels();
+  createClientPopup();
+  // v3 panels (Redis cache + Trading Table) hidden in v4 — skip their init
+
+  // Top-panel toggle (default hidden via body.panels-hidden)
+  document.getElementById('panel-toggle').addEventListener('click', () => {
+    document.body.classList.toggle('panels-hidden');
+    resize();
+  });
+  // Background theme toggle (current ↔ white)
+  document.getElementById('theme-toggle').addEventListener('click', () => {
+    document.body.classList.toggle('theme-white');
+  });
+  // Save current block positions to localStorage
+  document.getElementById('save-btn').addEventListener('click', () => {
+    try {
+      localStorage.setItem('rtmdb-layout', JSON.stringify(LAYOUT));
+      const btn = document.getElementById('save-btn');
+      btn.classList.add('flash');
+      setTimeout(() => btn.classList.remove('flash'), 600);
+    } catch (e) { console.warn('save failed', e); }
+  });
+  // Reset block positions to original (clear saved overrides) and re-position everything
+  document.getElementById('reset-btn').addEventListener('click', () => {
+    try { localStorage.removeItem('rtmdb-layout'); } catch (e) {}
+    Object.keys(LAYOUT).forEach(k => delete LAYOUT[k]);
+    Object.assign(LAYOUT, JSON.parse(JSON.stringify(ORIGINAL_LAYOUT)));
+    positionNodes();
+    buildEdges();
+    positionLabels();
+  });
+
+  resize();
+  window.addEventListener('resize', resize);
+  document.getElementById('hit-layer').addEventListener('mousemove', onMove);
+  document.getElementById('hit-layer').addEventListener('mouseleave', () => {
+    hoverEdge = null;
+    hoverNode = null;
+    applyHoverHighlights();
+    tipEl().classList.remove('show');
+    // Don't hide popup here — popup has its own mouseleave so user can hover into it and scroll
+  });
+  // Drag nodes: mousedown starts drag, mouseup ends, onMove updates position
+  document.getElementById('hit-layer').addEventListener('mousedown', (ev) => {
+    const mx = ev.clientX / displayScale;
+    const my = ev.clientY / displayScale;
+    let hitId = null;
+    Object.keys(nodeMap).forEach(id => {
+      const m = nodeMap[id];
+      if (!m.w || m.el.offsetParent === null) return;
+      if (Math.abs(mx - m.cx) <= m.w / 2 && Math.abs(my - m.cy) <= m.h / 2) hitId = id;
+    });
+    if (hitId) {
+      dragNode = hitId;
+      dragOffsetX = mx - nodeMap[hitId].cx;
+      dragOffsetY = my - nodeMap[hitId].cy;
+      document.getElementById('hit-layer').style.cursor = 'grabbing';
+      ev.preventDefault();
+    }
+  });
+  window.addEventListener('mouseup', () => {
+    if (dragNode) {
+      // Persist new position into LAYOUT so it survives resize
+      const m = nodeMap[dragNode];
+      const aH = H - TOP_OFFSET;
+      LAYOUT[dragNode] = {fx: m.cx / W, fy: (m.cy - TOP_OFFSET) / aH};
+      dragNode = null;
+      document.getElementById('hit-layer').style.cursor = '';
+    }
+  });
+  setInterval(updateStats, 150);
+  raf(0);
+});
+
+function resize() {
+  dpr = window.devicePixelRatio || 1;
+  const realW = window.innerWidth;
+  const realH = window.innerHeight;
+
+  // Adaptive scale: never let virtual W/H drop below DESIGN_W/H,
+  // scale the body down via CSS transform so blocks don't overlap.
+  displayScale = Math.min(1, realW / DESIGN_W, realH / DESIGN_H);
+  W = realW / displayScale;
+  H = realH / displayScale;
+
+  if (displayScale < 1) {
+    document.body.style.transform = 'scale(' + displayScale + ')';
+    document.body.style.width = W + 'px';
+    document.body.style.height = H + 'px';
+  } else {
+    document.body.style.transform = '';
+    document.body.style.width = '';
+    document.body.style.height = '';
+  }
+
+  // Header (52px) + stats bar (44px) = 96px, plus 4px buffer; otherwise just 16px
+  TOP_OFFSET = document.body.classList.contains('panels-hidden') ? 16 : 100;
+
+  canvas.width = W * dpr;
+  canvas.height = H * dpr;
+  canvas.style.width = W + 'px';
+  canvas.style.height = H + 'px';
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  positionNodes();
+  buildEdges();
+  positionLabels();
+  positionZoneLabels();
+  positionPanels();
+}
+
+// ============================================================
+// ZONE LABELS
+// ============================================================
+function createZoneLabels() {
+  const ui = document.getElementById('ui-layer');
+  // 3 vertical zones — labels positioned at top of each column
+  const zones = [
+    {text:'internet',  fx:0.04, fy:0.005},
+    {text:'dmz-trade', fx:0.18, fy:0.005},
+    {text:'eaz-trade', fx:0.55, fy:0.005},
+  ];
+  zones.forEach(z => {
+    const el = document.createElement('div');
+    el.className = 'zone-label';
+    el.textContent = z.text;
+    el.dataset.fx = z.fx;
+    el.dataset.fy = z.fy;
+    ui.appendChild(el);
+    zoneEls.push(el);
+  });
+}
+
+function positionZoneLabels() {
+  const aW = W;
+  const aH = H - TOP_OFFSET;
+  zoneEls.forEach(el => {
+    el.style.left = (parseFloat(el.dataset.fx) * aW) + 'px';
+    el.style.top = (TOP_OFFSET + parseFloat(el.dataset.fy) * aH) + 'px';
+  });
+}
+
+// ============================================================
+// POSITION PANELS
+// ============================================================
+function positionPanels() {
+  const rp = document.getElementById('redis-panel');
+  const tt = document.getElementById('trading-table');
+
+  // Redis panel: right side top half
+  const rpLeft = W * 0.54;
+  const rpTop = TOP_OFFSET + 8;
+  const rpWidth = W * 0.44;
+  const rpHeight = (H - TOP_OFFSET) * 0.48;
+  rp.style.left = rpLeft + 'px';
+  rp.style.top = rpTop + 'px';
+  rp.style.width = rpWidth + 'px';
+  rp.style.height = rpHeight + 'px';
+
+  // Trading table: right side bottom half
+  const ttLeft = W * 0.54;
+  const ttTop = TOP_OFFSET + (H - TOP_OFFSET) * 0.52;
+  const ttWidth = W * 0.44;
+  const ttHeight = (H - TOP_OFFSET) * 0.46;
+  tt.style.left = ttLeft + 'px';
+  tt.style.top = ttTop + 'px';
+  tt.style.width = ttWidth + 'px';
+  tt.style.height = ttHeight + 'px';
+}
+
+// ============================================================
+// NODE DOM
+// ============================================================
+// Wrap labels with >2 space-separated words onto two lines:
+// first line takes the first 2 words, the second line takes the rest.
+function fmtLabel(s) {
+  const words = String(s).split(/\s+/).filter(Boolean);
+  if (words.length <= 2) return s;
+  return words.slice(0, 2).join(' ') + '<br>' + words.slice(2).join(' ');
+}
+
+function createNodeEls() {
+  const ui = document.getElementById('ui-layer');
+  NODES.forEach(n => {
+    const el = document.createElement('div');
+    let cls = 'node ' + n.type + (n.big ? ' big' : '') + (n.small ? ' small' : '');
+    el.className = cls;
+    el.id = 'nd-' + n.id;
+    if (n.group) el.dataset.group = n.group;
+    el.innerHTML = `<div class="ic">${n.icon}</div><div class="nf"><div class="nm">${fmtLabel(n.label)}</div><div class="ds">${n.desc}</div></div>`;
+    ui.appendChild(el);
+    nodeMap[n.id] = {el, cx:0, cy:0, w:0, h:0};
+  });
+}
+
+function positionNodes() {
+  const aW = W;
+  const aH = H - TOP_OFFSET;
+  NODES.forEach(n => {
+    const L = LAYOUT[n.id];
+    if (!L) return;
+    const cx = L.fx * aW;
+    const cy = TOP_OFFSET + L.fy * aH;
+    const el = nodeMap[n.id].el;
+    el.style.left = cx + 'px';
+    el.style.top = cy + 'px';
+    const r = el.getBoundingClientRect();
+    nodeMap[n.id].cx = cx;
+    nodeMap[n.id].cy = cy;
+    nodeMap[n.id].w = r.width;
+    nodeMap[n.id].h = r.height;
+  });
+}
+
+// ============================================================
+// EDGE LABELS
+// ============================================================
+function positionLabels() {
+  labelEls.forEach(el => el.remove());
+  labelEls = [];
+  const ui = document.getElementById('ui-layer');
+
+  edgeRuntime.forEach(e => {
+    const mx = (e.x1 + e.x2) / 2;
+    const my = (e.y1 + e.y2) / 2;
+    const el = document.createElement('div');
+    el.className = 'elabel';
+    const u = e.def.unit || 'req/s';
+    el.innerHTML = `<span class="eop-text">${e.def.op}</span><br><span class="erps">${fmtRps(e.def.rps)} ${u}</span>`;
+    el.style.left = mx + 'px';
+    el.style.top = my + 'px';
+    ui.appendChild(el);
+    labelEls.push(el);
+    e.labelEl = el;
+  });
+}
+
+// An edge is "in hover group" if it IS the hovered edge OR is the reverse of it
+// (same node pair, opposite direction) — so bidirectional flows highlight together.
+function isHovEdge(e) {
+  if (!hoverEdge) return false;
+  if (e === hoverEdge) return true;
+  return e.def.from === hoverEdge.def.to && e.def.to === hoverEdge.def.from;
+}
+
+// Apply hover focus: highlight connected nodes / edge label, dim the rest
+let prevHoverEdge = null;
+let prevHoverNode = null;
+function applyHoverHighlights() {
+  if (hoverEdge === prevHoverEdge && hoverNode === prevHoverNode) return;
+  prevHoverEdge = hoverEdge;
+  prevHoverNode = hoverNode;
+
+  // Build the highlight set
+  const hi = new Set();
+  if (hoverEdge) {
+    hi.add(hoverEdge.def.from);
+    hi.add(hoverEdge.def.to);
+  } else if (hoverNode) {
+    getGroupIds(hoverNode).forEach(id => hi.add(id));
+  }
+  const focusOn = hi.size > 0;
+
+  Object.keys(nodeMap).forEach(id => {
+    const el = nodeMap[id].el;
+    if (!focusOn) {
+      el.classList.remove('node-highlight', 'node-dim');
+    } else if (hi.has(id)) {
+      el.classList.add('node-highlight');
+      el.classList.remove('node-dim');
+    } else {
+      el.classList.add('node-dim');
+      el.classList.remove('node-highlight');
+    }
+  });
+
+  edgeRuntime.forEach(e => {
+    if (!e.labelEl) return;
+    let on = false;
+    if (hoverEdge) on = isHovEdge(e);
+    else if (hoverNode) on = hi.has(e.def.from) || hi.has(e.def.to);
+    if (!focusOn) e.labelEl.classList.remove('elabel-highlight', 'elabel-dim');
+    else if (on) {
+      e.labelEl.classList.add('elabel-highlight');
+      e.labelEl.classList.remove('elabel-dim');
+    } else {
+      e.labelEl.classList.add('elabel-dim');
+      e.labelEl.classList.remove('elabel-highlight');
+    }
+  });
+}
+
+// ============================================================
+// EDGES + PARTICLES
+// ============================================================
+function getTypeColor(type) {
+  switch(type) {
+    case 'java':     return [80, 235, 220];
+    case 'infra':    return [255, 180, 65];
+    case 'wal':      return [180, 170, 140];
+    case 'external': return [80, 190, 100];
+    case 'ui':       return [120, 170, 255];
+    case 'user':     return [160, 190, 255];
+    default:         return [140, 140, 180];
+  }
+}
+
+function buildEdges() {
+  edgeRuntime = EDGES.map(ed => {
+    const fN = nodeMap[ed.from];
+    const tN = nodeMap[ed.to];
+    if (!fN || !tN) return null;
+
+    const x1 = fN.cx, y1 = fN.cy;
+    const x2 = tN.cx, y2 = tN.cy;
+
+    const cnt = ed.rps < 1 ? 1 : Math.max(2, Math.min(10, Math.round(Math.log10(ed.rps + 1) * 3)));
+    const spd = 0.0010 + Math.min(0.0035, ed.rps / 250000);
+
+    const srcDef = NODES.find(n => n.id === ed.from);
+    const c = ed.color || getTypeColor(srcDef.type);
+
+    const particles = [];
+    for (let i = 0; i < cnt; i++) {
+      particles.push({t: Math.random(), s: spd * (0.8 + Math.random() * 0.4)});
+    }
+    return {x1, y1, x2, y2, particles, c, def: ed};
+  }).filter(Boolean);
+}
+
+// ============================================================
+// RENDER LOOP
+// ============================================================
+let prev = 0;
+function raf(ts) {
+  const dt = prev ? Math.min((ts - prev) / 16.667, 3) : 1;
+  prev = ts;
+  ctx.clearRect(0, 0, W, H);
+  drawZoneShading();
+  drawGroupContainers();
+  drawGroupOutlines();
+  drawEdges(dt);
+  drawAmbient();
+  requestAnimationFrame(raf);
+}
+
+function drawGroupContainers() {
+  const groups = [
+    {key:'skolkovo_pub', label:'Skolkovo HW Pub'},
+    {key:'megacod_pub',  label:'MegaCOD HW Pub'},
+    {key:'sub_mgmt_grp', label:'Сервис управления подписками и публикации данных в формате HW'},
+  ];
+  const PAD_X = 12;
+  const PAD_TOP = 24;
+  const PAD_BOTTOM = 8;
+  const RADIUS = 10;
+
+  groups.forEach(g => {
+    const ids = NODES.filter(n => n.group === g.key).map(n => n.id);
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+    let valid = false;
+    ids.forEach(id => {
+      const m = nodeMap[id];
+      if (!m || !m.w) return;
+      minX = Math.min(minX, m.cx - m.w / 2);
+      maxX = Math.max(maxX, m.cx + m.w / 2);
+      minY = Math.min(minY, m.cy - m.h / 2);
+      maxY = Math.max(maxY, m.cy + m.h / 2);
+      valid = true;
+    });
+    if (!valid) return;
+    const x = minX - PAD_X;
+    const y = minY - PAD_TOP;
+    const w = (maxX - minX) + 2 * PAD_X;
+    const h = (maxY - minY) + PAD_TOP + PAD_BOTTOM;
+
+    ctx.save();
+    // Lighten when this group is hovered. Use darker tint on the white theme
+    // so the container is visible against the white page.
+    const isHovered = hoverNode && (NODES.find(n => n.id === hoverNode) || {}).group === g.key;
+    const isWhite = document.body.classList.contains('theme-white');
+    if (isWhite) {
+      ctx.fillStyle   = isHovered ? 'rgba(0, 140, 135, 0.22)'  : 'rgba(0, 140, 135, 0.13)';
+      ctx.strokeStyle = isHovered ? 'rgba(0, 130, 130, 0.85)'  : 'rgba(0, 130, 130, 0.60)';
+    } else {
+      ctx.fillStyle   = isHovered ? 'rgba(120, 240, 230, 0.18)' : 'rgba(120, 240, 230, 0.10)';
+      ctx.strokeStyle = isHovered ? 'rgba(160, 250, 240, 0.70)' : 'rgba(160, 250, 240, 0.45)';
+    }
+    ctx.lineWidth = isHovered ? 1.5 : 1;
+
+    ctx.beginPath();
+    ctx.moveTo(x + RADIUS, y);
+    ctx.arcTo(x + w, y,     x + w, y + h, RADIUS);
+    ctx.arcTo(x + w, y + h, x,     y + h, RADIUS);
+    ctx.arcTo(x,     y + h, x,     y,     RADIUS);
+    ctx.arcTo(x,     y,     x + w, y,     RADIUS);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+
+    // Title
+    ctx.font = '600 11px Inter, sans-serif';
+    ctx.fillStyle = isWhite ? 'rgba(0, 90, 90, 0.95)' : 'rgba(154, 245, 236, 0.95)';
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'top';
+    ctx.fillText(g.label, x + 12, y + 6);
+    ctx.restore();
+  });
+}
+
+function drawGroupOutlines() {
+  const groups = [
+    {ids:['sk_curr_gw','sk_fund_gw','sk_forts_gw','ignite_hw_sk'], label:'Skolkovo'},
+    {ids:['mc_curr_gw','mc_fund_gw','mc_forts_gw','ignite_hw_mc'], label:'MegaCOD'},
+  ];
+  const PAD = 16;
+  groups.forEach(g => {
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+    let valid = false;
+    g.ids.forEach(id => {
+      const m = nodeMap[id];
+      if (!m || !m.w) return;
+      minX = Math.min(minX, m.cx - m.w/2);
+      maxX = Math.max(maxX, m.cx + m.w/2);
+      minY = Math.min(minY, m.cy - m.h/2);
+      maxY = Math.max(maxY, m.cy + m.h/2);
+      valid = true;
+    });
+    if (!valid) return;
+    const x = minX - PAD;
+    const y = minY - PAD;
+    const w = (maxX - minX) + 2*PAD;
+    const h = (maxY - minY) + 2*PAD;
+
+    ctx.save();
+    ctx.strokeStyle = 'rgba(25,36,90,0.55)';
+    ctx.lineWidth = 1.2;
+    ctx.setLineDash([6, 5]);
+    ctx.strokeRect(x, y, w, h);
+    ctx.setLineDash([]);
+
+    ctx.font = '700 11px Inter, sans-serif';
+    const mw = ctx.measureText(g.label).width;
+    const labelW = mw + 14;
+    const labelH = 14;
+    const labelX = x + w/2 - labelW/2;
+    const labelY = y - labelH/2;
+    ctx.fillStyle = document.body.classList.contains('theme-white') ? '#FFFFFF' : '#A3B1C0';
+    ctx.fillRect(labelX, labelY, labelW, labelH);
+    ctx.fillStyle = '#19245A';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(g.label, x + w/2, y);
+    ctx.restore();
+  });
+}
+
+function drawZoneShading() {
+  const aH = H - TOP_OFFSET;
+  // 3 vertical columns: internet | dmz-trade | eaz-trade
+  const xInternetEnd = W * 0.10;
+  const xDmzEnd = W * 0.27;
+
+  // Dashed vertical separators in #19245A
+  ctx.strokeStyle = 'rgba(25,36,90,0.45)';
+  ctx.lineWidth = 1;
+  ctx.setLineDash([8, 8]);
+  ctx.beginPath();
+  ctx.moveTo(xInternetEnd, TOP_OFFSET);
+  ctx.lineTo(xInternetEnd, TOP_OFFSET + aH);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(xDmzEnd, TOP_OFFSET);
+  ctx.lineTo(xDmzEnd, TOP_OFFSET + aH);
+  ctx.stroke();
+  ctx.setLineDash([]);
+}
+
+// Connection lines / arrows — darker than #19245A (25,36,90). Particles keep type color.
+const LINE_RGB = [8, 14, 48];
+
+function drawEdges(dt) {
+  const focusOn = !!hoverEdge || !!hoverNode;
+  const hoverGroupSet = hoverNode ? new Set(getGroupIds(hoverNode)) : null;
+  edgeRuntime.forEach(e => {
+    // Recompute endpoints from current node positions so dragged nodes carry their edges
+    const fM = nodeMap[e.def.from];
+    const tM = nodeMap[e.def.to];
+    if (!fM || !tM) return;
+    const x1 = fM.cx, y1 = fM.cy;
+    const x2 = tM.cx, y2 = tM.cy;
+    const c = e.c;
+    const particles = e.particles;
+    e.x1 = x1; e.y1 = y1; e.x2 = x2; e.y2 = y2;
+    if (e.labelEl) {
+      e.labelEl.style.left = ((x1 + x2) / 2) + 'px';
+      e.labelEl.style.top = ((y1 + y2) / 2) + 'px';
+    }
+
+    let hov = isHovEdge(e);
+    if (!hov && hoverGroupSet) {
+      hov = hoverGroupSet.has(e.def.from) || hoverGroupSet.has(e.def.to);
+    }
+    // When some edge is focused: hovered = much brighter, others = strongly dimmed
+    const lineAlpha    = hov ? 0.90 : (focusOn ? 0.06  : 0.40);
+    const lineWidth    = hov ? 2.6  : (focusOn ? 0.5   : 0.9);
+    const arrAlpha     = hov ? 0.95 : (focusOn ? 0.10  : 0.55);
+    const arrWidth     = hov ? 2.2  : (focusOn ? 0.7   : 1);
+    const arrLen       = hov ? 11   : (focusOn ? 4     : 5);
+    const partR        = hov ? 4.0  : (focusOn ? 1.0   : 1.8);
+    const partGlow     = hov ? 16   : (focusOn ? 3     : 5);
+    const partAlpha    = hov ? 0.95 : (focusOn ? 0.10  : 0.60);
+
+    ctx.beginPath();
+    ctx.moveTo(x1, y1);
+    ctx.lineTo(x2, y2);
+    ctx.strokeStyle = `rgba(${LINE_RGB[0]},${LINE_RGB[1]},${LINE_RGB[2]},${lineAlpha})`;
+    ctx.lineWidth = lineWidth;
+    ctx.stroke();
+
+    const ax = x1 + (x2 - x1) * 0.85;
+    const ay = y1 + (y2 - y1) * 0.85;
+    const angle = Math.atan2(y2 - y1, x2 - x1);
+    ctx.beginPath();
+    ctx.moveTo(ax, ay);
+    ctx.lineTo(ax - arrLen * Math.cos(angle - 0.4), ay - arrLen * Math.sin(angle - 0.4));
+    ctx.moveTo(ax, ay);
+    ctx.lineTo(ax - arrLen * Math.cos(angle + 0.4), ay - arrLen * Math.sin(angle + 0.4));
+    ctx.strokeStyle = `rgba(${LINE_RGB[0]},${LINE_RGB[1]},${LINE_RGB[2]},${arrAlpha})`;
+    ctx.lineWidth = arrWidth;
+    ctx.stroke();
+
+    particles.forEach(p => {
+      p.t += p.s * dt;
+      if (p.t > 1) p.t -= 1;
+
+      const px = x1 + (x2 - x1) * p.t;
+      const py = y1 + (y2 - y1) * p.t;
+
+      const g = ctx.createRadialGradient(px, py, 0, px, py, partGlow);
+      g.addColorStop(0, `rgba(${c[0]},${c[1]},${c[2]},${partAlpha})`);
+      g.addColorStop(1, `rgba(${c[0]},${c[1]},${c[2]},0)`);
+      ctx.beginPath();
+      ctx.arc(px, py, partGlow, 0, Math.PI * 2);
+      ctx.fillStyle = g;
+      ctx.fill();
+
+      ctx.beginPath();
+      ctx.arc(px, py, partR, 0, Math.PI * 2);
+      ctx.fillStyle = `rgba(${Math.min(255,c[0]+40)},${Math.min(255,c[1]+40)},${Math.min(255,c[2]+40)},${Math.min(1, partAlpha + 0.2)})`;
+      ctx.fill();
+    });
+  });
+}
+
+// ============================================================
+// CONNECTION LINES: Redis -> Table, Redis node -> Redis panel
+// ============================================================
+function drawConnectionLines() {
+  const redisNode = nodeMap['redis_rp'] || nodeMap['redis'];
+  if (!redisNode) return;
+
+  const rp = document.getElementById('redis-panel');
+  const tt = document.getElementById('trading-table');
+  const rpRect = rp.getBoundingClientRect();
+  const ttRect = tt.getBoundingClientRect();
+
+  // Decay switch flash
+  if (mdsSwitchFlashAlpha > 0) {
+    mdsSwitchFlashAlpha = Math.max(0, mdsSwitchFlashAlpha - 0.008);
+  }
+
+  // 1) Redis node -> Redis panel (left edge)
+  const rNx = redisNode.cx;
+  const rNy = redisNode.cy;
+  const rpLx = rpRect.left;
+  const rpLy = rpRect.top + rpRect.height * 0.3;
+
+  const baseAlpha1 = 0.08 + mdsSwitchFlashAlpha * 0.3;
+  ctx.beginPath();
+  ctx.moveTo(rNx, rNy);
+  // Curve to panel
+  const cp1x = rNx + (rpLx - rNx) * 0.5;
+  const cp1y = rNy;
+  const cp2x = rpLx - 30;
+  const cp2y = rpLy;
+  ctx.bezierCurveTo(cp1x, cp1y, cp2x, cp2y, rpLx, rpLy);
+  ctx.strokeStyle = `rgba(255,180,65,${baseAlpha1})`;
+  ctx.lineWidth = 1;
+  ctx.setLineDash([4, 4]);
+  ctx.stroke();
+  ctx.setLineDash([]);
+
+  // Particle on this line
+  drawConnParticles(rNx, rNy, cp1x, cp1y, cp2x, cp2y, rpLx, rpLy, [255, 180, 65], 3);
+
+  // 2) Redis panel bottom -> Trading table top (data flow)
+  const rpBx = rpRect.left + rpRect.width * 0.5;
+  const rpBy = rpRect.bottom;
+  const ttTx = ttRect.left + ttRect.width * 0.5;
+  const ttTy = ttRect.top;
+
+  const baseAlpha2 = 0.06 + mdsSwitchFlashAlpha * 0.4;
+  ctx.beginPath();
+  ctx.moveTo(rpBx, rpBy);
+  ctx.lineTo(ttTx, ttTy);
+  ctx.strokeStyle = `rgba(100,170,255,${baseAlpha2})`;
+  ctx.lineWidth = 1;
+  ctx.setLineDash([3, 5]);
+  ctx.stroke();
+  ctx.setLineDash([]);
+
+  // Particles on this line
+  drawLineParticles(rpBx, rpBy, ttTx, ttTy, [100, 170, 255], 2);
+}
+
+// Simple bezier particle system
+let connParticleState = {};
+function drawConnParticles(x1, y1, cx1, cy1, cx2, cy2, x2, y2, color, count) {
+  const key = `${Math.round(x1)}_${Math.round(y1)}_${Math.round(x2)}_${Math.round(y2)}`;
+  if (!connParticleState[key]) {
+    connParticleState[key] = [];
+    for (let i = 0; i < count; i++) {
+      connParticleState[key].push({t: Math.random(), s: 0.003 + Math.random() * 0.002});
+    }
+  }
+  const ps = connParticleState[key];
+  ps.forEach(p => {
+    p.t += p.s;
+    if (p.t > 1) p.t -= 1;
+    const t = p.t;
+    const mt = 1 - t;
+    const px = mt*mt*mt*x1 + 3*mt*mt*t*cx1 + 3*mt*t*t*cx2 + t*t*t*x2;
+    const py = mt*mt*mt*y1 + 3*mt*mt*t*cy1 + 3*mt*t*t*cy2 + t*t*t*y2;
+    const alpha = 0.4 + mdsSwitchFlashAlpha * 0.5;
+    const g = ctx.createRadialGradient(px, py, 0, px, py, 5);
+    g.addColorStop(0, `rgba(${color[0]},${color[1]},${color[2]},${alpha})`);
+    g.addColorStop(1, `rgba(${color[0]},${color[1]},${color[2]},0)`);
+    ctx.beginPath();
+    ctx.arc(px, py, 5, 0, Math.PI * 2);
+    ctx.fillStyle = g;
+    ctx.fill();
+    ctx.beginPath();
+    ctx.arc(px, py, 1.5, 0, Math.PI * 2);
+    ctx.fillStyle = `rgba(${Math.min(255,color[0]+50)},${Math.min(255,color[1]+50)},${Math.min(255,color[2]+50)},${alpha + 0.2})`;
+    ctx.fill();
+  });
+}
+
+let lineParticleState = {};
+function drawLineParticles(x1, y1, x2, y2, color, count) {
+  const key = `L${Math.round(x1)}_${Math.round(y1)}_${Math.round(x2)}_${Math.round(y2)}`;
+  if (!lineParticleState[key]) {
+    lineParticleState[key] = [];
+    for (let i = 0; i < count; i++) {
+      lineParticleState[key].push({t: Math.random(), s: 0.002 + Math.random() * 0.002});
+    }
+  }
+  const ps = lineParticleState[key];
+  ps.forEach(p => {
+    p.t += p.s;
+    if (p.t > 1) p.t -= 1;
+    const px = x1 + (x2 - x1) * p.t;
+    const py = y1 + (y2 - y1) * p.t;
+    const alpha = 0.35 + mdsSwitchFlashAlpha * 0.5;
+    const g = ctx.createRadialGradient(px, py, 0, px, py, 4);
+    g.addColorStop(0, `rgba(${color[0]},${color[1]},${color[2]},${alpha})`);
+    g.addColorStop(1, `rgba(${color[0]},${color[1]},${color[2]},0)`);
+    ctx.beginPath();
+    ctx.arc(px, py, 4, 0, Math.PI * 2);
+    ctx.fillStyle = g;
+    ctx.fill();
+    ctx.beginPath();
+    ctx.arc(px, py, 1.2, 0, Math.PI * 2);
+    ctx.fillStyle = `rgba(${Math.min(255,color[0]+50)},${Math.min(255,color[1]+50)},${Math.min(255,color[2]+50)},${alpha + 0.2})`;
+    ctx.fill();
+  });
+}
+
+function drawAmbient() {
+  // Glow around the two Apache Ignite HW clusters (heart of the system)
+  ['ignite_hw_sk','ignite_hw_mc'].forEach(id => {
+    const n = nodeMap[id];
+    if (!n) return;
+    const g = ctx.createRadialGradient(n.cx, n.cy, 0, n.cx, n.cy, 140);
+    g.addColorStop(0, 'rgba(255,170,50,0.04)');
+    g.addColorStop(1, 'rgba(255,170,50,0)');
+    ctx.beginPath();
+    ctx.arc(n.cx, n.cy, 140, 0, Math.PI * 2);
+    ctx.fillStyle = g;
+    ctx.fill();
+  });
+  // Glow around Subscription orchestrator (DropApp center)
+  const sm = nodeMap['sub_orch'];
+  if (sm) {
+    const g = ctx.createRadialGradient(sm.cx, sm.cy, 0, sm.cx, sm.cy, 130);
+    g.addColorStop(0, 'rgba(0,210,220,0.035)');
+    g.addColorStop(1, 'rgba(0,210,220,0)');
+    ctx.beginPath();
+    ctx.arc(sm.cx, sm.cy, 130, 0, Math.PI * 2);
+    ctx.fillStyle = g;
+    ctx.fill();
+  }
+  // Glow around Kafka HW (cross-DC bus)
+  const kh = nodeMap['kafka_hw'];
+  if (kh) {
+    const g = ctx.createRadialGradient(kh.cx, kh.cy, 0, kh.cx, kh.cy, 90);
+    g.addColorStop(0, 'rgba(255,170,50,0.025)');
+    g.addColorStop(1, 'rgba(255,170,50,0)');
+    ctx.beginPath();
+    ctx.arc(kh.cx, kh.cy, 90, 0, Math.PI * 2);
+    ctx.fillStyle = g;
+    ctx.fill();
+  }
+  // Soft pulse around users
+  ['actor','admin'].forEach(id => {
+    const n = nodeMap[id];
+    if (!n) return;
+    const pulse = 0.02 + Math.sin(Date.now() / 800) * 0.01;
+    const g = ctx.createRadialGradient(n.cx, n.cy, 0, n.cx, n.cy, 55);
+    g.addColorStop(0, `rgba(180,200,255,${pulse})`);
+    g.addColorStop(1, 'rgba(180,200,255,0)');
+    ctx.beginPath();
+    ctx.arc(n.cx, n.cy, 55, 0, Math.PI * 2);
+    ctx.fillStyle = g;
+    ctx.fill();
+  });
+}
+
+// ============================================================
+// MOUSE INTERACTION
+// ============================================================
+function onMove(ev) {
+  // Map viewport coords to virtual coords (compensate for body scale)
+  const mx = ev.clientX / displayScale;
+  const my = ev.clientY / displayScale;
+
+  // While dragging, just update the dragged node and skip hover/tooltip logic
+  if (dragNode) {
+    const m = nodeMap[dragNode];
+    m.cx = mx - dragOffsetX;
+    m.cy = my - dragOffsetY;
+    m.el.style.left = m.cx + 'px';
+    m.el.style.top = m.cy + 'px';
+    return;
+  }
+
+  // Hover-over a node: highlight the node (and its group, if any) + its connections
+  let hoverNodeId = null;
+  Object.keys(nodeMap).forEach(id => {
+    const m = nodeMap[id];
+    if (!m.w) return;
+    if (Math.abs(mx - m.cx) <= m.w / 2 && Math.abs(my - m.cy) <= m.h / 2) {
+      hoverNodeId = id;
+    }
+  });
+  hoverNode = hoverNodeId;
+
+  // Show AC clients popup when hovering ac_sub / gmsb_sub_req / gmsb_sub_data
+  if (clientPopupEl) {
+    if (hoverNodeId && POPUP_NODES[hoverNodeId]) {
+      if (popupHideTimer) { clearTimeout(popupHideTimer); popupHideTimer = null; }
+      const m = nodeMap[hoverNodeId];
+      renderClientPopup(hoverNodeId);
+      // Position popup to the LEFT of the block, right edge just before the block
+      const POPUP_W = 380;
+      const popupRight = m.cx - m.w / 2 - 14;
+      clientPopupEl.style.left = (popupRight - POPUP_W) + 'px';
+      clientPopupEl.style.top = (m.cy - 80) + 'px';
+      clientPopupEl.classList.add('show');
+    } else {
+      // Delay hide so mouse can transition into the popup itself for scrolling
+      if (clientPopupEl.classList.contains('show') && !popupHideTimer) {
+        popupHideTimer = setTimeout(() => {
+          clientPopupEl.classList.remove('show');
+          popupHideTimer = null;
+        }, 250);
+      }
+    }
+  }
+
+  let best = null, bestD = 16;
+
+  edgeRuntime.forEach(e => {
+    const d = ptSegDist(mx, my, e.x1, e.y1, e.x2, e.y2);
+    if (d < bestD) { bestD = d; best = e; }
+  });
+
+  hoverEdge = best;
+  applyHoverHighlights();
+  const tip = tipEl();
+
+  if (best) {
+    const ed = best.def;
+    const rv = jit(ed.rps, 0.08);
+    const lv = jit(ed.lat, 0.10);
+    const u = ed.unit || 'req/s';
+    tip.innerHTML = `<div class="eop">${ed.op}</div><div class="em"><b>${fmtRps(rv)}</b> ${u} &middot; <b>${lv.toFixed(1)}</b> ms avg</div>`;
+    let tx = mx + 16, ty = my - 8;
+    if (tx + 240 > W) tx = mx - 250;
+    if (ty < 0) ty = 4;
+    tip.style.left = tx + 'px';
+    tip.style.top = ty + 'px';
+    tip.classList.add('show');
+  } else {
+    tip.classList.remove('show');
+  }
+}
+
+function ptSegDist(px, py, x1, y1, x2, y2) {
+  const dx = x2 - x1, dy = y2 - y1;
+  const l2 = dx * dx + dy * dy;
+  if (l2 === 0) return Math.hypot(px - x1, py - y1);
+  let t = ((px - x1) * dx + (py - y1) * dy) / l2;
+  t = Math.max(0, Math.min(1, t));
+  return Math.hypot(px - (x1 + t * dx), py - (y1 + t * dy));
+}
+
+// ============================================================
+// STATS UPDATES
+// ============================================================
+function updateStats() {
+  totalTrades += jit(850, 0.10) * 0.15;
+
+  document.getElementById('s-trades').innerHTML = fmtInt(Math.floor(totalTrades)) + '<span class="u">msg</span>';
+  document.getElementById('s-sess').innerHTML = Math.round(jit(12, 0.15)) + '<span class="u"></span>';
+  document.getElementById('s-cache').innerHTML = jit(94.0, 0.01).toFixed(1) + '<span class="u">%</span>';
+  document.getElementById('s-calc').innerHTML = Math.round(jit(48, 0.08)) + '<span class="u">ms</span>';
+  document.getElementById('s-pinot').innerHTML = Math.round(jit(500, 0.06)) + '<span class="u">/s</span>';
+  document.getElementById('s-ws').innerHTML = Math.round(jit(12, 0.15)) + '<span class="u"></span>';
+  document.getElementById('s-thr').innerHTML = Math.round(jit(850, 0.08)) + '<span class="u">msg/s</span>';
+
+  const now = new Date();
+  document.getElementById('clock').textContent = now.toLocaleTimeString('en-GB');
+}
+
+// ============================================================
+// REDIS PANEL: TRADE LIST
+// ============================================================
+function initTradeList() {
+  renderTradeList();
+}
+
+function renderTradeList() {
+  const el = document.getElementById('trade-list');
+  el.innerHTML = '';
+  tradeListItems.forEach(tid => {
+    const div = document.createElement('div');
+    div.className = 'trade-entry';
+    div.textContent = tid;
+    div.dataset.tid = tid;
+    el.appendChild(div);
+  });
+  document.getElementById('trade-count').textContent = tradeListItems.length + ' trades';
+}
+
+function updateTradeList() {
+  const el = document.getElementById('trade-list');
+
+  // Add a new trade
+  if (Math.random() < 0.6) {
+    let newId;
+    if (Math.random() < 0.6) {
+      newId = 'FX-' + nextTradeNum++;
+    } else {
+      newId = 'IRS-' + nextIrsNum++;
+    }
+    tradeListItems.unshift(newId);
+
+    const div = document.createElement('div');
+    div.className = 'trade-entry';
+    div.textContent = newId;
+    div.dataset.tid = newId;
+    el.insertBefore(div, el.firstChild);
+  }
+
+  // Remove a random trade (less frequently)
+  if (tradeListItems.length > 8 && Math.random() < 0.3) {
+    const idx = Math.floor(Math.random() * tradeListItems.length);
+    const children = el.querySelectorAll('.trade-entry:not(.removing)');
+    if (children[idx]) {
+      children[idx].classList.add('removing');
+      const tid = tradeListItems[idx];
+      tradeListItems.splice(idx, 1);
+      setTimeout(() => {
+        if (children[idx] && children[idx].parentNode) {
+          children[idx].remove();
+        }
+      }, 400);
+    }
+  }
+
+  // Keep list manageable
+  while (tradeListItems.length > 12) {
+    tradeListItems.pop();
+    if (el.lastChild) el.lastChild.remove();
+  }
+
+  document.getElementById('trade-count').textContent = tradeListItems.length + ' trades';
+}
+
+// ============================================================
+// MDS CYCLE
+// ============================================================
+function startMdsCycle() {
+  mdsPhaseStartTime = Date.now();
+  mdsPhase = 1;
+  setMdsState();
+
+  // Start the fill animation for the filling bucket
+  startMdsFilling();
+}
+
+function setMdsState() {
+  const b1 = document.getElementById('mds1-bucket');
+  const b2 = document.getElementById('mds2-bucket');
+  const badge1 = document.getElementById('mds1-badge');
+  const badge2 = document.getElementById('mds2-badge');
+  const prog1 = document.getElementById('mds1-progress');
+  const prog2 = document.getElementById('mds2-progress');
+  const entries1 = document.getElementById('mds1-entries');
+  const entries2 = document.getElementById('mds2-entries');
+
+  if (mdsPhase === 1) {
+    // MDS-1 ACTIVE, MDS-2 FILLING
+    b1.className = 'rp-bucket rb-mds active';
+    b2.className = 'rp-bucket rb-mds filling';
+    badge1.textContent = 'ACTIVE';
+    badge1.style.background = 'rgba(0,255,136,0.15)';
+    badge1.style.color = '#00ff88';
+    badge2.textContent = 'FILLING';
+    badge2.style.background = 'rgba(255,180,50,0.15)';
+    badge2.style.color = '#ffb347';
+    prog1.style.width = '100%';
+    prog1.style.background = '#00ff8844';
+    prog2.style.width = '0%';
+    prog2.style.background = '#ffb34788';
+
+    // Fill MDS-1 with calc entries
+    entries1.innerHTML = generateMdsEntries();
+  } else {
+    // MDS-2 ACTIVE, MDS-1 FILLING
+    b2.className = 'rp-bucket rb-mds active';
+    b1.className = 'rp-bucket rb-mds filling';
+    badge2.textContent = 'ACTIVE';
+    badge2.style.background = 'rgba(0,255,136,0.15)';
+    badge2.style.color = '#00ff88';
+    badge1.textContent = 'FILLING';
+    badge1.style.background = 'rgba(255,180,50,0.15)';
+    badge1.style.color = '#ffb347';
+    prog2.style.width = '100%';
+    prog2.style.background = '#00ff8844';
+    prog1.style.width = '0%';
+    prog1.style.background = '#ffb34788';
+
+    // Fill MDS-2 with calc entries
+    entries2.innerHTML = generateMdsEntries();
+  }
+}
+
+function generateMdsEntries() {
+  return MDS_ENTRIES_TEMPLATE.map(e => {
+    const pv = (parseFloat(e.pv) * (0.9 + Math.random() * 0.2)).toFixed(2) + 'M';
+    const d = (parseFloat(e.delta) * (0.85 + Math.random() * 0.3)).toFixed(2);
+    return `<div class="mds-entry-anim">${e.id}: PV=${pv} \u0394=${d}</div>`;
+  }).join('');
+}
+
+let fillingIntervalId = null;
+let fillingEntryCount = 0;
+
+function startMdsFilling() {
+  fillingEntryCount = 0;
+  if (fillingIntervalId) clearInterval(fillingIntervalId);
+
+  // Gradually add entries to the filling bucket
+  fillingIntervalId = setInterval(() => {
+    const fillingBucket = mdsPhase === 1 ? 'mds2-entries' : 'mds1-entries';
+    const fillingProg = mdsPhase === 1 ? 'mds2-progress' : 'mds1-progress';
+    const el = document.getElementById(fillingBucket);
+    const prog = document.getElementById(fillingProg);
+
+    if (fillingEntryCount < MDS_ENTRIES_TEMPLATE.length) {
+      const e = MDS_ENTRIES_TEMPLATE[fillingEntryCount];
+      const pv = (parseFloat(e.pv) * (0.9 + Math.random() * 0.2)).toFixed(2) + 'M';
+      const d = (parseFloat(e.delta) * (0.85 + Math.random() * 0.3)).toFixed(2);
+      const div = document.createElement('div');
+      div.className = 'mds-entry-anim';
+      div.textContent = `${e.id}: PV=${pv} \u0394=${d}`;
+      el.appendChild(div);
+      fillingEntryCount++;
+    }
+  }, 200);
+
+  // Schedule the SWITCH
+  setTimeout(doMdsSwitch, MDS_CYCLE_MS);
+}
+
+function updateMdsFillProgress() {
+  const elapsed = Date.now() - mdsPhaseStartTime;
+  const progress = Math.min(1, elapsed / MDS_CYCLE_MS);
+  const fillingProg = mdsPhase === 1 ? 'mds2-progress' : 'mds1-progress';
+  const prog = document.getElementById(fillingProg);
+  prog.style.width = (progress * 100) + '%';
+}
+
+function doMdsSwitch() {
+  if (fillingIntervalId) clearInterval(fillingIntervalId);
+
+  // DRAMATIC FLASH
+  mdsSwitchFlashAlpha = 1.0;
+  lastMdsSwitchTime = Date.now();
+
+  const flash1 = document.getElementById('mds1-flash');
+  const flash2 = document.getElementById('mds2-flash');
+  flash1.style.background = 'rgba(255,255,255,0.15)';
+  flash1.style.opacity = '1';
+  flash2.style.background = 'rgba(255,255,255,0.15)';
+  flash2.style.opacity = '1';
+
+  setTimeout(() => {
+    flash1.style.opacity = '0';
+    flash2.style.opacity = '0';
+  }, 100);
+
+  // Brief "CLEARING" state on the previously active bucket
+  const clearingBucket = mdsPhase === 1 ? 'mds1-bucket' : 'mds2-bucket';
+  const clearingEntries = mdsPhase === 1 ? 'mds1-entries' : 'mds2-entries';
+  const clearingBadge = mdsPhase === 1 ? 'mds1-badge' : 'mds2-badge';
+
+  document.getElementById(clearingBucket).className = 'rp-bucket rb-mds clearing';
+  document.getElementById(clearingBadge).textContent = 'CLEARING';
+  document.getElementById(clearingBadge).style.background = 'rgba(255,60,60,0.15)';
+  document.getElementById(clearingBadge).style.color = '#ff6666';
+
+  setTimeout(() => {
+    document.getElementById(clearingEntries).innerHTML = '';
+    // Switch phase
+    mdsPhase = mdsPhase === 1 ? 2 : 1;
+    mdsPhaseStartTime = Date.now();
+    setMdsState();
+    startMdsFilling();
+  }, 250);
+
+  // Update trading table on MDS switch
+  updateTradingTableOnSwitch();
+}
+
+// ============================================================
+// FRONTEND TRADING TABLE
+// ============================================================
+function initTradingTable() {
+  const tbody = document.getElementById('tt-body');
+  TRADE_ROWS.forEach((row, i) => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td>${row.id}</td>
+      <td>${row.type}</td>
+      <td class="num">${row.notional}</td>
+      <td class="num" id="pv-${i}">${row.pv.toFixed(2)}M</td>
+      <td class="num" id="delta-${i}">${row.delta.toFixed(2)}</td>
+      <td class="status-live">${row.status}</td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+
+function updateTradingTableOnSwitch() {
+  // Show MDS Update badge
+  const badge = document.getElementById('mds-badge-table');
+  badge.classList.remove('show');
+  // Force reflow to restart animation
+  void badge.offsetWidth;
+  badge.classList.add('show');
+  setTimeout(() => badge.classList.remove('show'), 750);
+
+  // Update PV and Delta values with small random changes
+  TRADE_ROWS.forEach((row, i) => {
+    const pvChange = row.pv * (Math.random() * 0.24 - 0.12); // +/- 12%
+    const deltaChange = (Math.random() * 0.3 - 0.15); // +/- 0.15
+    const oldPv = row.pv;
+    const oldDelta = row.delta;
+    row.pv = Math.max(0.01, row.pv + pvChange);
+    row.delta = row.delta + deltaChange;
+
+    const pvEl = document.getElementById('pv-' + i);
+    const deltaEl = document.getElementById('delta-' + i);
+
+    pvEl.textContent = row.pv.toFixed(2) + 'M';
+    deltaEl.textContent = row.delta.toFixed(2);
+
+    // Flash color based on direction
+    const pvUp = row.pv > oldPv;
+    const deltaUp = row.delta > oldDelta;
+
+    pvEl.classList.remove('flash-green', 'flash-red');
+    deltaEl.classList.remove('flash-green', 'flash-red');
+    void pvEl.offsetWidth; // reflow
+
+    pvEl.classList.add(pvUp ? 'flash-green' : 'flash-red');
+    deltaEl.classList.add(deltaUp ? 'flash-green' : 'flash-red');
+
+    setTimeout(() => {
+      pvEl.classList.remove('flash-green', 'flash-red');
+      deltaEl.classList.remove('flash-green', 'flash-red');
+    }, 400);
+  });
+}
+
+// ============================================================
+// UTILS
+// ============================================================
+function jit(v, f) { return v * (1 + (Math.random() * 2 - 1) * f); }
+function fmtRps(n) {
+  if (n >= 1000) return (n / 1000).toFixed(1) + 'k';
+  if (n < 0.1) return n.toFixed(2);
+  return n.toFixed(0);
+}
+function fmtInt(n) {
+  return n.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+}
+</script>
+</body>
+</html>
