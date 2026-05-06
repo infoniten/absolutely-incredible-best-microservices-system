@@ -121,10 +121,11 @@ public class EnrichmentController {
             @RequestParam long globalId,
             @Parameter(
                     description = "Список полей для возврата. Формат source.path, поддержка цепочек relations. Если не передан, возвращается полный JSON объекта",
+                    example = "[\"Trade.contractId\"]",
                     examples = {
-                            @ExampleObject(name = "flat", value = "Trade.contractId"),
-                            @ExampleObject(name = "nested", value = "Trade.counterparty.name"),
-                            @ExampleObject(name = "embeddedSet", value = "Trade.cashflows.amount")
+                            @ExampleObject(name = "flat", value = "[\"Trade.contractId\"]"),
+                            @ExampleObject(name = "nested", value = "[\"Trade.counterparty.name\"]"),
+                            @ExampleObject(name = "embeddedSet", value = "[\"Trade.cashflows.amount\"]")
                     }
             )
             @RequestParam(name = "outputField", required = false) List<String> outputFields
