@@ -12,7 +12,7 @@
         <java.version>21</java.version>
         <lombok.version>1.18.38</lombok.version>
         <spring-boot.version>3.5.5</spring-boot.version>
-        <springdoc-openapi.version>2.6.0</springdoc-openapi.version>
+        <springdoc-openapi.version>2.8.9</springdoc-openapi.version>
         <opentelemetry.version>2.23.0</opentelemetry.version>
         <opentelemetry.logback.version>2.23.0-alpha</opentelemetry.logback.version>
     </properties>
