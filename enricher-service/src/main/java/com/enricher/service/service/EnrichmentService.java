@@ -12,6 +12,7 @@ import com.enricher.service.registry.RelationRegistry.RelationDef;
 import com.enricher.service.registry.RelationRegistry.RelationType;
 import com.enricher.service.util.JsonUtils;
 import com.enricher.service.util.NormalizeUtils;
+import io.micrometer.core.instrument.MeterRegistry;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
@@ -19,33 +20,57 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.TreeSet;
+import java.util.function.Supplier;
 
 @Service
 public class EnrichmentService {
+    private record RequestMetricNames(String count, String errors, String duration) {
+    }
+
     private final SearchServiceClient searchServiceClient;
     private final ObjectClassRegistry objectClassRegistry;
     private final ObjectClassHierarchyRegistry hierarchyRegistry;
     private final RelationRegistry relationRegistry;
     private final JsonUtils jsonUtils;
     private final EnrichmentCacheService enrichmentCacheService;
+    private final MeterRegistry meterRegistry;
+    private final RequestMetricNames enrichMetrics;
+    private final String relationResolveCountMetric;
+    private final String projectionDepthCountMetric;
 
     public EnrichmentService(SearchServiceClient searchServiceClient,
                              ObjectClassRegistry objectClassRegistry,
                              ObjectClassHierarchyRegistry hierarchyRegistry,
                              RelationRegistry relationRegistry,
                              JsonUtils jsonUtils,
-                             EnrichmentCacheService enrichmentCacheService) {
+                             EnrichmentCacheService enrichmentCacheService,
+                             MeterRegistry meterRegistry) {
         this.searchServiceClient = searchServiceClient;
         this.objectClassRegistry = objectClassRegistry;
         this.hierarchyRegistry = hierarchyRegistry;
         this.relationRegistry = relationRegistry;
         this.jsonUtils = jsonUtils;
         this.enrichmentCacheService = enrichmentCacheService;
+        this.meterRegistry = meterRegistry;
+        this.enrichMetrics = metricNames("enricher.enrich");
+        this.relationResolveCountMetric = "enricher.relation.resolve.count";
+        this.projectionDepthCountMetric = "enricher.projection.depth.count";
     }
 
     public JsonNode enrich(String objectClassValue, long globalId, List<String> outputFields) {
+        return recordRequest(
+                enrichMetrics,
+                () -> doEnrich(objectClassValue, globalId, outputFields),
+                "object_class", normalizeTag(objectClassValue),
+                "mode", outputFields == null || outputFields.isEmpty() ? "full" : "projection",
+                "output_fields_size", listSizeBucket(outputFields)
+        );
+    }
+
+    private JsonNode doEnrich(String objectClassValue, long globalId, List<String> outputFields) {
         ObjectClassInfo rootClass = objectClassRegistry.fromSourceValueOrName(objectClassValue);
         if (rootClass == null) {
             throw new IllegalArgumentException("Invalid objectClass: [" + objectClassValue + "]");
@@ -60,6 +85,11 @@ public class EnrichmentService {
 
         ParsedSelectors selectors = parseSelectors(rootClass, outputFields);
         validateSelectorRelations(selectors.sourceNodes());
+        meterRegistry.counter(
+                projectionDepthCountMetric,
+                "object_class", normalizeTag(rootClass.sourceValue()),
+                "depth", depthBucket(selectors.maxDepth())
+        ).increment();
 
         String cacheKey = cacheKey(rootClass, globalId, outputFields);
         JsonNode cached = enrichmentCacheService.get(cacheKey);
@@ -215,6 +245,12 @@ public class EnrichmentService {
                                         RuntimeContext context,
                                         int depth,
                                         String path) {
+        meterRegistry.counter(
+                relationResolveCountMetric,
+                "relation_type", normalizeTag(relation.type().name()),
+                "depth", depthBucket(depth)
+        ).increment();
+
         if (relation.type() == RelationType.GLOBAL_LINK) {
             Long linkGlobalId = extractGlobalLinkId(currentObject, relation);
             if (linkGlobalId == null) {
@@ -461,6 +497,79 @@ public class EnrichmentService {
             sortedFields.add(field.trim());
         }
         return "enricher:v1:global:" + rootClass.sourceValue() + ":" + globalId + ":" + String.join("|", sortedFields);
+    }
+
+    private <T> T recordRequest(RequestMetricNames metrics,
+                                Supplier<T> action,
+                                String... tags) {
+        if ((tags.length & 1) == 1) {
+            throw new IllegalArgumentException("Metric tags must be key-value pairs");
+        }
+        meterRegistry.counter(metrics.count(), tags).increment();
+        try {
+            return meterRegistry.timer(metrics.duration(), tags).record(action::get);
+        } catch (RuntimeException ex) {
+            meterRegistry.counter(metrics.errors(), tags).increment();
+            throw ex;
+        }
+    }
+
+    private static RequestMetricNames metricNames(String metricPrefix) {
+        return new RequestMetricNames(
+                metricPrefix + ".count",
+                metricPrefix + ".errors",
+                metricPrefix + ".duration"
+        );
+    }
+
+    private String listSizeBucket(List<String> values) {
+        if (values == null || values.isEmpty()) {
+            return "none";
+        }
+        int size = values.size();
+        if (size == 1) {
+            return "1";
+        }
+        if (size == 2) {
+            return "2";
+        }
+        if (size <= 5) {
+            return "3_5";
+        }
+        return "6_plus";
+    }
+
+    private String depthBucket(int depth) {
+        if (depth <= 0) {
+            return "0";
+        }
+        if (depth == 1) {
+            return "1";
+        }
+        if (depth == 2) {
+            return "2";
+        }
+        if (depth <= 5) {
+            return "3_5";
+        }
+        return "6_plus";
+    }
+
+    private String normalizeTag(String value) {
+        if (value == null || value.isBlank()) {
+            return "none";
+        }
+        String source = value.trim().toLowerCase(Locale.ROOT);
+        StringBuilder out = new StringBuilder(source.length());
+        for (int i = 0; i < source.length(); i++) {
+            char ch = source.charAt(i);
+            if ((ch >= 'a' && ch <= 'z') || (ch >= '0' && ch <= '9') || ch == '_' || ch == '-' || ch == '.') {
+                out.append(ch);
+            } else {
+                out.append('_');
+            }
+        }
+        return out.toString();
     }
 
     private record ParsedSelectors(Map<ObjectClassInfo, SelectorNode> sourceNodes, int maxDepth) {
