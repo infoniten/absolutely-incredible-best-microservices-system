@@ -155,8 +155,17 @@ background-size:100% 100%,100% 100%,60px 60px,60px 60px;z-index:0;pointer-events
 }
 .rp-bucket .rb-entries{
   font-size:9px;font-family:'JetBrains Mono',monospace;
-  color:rgba(200,210,255,0.6);line-height:1.6;flex:1;overflow:hidden;
+  color:rgba(200,210,255,0.6);line-height:1.6;flex:1;overflow-y:auto;overflow-x:hidden;min-height:0;
+  padding-right:2px;
 }
+.rp-bucket .rb-entries::-webkit-scrollbar,
+.tt-scroll::-webkit-scrollbar{width:5px;height:5px}
+.rp-bucket .rb-entries::-webkit-scrollbar-track,
+.tt-scroll::-webkit-scrollbar-track{background:rgba(255,255,255,0.02)}
+.rp-bucket .rb-entries::-webkit-scrollbar-thumb,
+.tt-scroll::-webkit-scrollbar-thumb{background:rgba(100,160,255,0.18);border-radius:3px}
+.rp-bucket .rb-entries::-webkit-scrollbar-thumb:hover,
+.tt-scroll::-webkit-scrollbar-thumb:hover{background:rgba(100,160,255,0.30)}
 .rp-bucket .rb-progress{
   height:4px;border-radius:2px;background:rgba(255,255,255,0.05);margin-top:4px;overflow:hidden;
 }
@@ -250,13 +259,17 @@ background-size:100% 100%,100% 100%,60px 60px,60px 60px;z-index:0;pointer-events
   100%{opacity:0}
 }
 
+.tt-scroll{flex:1;overflow-y:auto;overflow-x:hidden;min-height:0}
 .tt-table{
   width:100%;border-collapse:collapse;font-family:'JetBrains Mono',monospace;font-size:10px;
 }
+.tt-table thead{position:sticky;top:0;z-index:2}
 .tt-table th{
   text-align:left;padding:4px 8px;font-size:8px;font-weight:600;
   text-transform:uppercase;letter-spacing:1px;
-  color:rgba(140,170,255,0.40);border-bottom:1px solid rgba(100,160,255,0.08);
+  color:rgba(140,170,255,0.40);
+  background:rgba(10,10,30,0.96);
+  border-bottom:1px solid rgba(100,160,255,0.10);
 }
 .tt-table td{
   padding:4px 8px;border-bottom:1px solid rgba(100,160,255,0.04);
@@ -341,19 +354,22 @@ background-size:100% 100%,100% 100%,60px 60px,60px 60px;z-index:0;pointer-events
       <span class="mds-update-badge" id="mds-badge-table">MDS Update</span>
       <span class="tt-conn"><span class="tt-dot"></span>Connected</span>
     </div>
-    <table class="tt-table">
-      <thead>
-        <tr>
-          <th>Trade</th>
-          <th>Type</th>
-          <th>Notional</th>
-          <th class="num">PV</th>
-          <th class="num">Delta</th>
-          <th>Status</th>
-        </tr>
-      </thead>
-      <tbody id="tt-body"></tbody>
-    </table>
+    <div class="tt-scroll">
+      <table class="tt-table">
+        <thead>
+          <tr>
+            <th>Trade</th>
+            <th>Type</th>
+            <th>Portfolio</th>
+            <th>Notional</th>
+            <th class="num">PV</th>
+            <th class="num">Delta</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody id="tt-body"></tbody>
+      </table>
+    </div>
   </div>
 
   <div class="legend">
@@ -483,34 +499,45 @@ let mdsSwitchFlashAlpha = 0;
 // Connection pulse state
 let connPulseAlpha = 0.15;
 
-// Trading table data
-const TRADE_ROWS = [
-  {id:'FX-8834', type:'FxSpot', notional:'250M CNY', pv:1.23,  delta:0.34, status:'Live'},
-  {id:'FX-8835', type:'FxFwd',  notional:'180M EUR', pv:2.45,  delta:0.56, status:'Live'},
-  {id:'FX-8836', type:'FxSpot', notional:'120M USD', pv:0.89,  delta:0.78, status:'Live'},
-  {id:'IRS-2201',type:'IRS',    notional:'100M USD', pv:5.67,  delta:-0.12,status:'Live'},
-  {id:'IRS-2202',type:'IRS',    notional:'300M EUR', pv:8.34,  delta:-0.45,status:'Live'},
-  {id:'CDS-1104',type:'CDS',    notional:'50M USD',  pv:0.42,  delta:0.09, status:'Live'},
-  {id:'FX-8837', type:'FxNDF',  notional:'200M BRL', pv:1.78,  delta:-0.23,status:'Live'},
-  {id:'IRS-2203',type:'IRS',    notional:'500M GBP', pv:12.10, delta:0.91, status:'Live'},
-];
+// Unified trades model. Single source of truth for Trades bucket, MDS buckets, and dashboard.
+// Each trade carries:
+//   pv/delta            — currently active values (mirror dashboard + active MDS bucket)
+//   pendingPv/pendingDelta — values being computed for the filling MDS bucket; on switch they
+//                            replace pv/delta and the dashboard updates accordingly.
+let trades = [];
+let nextFxNum = 8000;
+const INITIAL_TRADE_COUNT = 150;
+const TRADE_MIN = 100, TRADE_MAX = 200;
 
-// Trade list for Redis bucket
-let tradeListItems = [
-  'FX-8834','FX-8835','IRS-2201','FX-8836','IRS-2202',
-  'CDS-1104','FX-8837','IRS-2203','FX-8838','FX-8839'
-];
-let nextTradeNum = 8840;
-let nextIrsNum = 2204;
+const FX_TYPES  = ['FxSpot','FxForward'];
+const PORTFOLIOS = ['portfolio_1','portfolio_2','portfolio_3','portfolio_4'];
+const CCYS      = ['USD','EUR','CNY','GBP','JPY','BRL','TWD','INR'];
+const NOTIONAL_AMTS = ['50M','100M','120M','150M','180M','200M','250M','300M','400M','500M'];
 
-// MDS entry templates
-const MDS_ENTRIES_TEMPLATE = [
-  {id:'FX-8834', pv:'1.23M', delta:'0.34'},
-  {id:'IRS-2201',pv:'5.67M', delta:'-0.12'},
-  {id:'FX-8836', pv:'0.89M', delta:'0.78'},
-  {id:'FX-8835', pv:'2.45M', delta:'0.56'},
-  {id:'CDS-1104',pv:'0.42M', delta:'0.09'},
-];
+function generateTrade() {
+  let id, type;
+  id = 'FX-' + (++nextFxNum);
+  type = FX_TYPES[Math.floor(Math.random() * FX_TYPES.length)];
+  const ccy = CCYS[Math.floor(Math.random() * CCYS.length)];
+  const amt = NOTIONAL_AMTS[Math.floor(Math.random() * NOTIONAL_AMTS.length)];
+  const pv = +(Math.random() * 11.9 + 0.1).toFixed(2);
+  const delta = +(Math.random() * 2 - 1).toFixed(2);
+  const portfolio = PORTFOLIOS[Math.floor(Math.random() * PORTFOLIOS.length)];
+  return {
+    id, type,
+    portfolio,
+    notional: amt + ' ' + ccy,
+    pv, delta,
+    pendingPv: pv,
+    pendingDelta: delta,
+    status: 'Live',
+  };
+}
+
+function initTrades() {
+  trades = [];
+  for (let i = 0; i < INITIAL_TRADE_COUNT; i++) trades.push(generateTrade());
+}
 
 // ============================================================
 // INIT
@@ -520,8 +547,9 @@ window.addEventListener('DOMContentLoaded', () => {
   ctx = canvas.getContext('2d');
   createNodeEls();
   createZoneLabels();
-  initTradingTable();
+  initTrades();
   initTradeList();
+  initTradingTable();
   resize();
   window.addEventListener('resize', resize);
   document.getElementById('hit-layer').addEventListener('mousemove', onMove);
@@ -530,7 +558,7 @@ window.addEventListener('DOMContentLoaded', () => {
     tipEl().classList.remove('show');
   });
   setInterval(updateStats, 150);
-  setInterval(updateTradeList, 200);
+  setInterval(updateTradeList, 400);
   startMdsCycle();
   raf(0);
 });
@@ -1038,6 +1066,13 @@ function updateStats() {
 // ============================================================
 // REDIS PANEL: TRADE LIST
 // ============================================================
+function fmtMdsLine(t) {
+  return `${t.id}: PV=${t.pv.toFixed(2)}M Δ=${t.delta.toFixed(2)}`;
+}
+function fmtMdsPendingLine(t) {
+  return `${t.id}: PV=${t.pendingPv.toFixed(2)}M Δ=${t.pendingDelta.toFixed(2)}`;
+}
+
 function initTradeList() {
   renderTradeList();
 }
@@ -1045,59 +1080,106 @@ function initTradeList() {
 function renderTradeList() {
   const el = document.getElementById('trade-list');
   el.innerHTML = '';
-  tradeListItems.forEach(tid => {
+  // Newest at top — render in reverse so the most recently added trades appear first.
+  for (let i = trades.length - 1; i >= 0; i--) {
+    const t = trades[i];
     const div = document.createElement('div');
     div.className = 'trade-entry';
-    div.textContent = tid;
-    div.dataset.tid = tid;
+    div.textContent = t.id;
+    div.dataset.tid = t.id;
     el.appendChild(div);
+  }
+  document.getElementById('trade-count').textContent = trades.length + ' trades';
+}
+
+function addOneTrade() {
+  const t = generateTrade();
+  trades.push(t);
+
+  // 1) Trades bucket
+  const bucketEl = document.getElementById('trade-list');
+  const tradeDiv = document.createElement('div');
+  tradeDiv.className = 'trade-entry';
+  tradeDiv.textContent = t.id;
+  tradeDiv.dataset.tid = t.id;
+  bucketEl.insertBefore(tradeDiv, bucketEl.firstChild);
+
+  // 2) Active MDS bucket — show with current pv/delta (mirrors dashboard)
+  const activeEl = document.getElementById(mdsPhase === 1 ? 'mds1-entries' : 'mds2-entries');
+  const activeDiv = document.createElement('div');
+  activeDiv.className = 'mds-entry-anim';
+  activeDiv.dataset.tid = t.id;
+  activeDiv.textContent = fmtMdsLine(t);
+  activeEl.insertBefore(activeDiv, activeEl.firstChild);
+
+  // 3) Filling MDS bucket — also seed it so the new trade is part of the next cycle
+  if (fillingIntervalId) {
+    const fillEl = document.getElementById(mdsPhase === 1 ? 'mds2-entries' : 'mds1-entries');
+    const fillDiv = document.createElement('div');
+    fillDiv.className = 'mds-entry-anim';
+    fillDiv.dataset.tid = t.id;
+    fillDiv.textContent = fmtMdsPendingLine(t);
+    fillEl.insertBefore(fillDiv, fillEl.firstChild);
+  }
+
+  // 4) Trading dashboard
+  const tbody = document.getElementById('tt-body');
+  const tr = document.createElement('tr');
+  tr.dataset.tid = t.id;
+  tr.id = 'tt-row-' + t.id;
+  tr.innerHTML =
+    `<td>${t.id}</td>` +
+    `<td>${t.type}</td>` +
+    `<td>${t.portfolio}</td>` +
+    `<td class="num">${t.notional}</td>` +
+    `<td class="num pv-cell">${t.pv.toFixed(2)}M</td>` +
+    `<td class="num delta-cell">${t.delta.toFixed(2)}</td>` +
+    `<td class="status-live">${t.status}</td>`;
+  tbody.insertBefore(tr, tbody.firstChild);
+}
+
+function removeOneTrade() {
+  if (trades.length === 0) return;
+  const idx = Math.floor(Math.random() * trades.length);
+  const t = trades[idx];
+  trades.splice(idx, 1);
+
+  // 1) Trades bucket — animated removal
+  const bucketEl = document.getElementById('trade-list');
+  const tradeEntry = bucketEl.querySelector('[data-tid="' + t.id + '"]');
+  if (tradeEntry && !tradeEntry.classList.contains('removing')) {
+    tradeEntry.classList.add('removing');
+    setTimeout(() => { if (tradeEntry.parentNode) tradeEntry.remove(); }, 400);
+  }
+
+  // 2) MDS buckets — instant
+  ['mds1-entries','mds2-entries'].forEach(bid => {
+    const e = document.getElementById(bid).querySelector('[data-tid="' + t.id + '"]');
+    if (e) e.remove();
   });
-  document.getElementById('trade-count').textContent = tradeListItems.length + ' trades';
+
+  // 3) Trading dashboard
+  const row = document.getElementById('tt-row-' + t.id);
+  if (row) row.remove();
 }
 
 function updateTradeList() {
-  const el = document.getElementById('trade-list');
+  const n = trades.length;
+  let addProb, removeProb;
+  if (n < 110)      { addProb = 0.90; removeProb = 0.10; }
+  else if (n > 190) { addProb = 0.10; removeProb = 0.90; }
+  else              { addProb = 0.55; removeProb = 0.55; }
 
-  // Add a new trade
-  if (Math.random() < 0.6) {
-    let newId;
-    if (Math.random() < 0.6) {
-      newId = 'FX-' + nextTradeNum++;
-    } else {
-      newId = 'IRS-' + nextIrsNum++;
-    }
-    tradeListItems.unshift(newId);
+  const toAdd    = Math.random() < addProb    ? 1 + Math.floor(Math.random() * 2) : 0;
+  const toRemove = Math.random() < removeProb ? 1 + Math.floor(Math.random() * 2) : 0;
 
-    const div = document.createElement('div');
-    div.className = 'trade-entry';
-    div.textContent = newId;
-    div.dataset.tid = newId;
-    el.insertBefore(div, el.firstChild);
+  for (let i = 0; i < toAdd; i++) addOneTrade();
+  for (let i = 0; i < toRemove; i++) {
+    if (trades.length <= TRADE_MIN - 5) break;
+    removeOneTrade();
   }
 
-  // Remove a random trade (less frequently)
-  if (tradeListItems.length > 8 && Math.random() < 0.3) {
-    const idx = Math.floor(Math.random() * tradeListItems.length);
-    const children = el.querySelectorAll('.trade-entry:not(.removing)');
-    if (children[idx]) {
-      children[idx].classList.add('removing');
-      const tid = tradeListItems[idx];
-      tradeListItems.splice(idx, 1);
-      setTimeout(() => {
-        if (children[idx] && children[idx].parentNode) {
-          children[idx].remove();
-        }
-      }, 400);
-    }
-  }
-
-  // Keep list manageable
-  while (tradeListItems.length > 12) {
-    tradeListItems.pop();
-    if (el.lastChild) el.lastChild.remove();
-  }
-
-  document.getElementById('trade-count').textContent = tradeListItems.length + ' trades';
+  document.getElementById('trade-count').textContent = trades.length + ' trades';
 }
 
 // ============================================================
@@ -1137,8 +1219,8 @@ function setMdsState() {
     prog2.style.width = '0%';
     prog2.style.background = '#ffb34788';
 
-    // Fill MDS-1 with calc entries
-    entries1.innerHTML = generateMdsEntries();
+    renderActiveMdsBucket(entries1);
+    entries2.innerHTML = '';
   } else {
     // MDS-2 ACTIVE, MDS-1 FILLING
     b2.className = 'rp-bucket rb-mds active';
@@ -1154,44 +1236,68 @@ function setMdsState() {
     prog1.style.width = '0%';
     prog1.style.background = '#ffb34788';
 
-    // Fill MDS-2 with calc entries
-    entries2.innerHTML = generateMdsEntries();
+    renderActiveMdsBucket(entries2);
+    entries1.innerHTML = '';
   }
 }
 
-function generateMdsEntries() {
-  return MDS_ENTRIES_TEMPLATE.map(e => {
-    const pv = (parseFloat(e.pv) * (0.9 + Math.random() * 0.2)).toFixed(2) + 'M';
-    const d = (parseFloat(e.delta) * (0.85 + Math.random() * 0.3)).toFixed(2);
-    return `<div class="mds-entry-anim">${e.id}: PV=${pv} \u0394=${d}</div>`;
-  }).join('');
+// Renders all current trades into a bucket using their *active* pv/delta values \u2014
+// these mirror what the dashboard currently shows (active MDS bucket = source of truth).
+function renderActiveMdsBucket(el) {
+  el.innerHTML = '';
+  const frag = document.createDocumentFragment();
+  for (let i = trades.length - 1; i >= 0; i--) {
+    const t = trades[i];
+    const div = document.createElement('div');
+    div.dataset.tid = t.id;
+    div.textContent = fmtMdsLine(t);
+    frag.appendChild(div);
+  }
+  el.appendChild(frag);
 }
 
 let fillingIntervalId = null;
-let fillingEntryCount = 0;
+let fillingIndex = 0;
+let fillingSnapshot = [];
+const MDS_FILL_BATCHES = 14; // ~14 batches per 2s cycle
 
 function startMdsFilling() {
-  fillingEntryCount = 0;
   if (fillingIntervalId) clearInterval(fillingIntervalId);
+  fillingIndex = 0;
 
-  // Gradually add entries to the filling bucket
+  // Compute the *next* MDS values now (jitter off the current pv/delta).
+  // These will become the new active values on the next switch.
+  trades.forEach(t => {
+    t.pendingPv    = Math.max(0.01, t.pv * (0.88 + Math.random() * 0.24));      // +/- 12%
+    t.pendingDelta = t.delta + (Math.random() * 0.30 - 0.15);                   // +/- 0.15
+  });
+
+  // Snapshot the trade order at filling start so we can iterate stably even
+  // if updateTradeList adds/removes trades during the cycle.
+  fillingSnapshot = trades.slice();
+
+  const fillEl = document.getElementById(mdsPhase === 1 ? 'mds2-entries' : 'mds1-entries');
+  const total  = fillingSnapshot.length;
+  const batchSize  = Math.max(1, Math.ceil(total / MDS_FILL_BATCHES));
+  const intervalMs = Math.max(40, Math.floor((MDS_CYCLE_MS * 0.85) / MDS_FILL_BATCHES));
+
   fillingIntervalId = setInterval(() => {
-    const fillingBucket = mdsPhase === 1 ? 'mds2-entries' : 'mds1-entries';
-    const fillingProg = mdsPhase === 1 ? 'mds2-progress' : 'mds1-progress';
-    const el = document.getElementById(fillingBucket);
-    const prog = document.getElementById(fillingProg);
-
-    if (fillingEntryCount < MDS_ENTRIES_TEMPLATE.length) {
-      const e = MDS_ENTRIES_TEMPLATE[fillingEntryCount];
-      const pv = (parseFloat(e.pv) * (0.9 + Math.random() * 0.2)).toFixed(2) + 'M';
-      const d = (parseFloat(e.delta) * (0.85 + Math.random() * 0.3)).toFixed(2);
+    if (fillingIndex >= fillingSnapshot.length) return; // wait until switch fires
+    const end = Math.min(fillingIndex + batchSize, fillingSnapshot.length);
+    const frag = document.createDocumentFragment();
+    for (let i = fillingIndex; i < end; i++) {
+      const t = fillingSnapshot[i];
+      // Skip entries whose trade was removed mid-cycle.
+      if (trades.indexOf(t) === -1) continue;
       const div = document.createElement('div');
       div.className = 'mds-entry-anim';
-      div.textContent = `${e.id}: PV=${pv} \u0394=${d}`;
-      el.appendChild(div);
-      fillingEntryCount++;
+      div.dataset.tid = t.id;
+      div.textContent = fmtMdsPendingLine(t);
+      frag.appendChild(div);
     }
-  }, 200);
+    fillEl.appendChild(frag);
+    fillingIndex = end;
+  }, intervalMs);
 
   // Schedule the SWITCH
   setTimeout(doMdsSwitch, MDS_CYCLE_MS);
@@ -1252,60 +1358,65 @@ function doMdsSwitch() {
 // ============================================================
 function initTradingTable() {
   const tbody = document.getElementById('tt-body');
-  TRADE_ROWS.forEach((row, i) => {
+  tbody.innerHTML = '';
+  const frag = document.createDocumentFragment();
+  // Newest first — same order as the Trades bucket.
+  for (let i = trades.length - 1; i >= 0; i--) {
+    const t = trades[i];
     const tr = document.createElement('tr');
-    tr.innerHTML = `
-      <td>${row.id}</td>
-      <td>${row.type}</td>
-      <td class="num">${row.notional}</td>
-      <td class="num" id="pv-${i}">${row.pv.toFixed(2)}M</td>
-      <td class="num" id="delta-${i}">${row.delta.toFixed(2)}</td>
-      <td class="status-live">${row.status}</td>
-    `;
-    tbody.appendChild(tr);
-  });
+    tr.dataset.tid = t.id;
+    tr.id = 'tt-row-' + t.id;
+    tr.innerHTML =
+      `<td>${t.id}</td>` +
+      `<td>${t.type}</td>` +
+      `<td>${t.portfolio}</td>` +
+      `<td class="num">${t.notional}</td>` +
+      `<td class="num pv-cell">${t.pv.toFixed(2)}M</td>` +
+      `<td class="num delta-cell">${t.delta.toFixed(2)}</td>` +
+      `<td class="status-live">${t.status}</td>`;
+    frag.appendChild(tr);
+  }
+  tbody.appendChild(frag);
 }
 
+// Called from doMdsSwitch — the values that were being computed in the filling MDS bucket
+// (pendingPv/pendingDelta) become the new active values shown on the dashboard.
 function updateTradingTableOnSwitch() {
   // Show MDS Update badge
   const badge = document.getElementById('mds-badge-table');
   badge.classList.remove('show');
-  // Force reflow to restart animation
   void badge.offsetWidth;
   badge.classList.add('show');
   setTimeout(() => badge.classList.remove('show'), 750);
 
-  // Update PV and Delta values with small random changes
-  TRADE_ROWS.forEach((row, i) => {
-    const pvChange = row.pv * (Math.random() * 0.24 - 0.12); // +/- 12%
-    const deltaChange = (Math.random() * 0.3 - 0.15); // +/- 0.15
-    const oldPv = row.pv;
-    const oldDelta = row.delta;
-    row.pv = Math.max(0.01, row.pv + pvChange);
-    row.delta = row.delta + deltaChange;
+  const flashCells = [];
+  trades.forEach(t => {
+    const oldPv = t.pv, oldDelta = t.delta;
+    t.pv    = +t.pendingPv.toFixed(2);
+    t.delta = +t.pendingDelta.toFixed(2);
 
-    const pvEl = document.getElementById('pv-' + i);
-    const deltaEl = document.getElementById('delta-' + i);
+    const row = document.getElementById('tt-row-' + t.id);
+    if (!row) return;
+    const pvCell    = row.querySelector('.pv-cell');
+    const deltaCell = row.querySelector('.delta-cell');
+    if (!pvCell || !deltaCell) return;
 
-    pvEl.textContent = row.pv.toFixed(2) + 'M';
-    deltaEl.textContent = row.delta.toFixed(2);
+    pvCell.textContent    = t.pv.toFixed(2) + 'M';
+    deltaCell.textContent = t.delta.toFixed(2);
 
-    // Flash color based on direction
-    const pvUp = row.pv > oldPv;
-    const deltaUp = row.delta > oldDelta;
-
-    pvEl.classList.remove('flash-green', 'flash-red');
-    deltaEl.classList.remove('flash-green', 'flash-red');
-    void pvEl.offsetWidth; // reflow
-
-    pvEl.classList.add(pvUp ? 'flash-green' : 'flash-red');
-    deltaEl.classList.add(deltaUp ? 'flash-green' : 'flash-red');
-
-    setTimeout(() => {
-      pvEl.classList.remove('flash-green', 'flash-red');
-      deltaEl.classList.remove('flash-green', 'flash-red');
-    }, 400);
+    const pvUp    = t.pv    >= oldPv;
+    const deltaUp = t.delta >= oldDelta;
+    pvCell.classList.remove('flash-green', 'flash-red');
+    deltaCell.classList.remove('flash-green', 'flash-red');
+    void pvCell.offsetWidth;
+    pvCell.classList.add(pvUp ? 'flash-green' : 'flash-red');
+    deltaCell.classList.add(deltaUp ? 'flash-green' : 'flash-red');
+    flashCells.push(pvCell, deltaCell);
   });
+
+  setTimeout(() => {
+    flashCells.forEach(c => c.classList.remove('flash-green', 'flash-red'));
+  }, 400);
 }
 
 // ============================================================
