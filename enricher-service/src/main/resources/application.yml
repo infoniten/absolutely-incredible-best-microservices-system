@@ -4,10 +4,6 @@ server:
 spring:
   application:
     name: enricher-service
-  datasource:
-    url: jdbc:postgresql://localhost:5432/transactions
-    username: postgres
-    password: postgres123
   data:
     redis:
       timeout: 5000
@@ -26,6 +22,8 @@ management:
 enricher:
   search-service:
     base-url: http://localhost:8081
+    global-endpoint: /api/objects/{objectClass}?globalId={globalId}
+    parent-endpoint: /api/objects/{objectClass}/parent/{parentId}
   metadata:
     url: http://localhost:8083/api/search-service/metadata/v2
     local-file: ""

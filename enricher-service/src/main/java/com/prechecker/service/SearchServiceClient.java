@@ -11,6 +11,7 @@ import org.springframework.web.client.RestTemplate;
 import org.springframework.web.util.UriComponentsBuilder;
 
 import java.net.URI;
+import java.util.Map;
 
 @Component
 public class SearchServiceClient {
@@ -27,11 +28,13 @@ public class SearchServiceClient {
     }
 
     public JsonNode getObjectByGlobalId(String objectClass, long globalId) {
-        URI uri = UriComponentsBuilder.fromHttpUrl(baseUrl())
-                .pathSegment("api", "objects", objectClass)
-                .queryParam("globalId", globalId)
-                .build()
-                .toUri();
+        URI uri = buildUri(
+                globalEndpoint(),
+                Map.of(
+                        "objectClass", objectClass,
+                        "globalId", globalId
+                )
+        );
         try {
             ResponseEntity<String> response = restTemplate.getForEntity(uri, String.class);
             if (!response.getStatusCode().is2xxSuccessful() || response.getBody() == null || response.getBody().isBlank()) {
@@ -48,10 +51,13 @@ public class SearchServiceClient {
     }
 
     public JsonNode getObjectCollectionByParentId(String objectClass, long parentId) {
-        URI uri = UriComponentsBuilder.fromHttpUrl(baseUrl())
-                .pathSegment("api", "objects", objectClass, "parent", String.valueOf(parentId))
-                .build()
-                .toUri();
+        URI uri = buildUri(
+                parentEndpoint(),
+                Map.of(
+                        "objectClass", objectClass,
+                        "parentId", parentId
+                )
+        );
         try {
             ResponseEntity<String> response = restTemplate.getForEntity(uri, String.class);
             if (!response.getStatusCode().is2xxSuccessful() || response.getBody() == null || response.getBody().isBlank()) {
@@ -71,5 +77,28 @@ public class SearchServiceClient {
             throw new IllegalStateException("enricher.search-service.base-url is not configured");
         }
         return baseUrl;
+    }
+
+    private String globalEndpoint() {
+        String endpoint = properties.globalEndpoint();
+        if (endpoint == null || endpoint.isBlank()) {
+            throw new IllegalStateException("enricher.search-service.global-endpoint is not configured");
+        }
+        return endpoint;
+    }
+
+    private String parentEndpoint() {
+        String endpoint = properties.parentEndpoint();
+        if (endpoint == null || endpoint.isBlank()) {
+            throw new IllegalStateException("enricher.search-service.parent-endpoint is not configured");
+        }
+        return endpoint;
+    }
+
+    private URI buildUri(String endpointTemplate, Map<String, Object> uriVariables) {
+        return UriComponentsBuilder
+                .fromUriString(baseUrl() + endpointTemplate)
+                .buildAndExpand(uriVariables)
+                .toUri();
     }
 }
