@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.NullNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.enricher.service.domain.ObjectClassInfo;
+import com.enricher.service.registry.FieldRegistry;
 import com.enricher.service.registry.ObjectClassHierarchyRegistry;
 import com.enricher.service.registry.ObjectClassRegistry;
 import com.enricher.service.registry.RelationRegistry;
@@ -33,6 +34,7 @@ public class EnrichmentService {
     private final SearchServiceClient searchServiceClient;
     private final ObjectClassRegistry objectClassRegistry;
     private final ObjectClassHierarchyRegistry hierarchyRegistry;
+    private final FieldRegistry fieldRegistry;
     private final RelationRegistry relationRegistry;
     private final JsonUtils jsonUtils;
     private final EnrichmentCacheService enrichmentCacheService;
@@ -44,6 +46,7 @@ public class EnrichmentService {
     public EnrichmentService(SearchServiceClient searchServiceClient,
                              ObjectClassRegistry objectClassRegistry,
                              ObjectClassHierarchyRegistry hierarchyRegistry,
+                             FieldRegistry fieldRegistry,
                              RelationRegistry relationRegistry,
                              JsonUtils jsonUtils,
                              EnrichmentCacheService enrichmentCacheService,
@@ -51,6 +54,7 @@ public class EnrichmentService {
         this.searchServiceClient = searchServiceClient;
         this.objectClassRegistry = objectClassRegistry;
         this.hierarchyRegistry = hierarchyRegistry;
+        this.fieldRegistry = fieldRegistry;
         this.relationRegistry = relationRegistry;
         this.jsonUtils = jsonUtils;
         this.enrichmentCacheService = enrichmentCacheService;
@@ -191,6 +195,13 @@ public class EnrichmentService {
             if (relation == null) {
                 if (!childNode.children.isEmpty()) {
                     throw new IllegalArgumentException("Nested path is not supported for non-relation field: [" + path + "]");
+                }
+                boolean allowParentFieldLookup = allowParentRelationLookup;
+                boolean fieldExists = allowParentFieldLookup
+                        ? fieldRegistry.hasFieldInHierarchy(currentClass, segment)
+                        : fieldRegistry.hasField(currentClass, segment);
+                if (!fieldExists) {
+                    throw new IllegalArgumentException("Unknown field in outputField path: [" + path + "]");
                 }
                 continue;
             }
