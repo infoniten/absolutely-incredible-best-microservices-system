@@ -34,6 +34,31 @@ background-size:60px 60px,60px 60px;z-index:0;pointer-events:none}
 .reset-btn{right:122px}
 .save-btn:hover,.reset-btn:hover{background:rgba(50,80,140,0.92);color:#eef3ff;border-color:rgba(160,200,255,0.55)}
 .save-btn.flash{background:rgba(0,180,120,0.85);color:#fff;border-color:rgba(60,220,160,0.7)}
+.expand-btn{position:fixed;top:8px;right:158px;z-index:30;background:rgba(20,30,60,0.80);border:1px solid rgba(140,180,255,0.35);color:#c8daff;width:30px;height:30px;border-radius:7px;font-size:13px;line-height:1;cursor:pointer;backdrop-filter:blur(10px);display:flex;align-items:center;justify-content:center;padding:0;transition:background 0.18s ease, color 0.18s ease}
+.expand-btn:hover{background:rgba(50,80,140,0.92);color:#eef3ff;border-color:rgba(160,200,255,0.55)}
+body.expand-ac .expand-btn{background:rgba(0,140,135,0.85);color:#fff;border-color:rgba(0,200,200,0.65)}
+
+/* Tiny variant — used for AC children blocks */
+.node.tiny{padding:2px 5px;gap:3px;border-radius:5px;white-space:normal;max-width:140px}
+.node.tiny .ic{width:10px;height:10px;font-size:7px;border-radius:2px;flex-shrink:0}
+.node.tiny .nm{font-size:6.5px;letter-spacing:0;line-height:1.15;font-family:'JetBrains Mono',monospace;word-break:break-all}
+.node.tiny .ds{font-size:5.5px;margin-top:0;line-height:1.05;word-break:break-all}
+
+/* AC-child blocks:
+   - default (expand-ac off): hidden, but reveal at full opacity when their group is highlighted (hover parent → children pop up)
+   - expand-ac on: always visible at 20% opacity, full opacity when in hover-group */
+body:not(.expand-ac) .ac-child-node{display:none !important}
+body:not(.expand-ac) .ac-child-node.node-highlight{display:flex !important;opacity:1}
+body.expand-ac .ac-child-node{opacity:0.2;transition:opacity 0.15s ease}
+body.expand-ac .ac-child-node.node-highlight{opacity:1}
+/* Fixed identical size for all child blocks — single-line ellipsis if name too long */
+.node.tiny.ac-child-node{width:80px;height:22px;display:flex;align-items:center;justify-content:center;padding:0 5px;box-sizing:border-box;overflow:hidden;max-width:80px}
+.node.tiny.ac-child-node .ic{display:none}
+.node.tiny.ac-child-node .nf{width:100%;text-align:center;min-width:0}
+.node.tiny.ac-child-node .nm{font-size:7px;line-height:1.15;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-family:'JetBrains Mono',monospace}
+.node.tiny.ac-child-node .ds{display:none}
+/* When hover-highlighted, scale up so the user can read the (possibly truncated) name */
+.ac-child-node.node-highlight{transform:translate(-50%,-50%) scale(1.25);z-index:9}
 body.theme-white{background:#FFFFFF}
 body.theme-white::before{background-image:
   linear-gradient(rgba(160,170,185,0.45) 1px,transparent 1px),
@@ -379,6 +404,7 @@ body.panels-hidden .panel-toggle .icon{transform:rotate(180deg)}
 <button id="theme-toggle" class="theme-toggle" title="Toggle background"><span class="icon">◐</span></button>
 <button id="save-btn" class="save-btn" title="Save block positions"><span class="icon">💾</span></button>
 <button id="reset-btn" class="reset-btn" title="Reset block positions to default"><span class="icon">↺</span></button>
+<button id="expand-btn" class="expand-btn" title="Show AC details (clients & topics)"><span class="icon">▦</span></button>
 <div id="ui-layer">
   <div class="header">
     <div class="header-left">
@@ -614,6 +640,8 @@ const EDGES = [
   // Producer publishes to HW Systematica; reads its data feed from GMSB Kafka
   {from:'sk_pub_prod', to:'hw_systematica', op:'Публикация данных в HW',rps:600, lat:1, unit:'msg/s'},
   {from:'kafka_gmsb_md1', to:'sk_pub_prod', op:'data feed',             rps:600, lat:2, unit:'msg/s'},
+  // highway-to-ignite-replicator pushes data into the local Skolkovo Apache Ignite
+  {from:'sk_pub_repl',    to:'ignite_hw_sk', op:'highway → Ignite',     rps:600, lat:1, unit:'msg/s'},
 
   // ===== MegaCOD HW Pub flows =====
   // Kafka GMSB MD Skolkovo also feeds MegaCOD producer-app
@@ -775,6 +803,42 @@ const LAYOUT = {
   admin:          {fx:0.95, fy:0.90},
   sudir:          {fx:0.86, fy:0.94},
 };
+
+// Logical groups for the AC-children expansion (toggle ▦):
+// hovering any group member (parent AC, its kafka, or a child client) highlights the whole group.
+const AC_GROUP_MEMBERS = {
+  sub_grp: ['ac_sub', 'gmsb_sub_req', 'gmsb_sub_data'],
+  mds_grp: ['ac_md_in', 'gmsb_md_ac'],
+  ms_grp:  ['ac_md_sub', 'gmsb_ms_req', 'gmsb_md_sub'],
+};
+Object.keys(AC_GROUP_MEMBERS).forEach(grp => {
+  AC_GROUP_MEMBERS[grp].forEach(id => {
+    const n = NODES.find(x => x.id === id);
+    if (n) n.group = grp;
+  });
+});
+
+// Generate tiny blocks: one per AC client for each parent group.
+// Each block carries the topic info in its desc (multi-line via <br>) so we keep one block per client
+// while still showing topic names. Children sit on the AC side (right edge) in non-overlapping columns.
+const _CHILD_DEFS = [
+  {parent:'ac_sub',    grp:'sub_grp', clients:AC_CLIENTS,           prefix:'csub_', fx:0.91, baseFy:0.04, fySpacing:0.04},
+  {parent:'ac_md_in',  grp:'mds_grp', clients:AC_MD_SOURCE_CLIENTS, prefix:'cmds_', fx:0.97, baseFy:0.04, fySpacing:0.04},
+  {parent:'ac_md_sub', grp:'ms_grp',  clients:AC_MS_CLIENTS,        prefix:'cms_',  fx:0.91, baseFy:0.56, fySpacing:0.04},
+];
+_CHILD_DEFS.forEach(d => {
+  d.clients.forEach((c, i) => {
+    const fy = d.baseFy + i * d.fySpacing;
+    const id = d.prefix + 'ac_' + i;
+    let descParts = [];
+    if (c.in)  descParts.push('in: '  + c.in);
+    if (c.out) descParts.push('out: ' + c.out);
+    const desc = descParts.join('<br>');
+    NODES.push({id, label: c.name, desc, type:'external', icon:'🖥️', tiny:true, ac_child:true, group: d.grp});
+    LAYOUT[id] = {fx: d.fx, fy};
+    EDGES.push({from: d.parent, to: id, op:'client', rps:0.5, lat:1, unit:'msg/s', ac_child:true});
+  });
+});
 
 // Snapshot of the as-coded layout (used for the rollback button).
 const ORIGINAL_LAYOUT = JSON.parse(JSON.stringify(LAYOUT));
@@ -940,6 +1004,14 @@ window.addEventListener('DOMContentLoaded', () => {
     buildEdges();
     positionLabels();
   });
+  // Expand AC details: show all client/topic blocks (faded), hover any group member to highlight
+  document.getElementById('expand-btn').addEventListener('click', () => {
+    document.body.classList.toggle('expand-ac');
+    if (clientPopupEl) clientPopupEl.classList.remove('show');
+    positionNodes();
+    buildEdges();
+    positionLabels();
+  });
 
   resize();
   window.addEventListener('resize', resize);
@@ -1093,10 +1165,11 @@ function createNodeEls() {
   const ui = document.getElementById('ui-layer');
   NODES.forEach(n => {
     const el = document.createElement('div');
-    let cls = 'node ' + n.type + (n.big ? ' big' : '') + (n.small ? ' small' : '');
+    let cls = 'node ' + n.type + (n.big ? ' big' : '') + (n.small ? ' small' : '') + (n.tiny ? ' tiny' : '');
     el.className = cls;
     el.id = 'nd-' + n.id;
     if (n.group) el.dataset.group = n.group;
+    if (n.ac_child) el.classList.add('ac-child-node');
     el.innerHTML = `<div class="ic">${n.icon}</div><div class="nf"><div class="nm">${fmtLabel(n.label)}</div><div class="ds">${n.desc}</div></div>`;
     ui.appendChild(el);
     nodeMap[n.id] = {el, cx:0, cy:0, w:0, h:0};
@@ -1392,11 +1465,18 @@ const LINE_RGB = [8, 14, 48];
 function drawEdges(dt) {
   const focusOn = !!hoverEdge || !!hoverNode;
   const hoverGroupSet = hoverNode ? new Set(getGroupIds(hoverNode)) : null;
+  const expandMode = document.body.classList.contains('expand-ac');
   edgeRuntime.forEach(e => {
     // Recompute endpoints from current node positions so dragged nodes carry their edges
     const fM = nodeMap[e.def.from];
     const tM = nodeMap[e.def.to];
     if (!fM || !tM) return;
+    // Skip ac_child edges when expand mode is off (their endpoints are hidden)
+    if (e.def.ac_child && !expandMode) {
+      if (e.labelEl) e.labelEl.style.display = 'none';
+      return;
+    }
+    if (e.labelEl && e.labelEl.style.display === 'none') e.labelEl.style.display = '';
     const x1 = fM.cx, y1 = fM.cy;
     const x2 = tM.cx, y2 = tM.cy;
     const c = e.c;
@@ -1406,20 +1486,25 @@ function drawEdges(dt) {
       e.labelEl.style.left = ((x1 + x2) / 2) + 'px';
       e.labelEl.style.top = ((y1 + y2) / 2) + 'px';
     }
+    // Faded look for ac_child edges unless their group is highlighted
+    const isInHoverGroup = hoverGroupSet && (hoverGroupSet.has(e.def.from) || hoverGroupSet.has(e.def.to));
+    const childFade = e.def.ac_child && !isInHoverGroup;
 
     let hov = isHovEdge(e);
     if (!hov && hoverGroupSet) {
       hov = hoverGroupSet.has(e.def.from) || hoverGroupSet.has(e.def.to);
     }
-    // When some edge is focused: hovered = much brighter, others = strongly dimmed
-    const lineAlpha    = hov ? 0.90 : (focusOn ? 0.06  : 0.40);
+    // When some edge is focused: hovered = much brighter, others = strongly dimmed.
+    // ac_child edges fade to ~20% when their group is not highlighted.
+    const fadeMul       = childFade ? 0.20 : 1;
+    const lineAlpha    = (hov ? 0.90 : (focusOn ? 0.06  : 0.40)) * fadeMul;
     const lineWidth    = hov ? 2.6  : (focusOn ? 0.5   : 0.9);
-    const arrAlpha     = hov ? 0.95 : (focusOn ? 0.10  : 0.55);
+    const arrAlpha     = (hov ? 0.95 : (focusOn ? 0.10  : 0.55)) * fadeMul;
     const arrWidth     = hov ? 2.2  : (focusOn ? 0.7   : 1);
     const arrLen       = hov ? 11   : (focusOn ? 4     : 5);
     const partR        = hov ? 4.0  : (focusOn ? 1.0   : 1.8);
     const partGlow     = hov ? 16   : (focusOn ? 3     : 5);
-    const partAlpha    = hov ? 0.95 : (focusOn ? 0.10  : 0.60);
+    const partAlpha    = (hov ? 0.95 : (focusOn ? 0.10  : 0.60)) * fadeMul;
 
     ctx.beginPath();
     ctx.moveTo(x1, y1);
@@ -1689,12 +1774,15 @@ function onMove(ev) {
     }
   }
 
-  let best = null, bestD = 16;
-
-  edgeRuntime.forEach(e => {
-    const d = ptSegDist(mx, my, e.x1, e.y1, e.x2, e.y2);
-    if (d < bestD) { bestD = d; best = e; }
-  });
+  // Node hover takes priority — only run edge hit-test when no node is under the cursor.
+  let best = null;
+  if (!hoverNode) {
+    let bestD = 16;
+    edgeRuntime.forEach(e => {
+      const d = ptSegDist(mx, my, e.x1, e.y1, e.x2, e.y2);
+      if (d < bestD) { bestD = d; best = e; }
+    });
+  }
 
   hoverEdge = best;
   applyHoverHighlights();
