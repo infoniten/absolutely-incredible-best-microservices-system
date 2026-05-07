@@ -45,10 +45,9 @@ body.expand-ac .expand-btn{background:rgba(0,140,135,0.85);color:#fff;border-col
 .node.tiny .ds{font-size:5.5px;margin-top:0;line-height:1.05;word-break:break-all}
 
 /* AC-child blocks:
-   - default (expand-ac off): hidden, but reveal at full opacity when their group is highlighted (hover parent → children pop up)
-   - expand-ac on: always visible at 20% opacity, full opacity when in hover-group */
+   - default (expand-ac off): always hidden (even when their group is hovered)
+   - expand-ac on: visible at 20% opacity, full opacity when in hover-group */
 body:not(.expand-ac) .ac-child-node{display:none !important}
-body:not(.expand-ac) .ac-child-node.node-highlight{display:flex !important;opacity:1}
 body.expand-ac .ac-child-node{opacity:0.2;transition:opacity 0.15s ease}
 body.expand-ac .ac-child-node.node-highlight{opacity:1}
 /* Fixed identical size for all child blocks — single-line ellipsis if name too long */
@@ -652,7 +651,8 @@ const EDGES = [
   {from:'hw_systematica', to:'mc_pub_sub',   op:'Данные по подписке',    rps:120, lat:2, unit:'msg/s'},
   {from:'mc_pub_sub',   to:'kafka_gmsb_md2', op:'запись данных',         rps:100, lat:1, unit:'msg/s'},
   {from:'kafka_gmsb_md2', to:'mc_pub_sub',   op:'чтение данных',         rps:100, lat:1, unit:'msg/s'},
-  // ignite-to-highway-base sends data from Ignite to HW Systematica
+  // ignite-to-highway-base reads data from the Skolkovo Apache Ignite, then sends it to HW Systematica
+  {from:'ignite_hw_sk', to:'mc_pub_base',   op:'Ignite → highway-base',          rps:200, lat:1, unit:'msg/s'},
   {from:'mc_pub_base',  to:'hw_systematica', op:'Отправка данных из Ignite в HW', rps:200, lat:2, unit:'msg/s'},
   // highway-to-ignite-replicator gets HW broadcasts from Systematica and pushes to Apache Ignite
   {from:'hw_systematica', to:'mc_pub_repl',  op:'Бродкасты HW в Ignite', rps:200, lat:2, unit:'msg/s'},
@@ -822,9 +822,9 @@ Object.keys(AC_GROUP_MEMBERS).forEach(grp => {
 // Each block carries the topic info in its desc (multi-line via <br>) so we keep one block per client
 // while still showing topic names. Children sit on the AC side (right edge) in non-overlapping columns.
 const _CHILD_DEFS = [
-  {parent:'ac_sub',    grp:'sub_grp', clients:AC_CLIENTS,           prefix:'csub_', fx:0.91, baseFy:0.04, fySpacing:0.04},
-  {parent:'ac_md_in',  grp:'mds_grp', clients:AC_MD_SOURCE_CLIENTS, prefix:'cmds_', fx:0.97, baseFy:0.04, fySpacing:0.04},
-  {parent:'ac_md_sub', grp:'ms_grp',  clients:AC_MS_CLIENTS,        prefix:'cms_',  fx:0.91, baseFy:0.56, fySpacing:0.04},
+  {parent:'ac_sub',    grp:'sub_grp', clients:AC_CLIENTS,           prefix:'csub_', fx:0.91, baseFy:0.04, fySpacing:0.04, dir:'out'},
+  {parent:'ac_md_in',  grp:'mds_grp', clients:AC_MD_SOURCE_CLIENTS, prefix:'cmds_', fx:0.97, baseFy:0.04, fySpacing:0.04, dir:'in'},
+  {parent:'ac_md_sub', grp:'ms_grp',  clients:AC_MS_CLIENTS,        prefix:'cms_',  fx:0.91, baseFy:0.56, fySpacing:0.04, dir:'in'},
 ];
 _CHILD_DEFS.forEach(d => {
   d.clients.forEach((c, i) => {
@@ -836,7 +836,13 @@ _CHILD_DEFS.forEach(d => {
     const desc = descParts.join('<br>');
     NODES.push({id, label: c.name, desc, type:'external', icon:'🖥️', tiny:true, ac_child:true, group: d.grp});
     LAYOUT[id] = {fx: d.fx, fy};
-    EDGES.push({from: d.parent, to: id, op:'client', rps:0.5, lat:1, unit:'msg/s', ac_child:true});
+    // dir 'out' = parent → child (e.g. ac_sub broadcasting to its consumers)
+    // dir 'in'  = child → parent (e.g. external sources / clients feeding into the parent)
+    if (d.dir === 'out') {
+      EDGES.push({from: d.parent, to: id, op:'client', rps:0.5, lat:1, unit:'msg/s', ac_child:true});
+    } else {
+      EDGES.push({from: id, to: d.parent, op:'client', rps:0.5, lat:1, unit:'msg/s', ac_child:true});
+    }
   });
 });
 
@@ -1234,13 +1240,24 @@ function applyHoverHighlights() {
   prevHoverEdge = hoverEdge;
   prevHoverNode = hoverNode;
 
-  // Build the highlight set
+  // Build the highlight set — both edge and node hovers contribute (additive)
   const hi = new Set();
   if (hoverEdge) {
     hi.add(hoverEdge.def.from);
     hi.add(hoverEdge.def.to);
-  } else if (hoverNode) {
+  }
+  if (hoverNode) {
     getGroupIds(hoverNode).forEach(id => hi.add(id));
+  }
+  // Expand: include the OTHER endpoint of every edge whose one side is already in `hi`,
+  // so when a connecting arrow lights up its remote partner block lights up too.
+  if (hi.size > 0) {
+    const additions = new Set();
+    edgeRuntime.forEach(e => {
+      if (hi.has(e.def.from)) additions.add(e.def.to);
+      if (hi.has(e.def.to)) additions.add(e.def.from);
+    });
+    additions.forEach(id => hi.add(id));
   }
   const focusOn = hi.size > 0;
 
@@ -1260,8 +1277,8 @@ function applyHoverHighlights() {
   edgeRuntime.forEach(e => {
     if (!e.labelEl) return;
     let on = false;
-    if (hoverEdge) on = isHovEdge(e);
-    else if (hoverNode) on = hi.has(e.def.from) || hi.has(e.def.to);
+    if (hoverEdge && isHovEdge(e)) on = true;
+    if (hoverNode && (hi.has(e.def.from) || hi.has(e.def.to))) on = true;
     if (!focusOn) e.labelEl.classList.remove('elabel-highlight', 'elabel-dim');
     else if (on) {
       e.labelEl.classList.add('elabel-highlight');
@@ -1774,16 +1791,12 @@ function onMove(ev) {
     }
   }
 
-  // Node hover takes priority — only run edge hit-test when no node is under the cursor.
-  let best = null;
-  if (!hoverNode) {
-    let bestD = 16;
-    edgeRuntime.forEach(e => {
-      const d = ptSegDist(mx, my, e.x1, e.y1, e.x2, e.y2);
-      if (d < bestD) { bestD = d; best = e; }
-    });
-  }
-
+  // Always run edge hit-test so hovering an arrow definitely highlights both its endpoints.
+  let best = null, bestD = 16;
+  edgeRuntime.forEach(e => {
+    const d = ptSegDist(mx, my, e.x1, e.y1, e.x2, e.y2);
+    if (d < bestD) { bestD = d; best = e; }
+  });
   hoverEdge = best;
   applyHoverHighlights();
   const tip = tipEl();
