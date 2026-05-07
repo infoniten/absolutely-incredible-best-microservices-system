@@ -4,11 +4,6 @@ server:
 spring:
   application:
     name: enricher-service
-  data:
-    redis:
-      timeout: 5000
-      cluster:
-        nodes: localhost:6379
 
 management:
   endpoints:

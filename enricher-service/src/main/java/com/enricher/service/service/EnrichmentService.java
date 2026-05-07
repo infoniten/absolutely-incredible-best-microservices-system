@@ -23,7 +23,6 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
-import java.util.TreeSet;
 import java.util.function.Supplier;
 
 @Service
@@ -37,7 +36,6 @@ public class EnrichmentService {
     private final FieldRegistry fieldRegistry;
     private final RelationRegistry relationRegistry;
     private final JsonUtils jsonUtils;
-    private final EnrichmentCacheService enrichmentCacheService;
     private final MeterRegistry meterRegistry;
     private final RequestMetricNames enrichMetrics;
     private final String relationResolveCountMetric;
@@ -49,7 +47,6 @@ public class EnrichmentService {
                              FieldRegistry fieldRegistry,
                              RelationRegistry relationRegistry,
                              JsonUtils jsonUtils,
-                             EnrichmentCacheService enrichmentCacheService,
                              MeterRegistry meterRegistry) {
         this.searchServiceClient = searchServiceClient;
         this.objectClassRegistry = objectClassRegistry;
@@ -57,7 +54,6 @@ public class EnrichmentService {
         this.fieldRegistry = fieldRegistry;
         this.relationRegistry = relationRegistry;
         this.jsonUtils = jsonUtils;
-        this.enrichmentCacheService = enrichmentCacheService;
         this.meterRegistry = meterRegistry;
         this.enrichMetrics = metricNames("enricher.enrich");
         this.relationResolveCountMetric = "enricher.relation.resolve.count";
@@ -95,12 +91,6 @@ public class EnrichmentService {
                 "depth", depthBucket(selectors.maxDepth())
         ).increment();
 
-        String cacheKey = cacheKey(rootClass, globalId, outputFields);
-        JsonNode cached = enrichmentCacheService.get(cacheKey);
-        if (cached != null) {
-            return cached;
-        }
-
         ObjectClassInfo actualClass = resolveActualClass(rootObject, rootClass);
         ObjectNode result = jsonUtils.createObjectNode();
         result.put("objectClass", actualClass.sourceValue());
@@ -123,8 +113,6 @@ public class EnrichmentService {
             }
             mergeProjection(result, projected);
         }
-
-        enrichmentCacheService.put(cacheKey, result);
         return result;
     }
 
@@ -497,17 +485,6 @@ public class EnrichmentService {
         if (value == null || value.isBlank() || !value.matches("[A-Za-z0-9_]+")) {
             throw new IllegalArgumentException("Invalid segment in outputField selector: [" + selector + "]");
         }
-    }
-
-    private String cacheKey(ObjectClassInfo rootClass, long globalId, List<String> outputFields) {
-        TreeSet<String> sortedFields = new TreeSet<>();
-        for (String field : outputFields) {
-            if (field == null || field.isBlank()) {
-                continue;
-            }
-            sortedFields.add(field.trim());
-        }
-        return "enricher:v1:global:" + rootClass.sourceValue() + ":" + globalId + ":" + String.join("|", sortedFields);
     }
 
     private <T> T recordRequest(RequestMetricNames metrics,

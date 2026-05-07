@@ -108,11 +108,6 @@ Actuator endpoint:
 - `enricher.search.parent.count`
 - `enricher.search.parent.errors`
 - `enricher.search.parent.duration`
-- `enricher.cache.get.hit.count`
-- `enricher.cache.get.miss.count`
-- `enricher.cache.get.error.count`
-- `enricher.cache.put.success.count`
-- `enricher.cache.put.error.count`
 
 Основные теги:
 
@@ -121,21 +116,6 @@ Actuator endpoint:
 - `output_fields_size`
 - `depth`
 - `relation_type`
-
-## Redis keys
-
-Сервис пишет итог проекций в Redis по ключу:
-
-- `enricher:v1:global:{objectClass}:{globalId}:{sortedOutputFields}`
-
-Пример:
-
-- `enricher:v1:global:FxSpotForwardTrade:123:Trade.contractId|Trade.counterparty.name`
-
-Примечания:
-
-- Кэш в Redis используется только для режима с `outputField`.
-- Если `outputField` не передан (полный JSON), Redis-ключ не создается.
 
 ## Локальная сборка
 
