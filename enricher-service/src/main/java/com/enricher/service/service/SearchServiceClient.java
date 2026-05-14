@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.enricher.service.config.SearchServiceClientProperties;
 import com.enricher.service.util.NotFoundException;
 import io.micrometer.core.instrument.MeterRegistry;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.HttpClientErrorException;
@@ -17,6 +18,7 @@ import java.util.Map;
 import java.util.function.Supplier;
 
 @Component
+@Slf4j
 public class SearchServiceClient {
     private record RequestMetricNames(String count, String errors, String duration) {
     }
@@ -41,6 +43,7 @@ public class SearchServiceClient {
     }
 
     public JsonNode getObjectByGlobalId(String objectClass, long globalId) {
+        log.info("Search-service global request: objectClass=[{}], globalId=[{}]", objectClass, globalId);
         return recordRequest(
                 globalMetrics,
                 () -> {
@@ -56,12 +59,18 @@ public class SearchServiceClient {
                         if (!response.getStatusCode().is2xxSuccessful() || response.getBody() == null || response.getBody().isBlank()) {
                             throw new NotFoundException("Object not found: objectClass=[" + objectClass + "], globalId=[" + globalId + "]");
                         }
+                        log.info("Search-service global response: objectClass=[{}], globalId=[{}], status=[{}]",
+                                objectClass, globalId, response.getStatusCode().value());
                         return objectMapper.readTree(response.getBody());
                     } catch (HttpClientErrorException.NotFound ex) {
+                        log.info("Search-service global response not found: objectClass=[{}], globalId=[{}]",
+                                objectClass, globalId);
                         throw new NotFoundException("Object not found: objectClass=[" + objectClass + "], globalId=[" + globalId + "]");
                     } catch (NotFoundException ex) {
                         throw ex;
                     } catch (Exception ex) {
+                        log.warn("Search-service global request failed: objectClass=[{}], globalId=[{}]",
+                                objectClass, globalId, ex);
                         throw new IllegalStateException("Failed to call search-service getObjectByGlobalId", ex);
                     }
                 },
@@ -70,6 +79,7 @@ public class SearchServiceClient {
     }
 
     public JsonNode getObjectCollectionByParentId(String objectClass, long parentId) {
+        log.info("Search-service parent request: objectClass=[{}], parentId=[{}]", objectClass, parentId);
         return recordRequest(
                 parentMetrics,
                 () -> {
@@ -83,12 +93,21 @@ public class SearchServiceClient {
                     try {
                         ResponseEntity<String> response = restTemplate.getForEntity(uri, String.class);
                         if (!response.getStatusCode().is2xxSuccessful() || response.getBody() == null || response.getBody().isBlank()) {
+                            log.info("Search-service parent response is empty: objectClass=[{}], parentId=[{}], status=[{}]",
+                                    objectClass, parentId, response.getStatusCode().value());
                             return objectMapper.createArrayNode();
                         }
-                        return objectMapper.readTree(response.getBody());
+                        JsonNode parsed = objectMapper.readTree(response.getBody());
+                        log.info("Search-service parent response: objectClass=[{}], parentId=[{}], count=[{}]",
+                                objectClass, parentId, parsed.isArray() ? parsed.size() : 0);
+                        return parsed;
                     } catch (HttpClientErrorException.NotFound ex) {
+                        log.info("Search-service parent response not found: objectClass=[{}], parentId=[{}]",
+                                objectClass, parentId);
                         return objectMapper.createArrayNode();
                     } catch (Exception ex) {
+                        log.warn("Search-service parent request failed: objectClass=[{}], parentId=[{}]",
+                                objectClass, parentId, ex);
                         throw new IllegalStateException("Failed to call search-service getObjectCollectionByParentId", ex);
                     }
                 },

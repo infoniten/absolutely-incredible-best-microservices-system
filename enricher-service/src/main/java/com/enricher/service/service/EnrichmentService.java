@@ -14,6 +14,7 @@ import com.enricher.service.registry.RelationRegistry.RelationType;
 import com.enricher.service.util.JsonUtils;
 import com.enricher.service.util.NormalizeUtils;
 import io.micrometer.core.instrument.MeterRegistry;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
@@ -26,6 +27,7 @@ import java.util.Map;
 import java.util.function.Supplier;
 
 @Service
+@Slf4j
 public class EnrichmentService {
     private record RequestMetricNames(String count, String errors, String duration) {
     }
@@ -61,6 +63,8 @@ public class EnrichmentService {
     }
 
     public JsonNode enrich(String objectClassValue, long globalId, List<String> outputFields) {
+        log.info("Enrichment request: objectClass=[{}], globalId=[{}], outputFields=[{}]",
+                objectClassValue, globalId, outputFields);
         return recordRequest(
                 enrichMetrics,
                 () -> doEnrich(objectClassValue, globalId, outputFields),
@@ -78,8 +82,11 @@ public class EnrichmentService {
 
         RuntimeContext context = new RuntimeContext();
         JsonNode rootObject = fetchByGlobalId(context, rootClass, globalId);
+        log.info("Root object loaded: objectClass=[{}], globalId=[{}]", rootClass.sourceValue(), globalId);
 
         if (outputFields == null || outputFields.isEmpty()) {
+            log.info("Enrichment full response prepared: objectClass=[{}], globalId=[{}]",
+                    rootClass.sourceValue(), globalId);
             return rootObject;
         }
 
@@ -113,6 +120,8 @@ public class EnrichmentService {
             }
             mergeProjection(result, projected);
         }
+        log.info("Enrichment projection prepared: rootClass=[{}], actualClass=[{}], globalId=[{}], outputFields=[{}], depth=[{}]",
+                rootClass.sourceValue(), actualClass.sourceValue(), globalId, outputFields, selectors.maxDepth());
         return result;
     }
 
@@ -244,6 +253,8 @@ public class EnrichmentService {
                                         RuntimeContext context,
                                         int depth,
                                         String path) {
+        log.debug("Resolving relation: path=[{}], relationType=[{}], targetClass=[{}], depth=[{}]",
+                path, relation.type(), relation.targetClass().sourceValue(), depth);
         meterRegistry.counter(
                 relationResolveCountMetric,
                 "relation_type", normalizeTag(relation.type().name()),
@@ -253,6 +264,7 @@ public class EnrichmentService {
         if (relation.type() == RelationType.GLOBAL_LINK) {
             Long linkGlobalId = extractGlobalLinkId(currentObject, relation);
             if (linkGlobalId == null) {
+                log.debug("Relation GLOBAL_LINK is null: path=[{}]", path);
                 return NullNode.getInstance();
             }
 
@@ -273,6 +285,7 @@ public class EnrichmentService {
         if (relation.type() == RelationType.EMBEDDED_SET) {
             Long parentId = extractObjectId(currentObject);
             if (parentId == null) {
+                log.debug("Relation EMBEDDED_SET parent id is null: path=[{}]", path);
                 return jsonUtils.createArrayNode();
             }
 
@@ -302,10 +315,14 @@ public class EnrichmentService {
         String key = objectClass.sourceValueNormalized() + "|" + globalId;
         JsonNode cached = context.globalCache.get(key);
         if (cached != null) {
+            log.debug("Global object found in enrichment context cache: objectClass=[{}], globalId=[{}]",
+                    objectClass.sourceValue(), globalId);
             return cached;
         }
         JsonNode value = searchServiceClient.getObjectByGlobalId(objectClass.sourceValue(), globalId);
         context.globalCache.put(key, value);
+        log.debug("Global object loaded from search-service: objectClass=[{}], globalId=[{}]",
+                objectClass.sourceValue(), globalId);
         return value;
     }
 
@@ -313,14 +330,20 @@ public class EnrichmentService {
         String key = objectClass.sourceValueNormalized() + "|" + parentId;
         ArrayNode cached = context.parentCache.get(key);
         if (cached != null) {
+            log.debug("Parent collection found in enrichment context cache: objectClass=[{}], parentId=[{}]",
+                    objectClass.sourceValue(), parentId);
             return cached;
         }
         JsonNode value = searchServiceClient.getObjectCollectionByParentId(objectClass.sourceValue(), parentId);
         if (value == null || !value.isArray()) {
+            log.debug("Parent collection is empty: objectClass=[{}], parentId=[{}]",
+                    objectClass.sourceValue(), parentId);
             return jsonUtils.createArrayNode();
         }
         ArrayNode arrayNode = (ArrayNode) value;
         context.parentCache.put(key, arrayNode);
+        log.debug("Parent collection loaded from search-service: objectClass=[{}], parentId=[{}], count=[{}]",
+                objectClass.sourceValue(), parentId, arrayNode.size());
         return arrayNode;
     }
 

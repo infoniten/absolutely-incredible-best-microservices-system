@@ -10,6 +10,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -23,6 +24,7 @@ import java.util.List;
 @RequestMapping("/api/v1/enriched-objects")
 @RequiredArgsConstructor
 @Tag(name = "Enrichment", description = "Enrichment endpoints")
+@Slf4j
 public class EnrichmentController {
     private final EnrichmentService enrichmentService;
 
@@ -129,6 +131,8 @@ public class EnrichmentController {
             )
             @RequestParam(name = "outputField", required = false) List<String> outputFields
     ) {
+        log.info("Enriched object request: objectClass=[{}], globalId=[{}], outputFields=[{}]",
+                objectClass, globalId, outputFields);
         return enrichmentService.enrich(objectClass, globalId, outputFields);
     }
 }
