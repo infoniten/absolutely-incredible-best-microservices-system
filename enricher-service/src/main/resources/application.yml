@@ -18,6 +18,7 @@ enricher:
   search-service:
     base-url: http://localhost:8081
     global-endpoint: /api/objects/{objectClass}?globalId={globalId}
+    revision-endpoint: /api/objects/{objectClass}/revisions/{id}
     parent-endpoint: /api/objects/{objectClass}/parent/{parentId}
   metadata:
     url: http://localhost:8083/api/search-service/metadata/v2

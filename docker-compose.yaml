@@ -249,6 +249,7 @@ services:
     environment:
       ENRICHER_SEARCH_SERVICE_BASE_URL: "http://host.docker.internal:8081"
       ENRICHER_SEARCH_SERVICE_GLOBAL_ENDPOINT: "/api/objects/{objectClass}?globalId={globalId}"
+      ENRICHER_SEARCH_SERVICE_REVISION_ENDPOINT: "/api/objects/{objectClass}/revisions/{id}"
       ENRICHER_SEARCH_SERVICE_PARENT_ENDPOINT: "/api/objects/{objectClass}/parent/{parentId}"
       ENRICHER_METADATA_URL: "http://datadictionary:8080/api/search-service/metadata/v2"
     depends_on:

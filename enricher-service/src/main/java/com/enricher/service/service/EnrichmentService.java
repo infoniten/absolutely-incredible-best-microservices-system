@@ -74,6 +74,18 @@ public class EnrichmentService {
         );
     }
 
+    public JsonNode enrichRevision(String objectClassValue, long id, List<String> outputFields) {
+        log.info("Enrichment revision request: objectClass=[{}], id=[{}], outputFields=[{}]",
+                objectClassValue, id, outputFields);
+        return recordRequest(
+                enrichMetrics,
+                () -> doEnrichRevision(objectClassValue, id, outputFields),
+                "object_class", normalizeTag(objectClassValue),
+                "mode", outputFields == null || outputFields.isEmpty() ? "full" : "projection",
+                "output_fields_size", listSizeBucket(outputFields)
+        );
+    }
+
     private JsonNode doEnrich(String objectClassValue, long globalId, List<String> outputFields) {
         ObjectClassInfo rootClass = objectClassRegistry.fromSourceValueOrName(objectClassValue);
         if (rootClass == null) {
@@ -83,10 +95,36 @@ public class EnrichmentService {
         RuntimeContext context = new RuntimeContext();
         JsonNode rootObject = fetchByGlobalId(context, rootClass, globalId);
         log.info("Root object loaded: objectClass=[{}], globalId=[{}]", rootClass.sourceValue(), globalId);
+        return projectResponse(context, rootClass, rootObject, outputFields,
+                "Enrichment full response prepared: objectClass=[{}], globalId=[{}]",
+                "Enrichment projection prepared: rootClass=[{}], actualClass=[{}], globalId=[{}], outputFields=[{}], depth=[{}]",
+                Long.toString(globalId));
+    }
 
+    private JsonNode doEnrichRevision(String objectClassValue, long id, List<String> outputFields) {
+        ObjectClassInfo rootClass = objectClassRegistry.fromSourceValueOrName(objectClassValue);
+        if (rootClass == null) {
+            throw new IllegalArgumentException("Invalid objectClass: [" + objectClassValue + "]");
+        }
+
+        RuntimeContext context = new RuntimeContext();
+        JsonNode rootObject = fetchById(context, rootClass, id);
+        log.info("Root revision loaded: objectClass=[{}], id=[{}]", rootClass.sourceValue(), id);
+        return projectResponse(context, rootClass, rootObject, outputFields,
+                "Enrichment revision full response prepared: objectClass=[{}], id=[{}]",
+                "Enrichment revision projection prepared: rootClass=[{}], actualClass=[{}], id=[{}], outputFields=[{}], depth=[{}]",
+                Long.toString(id));
+    }
+
+    private JsonNode projectResponse(RuntimeContext context,
+                                     ObjectClassInfo rootClass,
+                                     JsonNode rootObject,
+                                     List<String> outputFields,
+                                     String fullLogTemplate,
+                                     String projectionLogTemplate,
+                                     String lookupIdValue) {
         if (outputFields == null || outputFields.isEmpty()) {
-            log.info("Enrichment full response prepared: objectClass=[{}], globalId=[{}]",
-                    rootClass.sourceValue(), globalId);
+            log.info(fullLogTemplate, rootClass.sourceValue(), lookupIdValue);
             return rootObject;
         }
 
@@ -120,8 +158,8 @@ public class EnrichmentService {
             }
             mergeProjection(result, projected);
         }
-        log.info("Enrichment projection prepared: rootClass=[{}], actualClass=[{}], globalId=[{}], outputFields=[{}], depth=[{}]",
-                rootClass.sourceValue(), actualClass.sourceValue(), globalId, outputFields, selectors.maxDepth());
+        log.info(projectionLogTemplate,
+                rootClass.sourceValue(), actualClass.sourceValue(), lookupIdValue, outputFields, selectors.maxDepth());
         return result;
     }
 
@@ -345,6 +383,21 @@ public class EnrichmentService {
         log.debug("Parent collection loaded from search-service: objectClass=[{}], parentId=[{}], count=[{}]",
                 objectClass.sourceValue(), parentId, arrayNode.size());
         return arrayNode;
+    }
+
+    private JsonNode fetchById(RuntimeContext context, ObjectClassInfo objectClass, long id) {
+        String key = objectClass.sourceValueNormalized() + "|" + id;
+        JsonNode cached = context.idCache.get(key);
+        if (cached != null) {
+            log.debug("Revision found in enrichment context cache: objectClass=[{}], id=[{}]",
+                    objectClass.sourceValue(), id);
+            return cached;
+        }
+        JsonNode value = searchServiceClient.getObjectRevisionById(objectClass.sourceValue(), id);
+        context.idCache.put(key, value);
+        log.debug("Revision loaded from search-service: objectClass=[{}], id=[{}]",
+                objectClass.sourceValue(), id);
+        return value;
     }
 
     private ObjectClassInfo resolveActualClass(JsonNode object, ObjectClassInfo fallbackRootClass) {
@@ -593,6 +646,7 @@ public class EnrichmentService {
 
     private static final class RuntimeContext {
         private final Map<String, JsonNode> globalCache = new HashMap<>();
+        private final Map<String, JsonNode> idCache = new HashMap<>();
         private final Map<String, ArrayNode> parentCache = new HashMap<>();
     }
 }

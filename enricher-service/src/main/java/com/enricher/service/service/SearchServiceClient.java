@@ -28,6 +28,7 @@ public class SearchServiceClient {
     private final ObjectMapper objectMapper;
     private final MeterRegistry meterRegistry;
     private final RequestMetricNames globalMetrics;
+    private final RequestMetricNames revisionMetrics;
     private final RequestMetricNames parentMetrics;
 
     public SearchServiceClient(SearchServiceClientProperties properties,
@@ -39,6 +40,7 @@ public class SearchServiceClient {
         this.objectMapper = objectMapper;
         this.meterRegistry = meterRegistry;
         this.globalMetrics = metricNames("enricher.search.global");
+        this.revisionMetrics = metricNames("enricher.search.revision");
         this.parentMetrics = metricNames("enricher.search.parent");
     }
 
@@ -115,6 +117,42 @@ public class SearchServiceClient {
         );
     }
 
+    public JsonNode getObjectRevisionById(String objectClass, long id) {
+        log.info("Search-service revision request: objectClass=[{}], id=[{}]", objectClass, id);
+        return recordRequest(
+                revisionMetrics,
+                () -> {
+                    URI uri = buildUri(
+                            revisionEndpoint(),
+                            Map.of(
+                                    "objectClass", objectClass,
+                                    "id", id
+                            )
+                    );
+                    try {
+                        ResponseEntity<String> response = restTemplate.getForEntity(uri, String.class);
+                        if (!response.getStatusCode().is2xxSuccessful() || response.getBody() == null || response.getBody().isBlank()) {
+                            throw new NotFoundException("Object revision not found: objectClass=[" + objectClass + "], id=[" + id + "]");
+                        }
+                        log.info("Search-service revision response: objectClass=[{}], id=[{}], status=[{}]",
+                                objectClass, id, response.getStatusCode().value());
+                        return objectMapper.readTree(response.getBody());
+                    } catch (HttpClientErrorException.NotFound ex) {
+                        log.info("Search-service revision response not found: objectClass=[{}], id=[{}]",
+                                objectClass, id);
+                        throw new NotFoundException("Object revision not found: objectClass=[" + objectClass + "], id=[" + id + "]");
+                    } catch (NotFoundException ex) {
+                        throw ex;
+                    } catch (Exception ex) {
+                        log.warn("Search-service revision request failed: objectClass=[{}], id=[{}]",
+                                objectClass, id, ex);
+                        throw new IllegalStateException("Failed to call search-service getObjectRevisionById", ex);
+                    }
+                },
+                "object_class", normalizeTag(objectClass)
+        );
+    }
+
     private <T> T recordRequest(RequestMetricNames metrics, Supplier<T> action, String... tags) {
         if ((tags.length & 1) == 1) {
             throw new IllegalArgumentException("Metric tags must be key-value pairs");
@@ -173,6 +211,14 @@ public class SearchServiceClient {
         String endpoint = properties.parentEndpoint();
         if (endpoint == null || endpoint.isBlank()) {
             throw new IllegalStateException("enricher.search-service.parent-endpoint is not configured");
+        }
+        return endpoint;
+    }
+
+    private String revisionEndpoint() {
+        String endpoint = properties.revisionEndpoint();
+        if (endpoint == null || endpoint.isBlank()) {
+            throw new IllegalStateException("enricher.search-service.revision-endpoint is not configured");
         }
         return endpoint;
     }

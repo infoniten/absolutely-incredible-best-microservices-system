@@ -4,7 +4,9 @@ REST-сервис обогащения объектов через вызовы 
 
 ## Что делает сервис
 
-1. Находит root-объект по `globalId` через `search-service` endpoint `getObjectByGlobalId`.
+1. Находит root-объект:
+   - по `globalId` через `search-service` endpoint `getObjectByGlobalId`
+   - по `id` через `search-service` endpoint `getObjectRevisionById`
 2. Рекурсивно обогащает запрошенные поля по связям:
    - `GLOBAL_LINK` (через `getObjectByGlobalId`)
    - `EMBEDDED_SET` (через `getObjectCollectionByParentId`)
@@ -16,9 +18,16 @@ REST-сервис обогащения объектов через вызовы 
 
 `GET /api/v1/enriched-objects/{objectClass}`
 
+`GET /api/v1/enriched-objects/{objectClass}/revisions/{id}`
+
 ### Query params
 
 - `globalId` (required) — globalId объекта.
+- `outputField` (optional, repeatable) — список полей/путей в формате `source.path`.
+
+Для endpoint по `id`:
+
+- `id` передаётся в path (`/revisions/{id}`).
 - `outputField` (optional, repeatable) — список полей/путей в формате `source.path`.
 
 Если `outputField` не передан, возвращается полный JSON объекта из `search-service`.
@@ -29,6 +38,12 @@ REST-сервис обогащения объектов через вызовы 
 
 ```bash
 curl "http://localhost:8089/api/v1/enriched-objects/FxSpotForwardTrade?globalId=123"
+```
+
+### Полный объект по revision id (без outputField)
+
+```bash
+curl "http://localhost:8089/api/v1/enriched-objects/FxSpotForwardTrade/revisions/12345"
 ```
 
 ### Выборка отдельных полей
@@ -83,6 +98,7 @@ enricher:
   search-service:
     base-url: http://localhost:8081
     global-endpoint: /api/objects/{objectClass}?globalId={globalId}
+    revision-endpoint: /api/objects/{objectClass}/revisions/{id}
     parent-endpoint: /api/objects/{objectClass}/parent/{parentId}
   metadata:
     url: http://localhost:8083/api/search-service/metadata/v2
@@ -105,6 +121,9 @@ Actuator endpoint:
 - `enricher.search.global.count`
 - `enricher.search.global.errors`
 - `enricher.search.global.duration`
+- `enricher.search.revision.count`
+- `enricher.search.revision.errors`
+- `enricher.search.revision.duration`
 - `enricher.search.parent.count`
 - `enricher.search.parent.errors`
 - `enricher.search.parent.duration`
@@ -132,5 +151,6 @@ mvn -DskipTests package
 - переменные:
   - `ENRICHER_SEARCH_SERVICE_BASE_URL`
   - `ENRICHER_SEARCH_SERVICE_GLOBAL_ENDPOINT`
+  - `ENRICHER_SEARCH_SERVICE_REVISION_ENDPOINT`
   - `ENRICHER_SEARCH_SERVICE_PARENT_ENDPOINT`
   - `ENRICHER_METADATA_URL`

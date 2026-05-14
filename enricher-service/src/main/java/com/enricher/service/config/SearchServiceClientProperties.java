@@ -3,6 +3,7 @@ package com.enricher.service.config;
 public class SearchServiceClientProperties {
     private String baseUrl;
     private String globalEndpoint;
+    private String revisionEndpoint;
     private String parentEndpoint;
 
     public String baseUrl() {
@@ -27,5 +28,13 @@ public class SearchServiceClientProperties {
 
     public void setParentEndpoint(String parentEndpoint) {
         this.parentEndpoint = parentEndpoint;
+    }
+
+    public String revisionEndpoint() {
+        return revisionEndpoint;
+    }
+
+    public void setRevisionEndpoint(String revisionEndpoint) {
+        this.revisionEndpoint = revisionEndpoint;
     }
 }

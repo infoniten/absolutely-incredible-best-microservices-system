@@ -135,4 +135,50 @@ public class EnrichmentController {
                 objectClass, globalId, outputFields);
         return enrichmentService.enrich(objectClass, globalId, outputFields);
     }
+
+    @GetMapping(value = "/{objectClass}/revisions/{id}", produces = MediaType.APPLICATION_JSON_VALUE)
+    @Operation(
+            summary = "Получить обогащенный объект по id (revision)",
+            description = """
+                    Сначала получает root-объект из search-service по revision id, затем рекурсивно обогащает relation-поля.
+                    Поддерживаемые типы связей: GLOBAL_LINK и EMBEDDED_SET.
+                    Если outputField не передан, возвращается полный JSON root-объекта.
+                    Если outputField передан, возвращается проекция: root-поля на верхнем уровне, связанные сущности вложенными JSON.
+                    """,
+            responses = {
+                    @ApiResponse(
+                            responseCode = "200",
+                            description = "Обогащенный объект",
+                            content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE, schema = @Schema(implementation = Object.class))
+                    ),
+                    @ApiResponse(
+                            responseCode = "400",
+                            description = "Некорректный запрос"
+                    ),
+                    @ApiResponse(
+                            responseCode = "404",
+                            description = "Объект не найден"
+                    )
+            }
+    )
+    public JsonNode getEnrichedObjectRevision(
+            @Parameter(
+                    description = "Точный класс объекта (sourceValue или canonical name), например FxSpotForwardTrade",
+                    example = "FxSpotForwardTrade"
+            )
+            @PathVariable String objectClass,
+            @Parameter(
+                    description = "ID записи (revision id)",
+                    example = "12345"
+            )
+            @PathVariable long id,
+            @Parameter(
+                    description = "Список полей для возврата. Формат source.path, поддержка цепочек relations. Если не передан, возвращается полный JSON объекта"
+            )
+            @RequestParam(name = "outputField", required = false) List<String> outputFields
+    ) {
+        log.info("Enriched object revision request: objectClass=[{}], id=[{}], outputFields=[{}]",
+                objectClass, id, outputFields);
+        return enrichmentService.enrichRevision(objectClass, id, outputFields);
+    }
 }
