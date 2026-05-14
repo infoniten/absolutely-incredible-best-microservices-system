@@ -23,6 +23,7 @@ docker-compose up -d --build
 | gRPC UI для DataDictionary | http://localhost:8084 | gRPC интерфейс |
 | gRPC UI для Transaction Service | http://localhost:8085 | Транзакции |
 | gRPC UI для Search Service | http://localhost:8086 | Поиск объектов |
+| Enricher Service API | http://localhost:8089 | Обогащение объектов по связям |
 | Object Framework Health | http://localhost:8088/health | Health check |
 | Object Framework Metrics | http://localhost:8088/metrics | Метрики |
 | Jaeger UI | http://localhost:16686 | Распределённый трейсинг |
@@ -126,6 +127,12 @@ LOCK_TTL_MS=30000
 - Typed Filter AST для построения SQL запросов
 - Кэширование в Redis
 - gRPC API: `localhost:50055`
+
+### Enricher Service
+REST-сервис обогащения объектов через вызовы в Java search-service.
+- Endpoint: `GET /api/v1/enriched-objects/{objectClass}?globalId={globalId}&outputField=...`
+- Поддерживаемые relation types: `GLOBAL_LINK`, `EMBEDDED_SET`
+- Метамодель классов/полей/связей берется из DataDictionary (`/api/search-service/metadata/v2`)
 
 ### DataDictionary Service
 Управление метаданными и схемами доменных объектов.

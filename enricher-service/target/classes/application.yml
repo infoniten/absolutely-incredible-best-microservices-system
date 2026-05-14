@@ -1,0 +1,24 @@
+server:
+  port: 8089
+
+spring:
+  application:
+    name: enricher-service
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: "health,info,prometheus"
+  metrics:
+    tags:
+      application: enricher-service
+
+enricher:
+  search-service:
+    base-url: http://localhost:8081
+    global-endpoint: /api/objects/{objectClass}?globalId={globalId}
+    parent-endpoint: /api/objects/{objectClass}/parent/{parentId}
+  metadata:
+    url: http://localhost:8083/api/search-service/metadata/v2
+    local-file: ""

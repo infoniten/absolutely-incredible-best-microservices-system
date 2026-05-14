@@ -49,6 +49,9 @@ logs-transaction:
 logs-search:
 	docker-compose logs -f search-service
 
+logs-enricher:
+	docker-compose logs -f enricher-service
+
 logs-redis:
 	docker-compose logs -f redis
 
