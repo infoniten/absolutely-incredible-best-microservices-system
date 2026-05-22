@@ -235,37 +235,37 @@ func TestExtractFieldValue(t *testing.T) {
 
 	tests := []struct {
 		name     string
-		field    metamodel.IndexField
+		field    metamodel.ColumnsField
 		expected interface{}
 	}{
 		{
 			name:     "extract id by source",
-			field:    metamodel.IndexField{Source: "id", DBFieldName: "id"},
+			field:    metamodel.ColumnsField{Source: "id", DBFieldName: "id"},
 			expected: int64(12345),
 		},
 		{
 			name:     "extract id by db field name",
-			field:    metamodel.IndexField{Source: "something", DBFieldName: "id"},
+			field:    metamodel.ColumnsField{Source: "something", DBFieldName: "id"},
 			expected: int64(12345),
 		},
 		{
 			name:     "extract string from payload",
-			field:    metamodel.IndexField{Source: "name", DBFieldName: "name"},
+			field:    metamodel.ColumnsField{Source: "name", DBFieldName: "name"},
 			expected: "test",
 		},
 		{
 			name:     "extract number from payload",
-			field:    metamodel.IndexField{Source: "count", DBFieldName: "count"},
+			field:    metamodel.ColumnsField{Source: "count", DBFieldName: "count"},
 			expected: float64(42),
 		},
 		{
 			name:     "extract bool from payload",
-			field:    metamodel.IndexField{Source: "enabled", DBFieldName: "enabled"},
+			field:    metamodel.ColumnsField{Source: "enabled", DBFieldName: "enabled"},
 			expected: true,
 		},
 		{
 			name:     "non-existent field",
-			field:    metamodel.IndexField{Source: "nonexistent", DBFieldName: "nonexistent"},
+			field:    metamodel.ColumnsField{Source: "nonexistent", DBFieldName: "nonexistent"},
 			expected: nil,
 		},
 	}
@@ -382,14 +382,14 @@ func TestExtractFieldValue_NilPayloadMap(t *testing.T) {
 	}
 
 	// Should return id for id field
-	field := metamodel.IndexField{Source: "id", DBFieldName: "id"}
+	field := metamodel.ColumnsField{Source: "id", DBFieldName: "id"}
 	result := server.extractFieldValue(obj, field)
 	if result != int64(12345) {
 		t.Errorf("expected 12345, got %v", result)
 	}
 
 	// Should return nil for other fields
-	field = metamodel.IndexField{Source: "name", DBFieldName: "name"}
+	field = metamodel.ColumnsField{Source: "name", DBFieldName: "name"}
 	result = server.extractFieldValue(obj, field)
 	if result != nil {
 		t.Errorf("expected nil, got %v", result)

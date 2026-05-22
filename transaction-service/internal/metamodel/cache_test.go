@@ -43,10 +43,10 @@ func TestCache_Load(t *testing.T) {
 					MainTable:     "test_entity_main",
 					DataTable:     "test_entity_data",
 					MetadataTable: "explicit_test_entity_metadata",
-					Indexes: []IndexTable{
+					ColumnsTables: []ColumnsTable{
 						{
 							TableName: "test_entity_index",
-							Fields: []IndexField{
+							Fields: []ColumnsField{
 								{Source: "id", DBFieldName: "id", DBFieldType: "bigint", Required: true},
 								{Source: "name", DBFieldName: "name", DBFieldType: "varchar", Required: false},
 							},
@@ -239,12 +239,12 @@ func TestCache_GetDataTable(t *testing.T) {
 	}
 }
 
-func TestCache_GetIndexTables(t *testing.T) {
+func TestCache_GetColumnsTables(t *testing.T) {
 	cache := createTestCache(t)
 
-	indexes, err := cache.GetIndexTables("TestEntity")
+	indexes, err := cache.GetColumnsTables("TestEntity")
 	if err != nil {
-		t.Fatalf("GetIndexTables failed: %v", err)
+		t.Fatalf("GetColumnsTables failed: %v", err)
 	}
 
 	if len(indexes) != 1 {
@@ -260,9 +260,9 @@ func TestCache_GetIndexTables(t *testing.T) {
 	}
 
 	// Test type with no indexes
-	indexes, err = cache.GetIndexTables("EmbeddedEntity")
+	indexes, err = cache.GetColumnsTables("EmbeddedEntity")
 	if err != nil {
-		t.Fatalf("GetIndexTables failed: %v", err)
+		t.Fatalf("GetColumnsTables failed: %v", err)
 	}
 
 	if len(indexes) != 0 {
@@ -379,10 +379,10 @@ func createTestCache(t *testing.T) *Cache {
 					MainTable:     "test_entity_main",
 					DataTable:     "test_entity_data",
 					MetadataTable: "explicit_test_entity_metadata",
-					Indexes: []IndexTable{
+					ColumnsTables: []ColumnsTable{
 						{
 							TableName: "test_entity_index",
-							Fields: []IndexField{
+							Fields: []ColumnsField{
 								{Source: "id", DBFieldName: "id", DBFieldType: "bigint", Required: true},
 								{Source: "name", DBFieldName: "name", DBFieldType: "varchar", Required: false},
 							},

@@ -682,15 +682,15 @@ func (s *Server) insertDataTable(ctx context.Context, tx *sql.Tx, className stri
 	return nil
 }
 
-// insertIndexTables inserts objects into all index tables
-func (s *Server) insertIndexTables(ctx context.Context, tx *sql.Tx, className string, objects []*ObjectRequest) error {
-	indexTables, err := s.metamodel.GetIndexTables(className)
+// insertColumnsTables inserts objects into all columns tables
+func (s *Server) insertColumnsTables(ctx context.Context, tx *sql.Tx, className string, objects []*ObjectRequest) error {
+	columnsTables, err := s.metamodel.GetColumnsTables(className)
 	if err != nil {
 		return err
 	}
 
-	for _, indexTable := range indexTables {
-		if err := s.insertSingleIndexTable(ctx, tx, indexTable, objects); err != nil {
+	for _, columnsTable := range columnsTables {
+		if err := s.insertSingleColumnsTable(ctx, tx, columnsTable, objects); err != nil {
 			return err
 		}
 	}
@@ -698,15 +698,15 @@ func (s *Server) insertIndexTables(ctx context.Context, tx *sql.Tx, className st
 	return nil
 }
 
-// insertSingleIndexTable inserts objects into one index table
-func (s *Server) insertSingleIndexTable(ctx context.Context, tx *sql.Tx, indexTable metamodel.IndexTable, objects []*ObjectRequest) error {
-	if len(indexTable.Fields) == 0 {
+// insertSingleColumnsTable inserts objects into one columns table
+func (s *Server) insertSingleColumnsTable(ctx context.Context, tx *sql.Tx, columnsTable metamodel.ColumnsTable, objects []*ObjectRequest) error {
+	if len(columnsTable.Fields) == 0 {
 		return nil
 	}
 
 	// Build column list (excluding created_at which we'll add)
 	var columns []string
-	for _, field := range indexTable.Fields {
+	for _, field := range columnsTable.Fields {
 		columns = append(columns, field.DBFieldName)
 	}
 
@@ -717,7 +717,7 @@ func (s *Server) insertSingleIndexTable(ctx context.Context, tx *sql.Tx, indexTa
 	for _, obj := range objects {
 		var placeholders []string
 
-		for _, field := range indexTable.Fields {
+		for _, field := range columnsTable.Fields {
 			// Handle special fields
 			if field.DBFieldName == "created_at" {
 				placeholders = append(placeholders, "now()")
@@ -736,20 +736,20 @@ func (s *Server) insertSingleIndexTable(ctx context.Context, tx *sql.Tx, indexTa
 	}
 
 	query := fmt.Sprintf("INSERT INTO murex.%s (%s) VALUES %s",
-		indexTable.TableName,
+		columnsTable.TableName,
 		strings.Join(columns, ", "),
 		strings.Join(values, ", "))
 
 	_, err := tx.ExecContext(ctx, query, args...)
 	if err != nil {
-		return fmt.Errorf("failed to insert into %s: %w", indexTable.TableName, err)
+		return fmt.Errorf("failed to insert into %s: %w", columnsTable.TableName, err)
 	}
 
 	return nil
 }
 
 // extractFieldValue extracts a field value from ObjectRequest
-func (s *Server) extractFieldValue(obj *ObjectRequest, field metamodel.IndexField) interface{} {
+func (s *Server) extractFieldValue(obj *ObjectRequest, field metamodel.ColumnsField) interface{} {
 	// Handle id field specially
 	if field.Source == "id" || field.DBFieldName == "id" {
 		return obj.ID
@@ -817,7 +817,7 @@ func (s *Server) saveEmbedded(ctx context.Context, tx *sql.Tx, className string,
 	}
 
 	// Insert into index tables
-	if err := s.insertIndexTables(ctx, tx, className, parsedObjects); err != nil {
+	if err := s.insertColumnsTables(ctx, tx, className, parsedObjects); err != nil {
 		return 0, nil, err
 	}
 
@@ -933,7 +933,7 @@ func (s *Server) saveRevisioned(ctx context.Context, tx *sql.Tx, className strin
 	}
 
 	// Insert into index tables
-	if err := s.insertIndexTables(ctx, tx, className, parsedObjects); err != nil {
+	if err := s.insertColumnsTables(ctx, tx, className, parsedObjects); err != nil {
 		return 0, nil, err
 	}
 
@@ -1135,7 +1135,7 @@ func (s *Server) saveDraftableDateBounded(ctx context.Context, tx *sql.Tx, class
 		}
 
 		// Insert into index tables
-		if err := s.insertIndexTables(ctx, tx, className, parsedObjects); err != nil {
+		if err := s.insertColumnsTables(ctx, tx, className, parsedObjects); err != nil {
 			return 0, nil, err
 		}
 	}

@@ -24,8 +24,8 @@ var AlgorithmNameToID = map[string]uint32{
 	"DraftableDateBoundedEntityRepository": AlgorithmDraftableDateBounded,
 }
 
-// IndexField describes a field in an index table
-type IndexField struct {
+// ColumnsField describes a field in a columns table
+type ColumnsField struct {
 	Source        string `json:"source"`        // Source JSON field name
 	JSONFieldType string `json:"jsonFieldType"` // Java/JSON type
 	DBFieldName   string `json:"dbFieldName"`   // Database column name
@@ -34,21 +34,21 @@ type IndexField struct {
 	Transform     string `json:"transform,omitempty"`
 }
 
-// IndexTable describes an index table
-type IndexTable struct {
-	TableName string       `json:"tableName"`
-	Fields    []IndexField `json:"fields"`
+// ColumnsTable describes a columns table
+type ColumnsTable struct {
+	TableName string         `json:"tableName"`
+	Fields    []ColumnsField `json:"fields"`
 }
 
 // TypeInstruction holds metadata for a concrete class
 type TypeInstruction struct {
-	Name          string       `json:"name"`          // Class name
-	Loader        string       `json:"loader"`        // Algorithm name
-	MainTable     string       `json:"mainTable"`     // Main table name
-	DataTable     string       `json:"dataTable"`     // Data table name
-	MetadataTable string       `json:"metadataTable"` // Metadata table name (global_id -> revision/version)
-	Indexes       []IndexTable `json:"indexes"`       // Index tables
-	AlgorithmID   uint32       // Computed from Loader
+	Name          string         `json:"name"`          // Class name
+	Loader        string         `json:"loader"`        // Algorithm name
+	MainTable     string         `json:"mainTable"`     // Main table name
+	DataTable     string         `json:"dataTable"`     // Data table name
+	MetadataTable string         `json:"metadataTable"` // Metadata table name (global_id -> revision/version)
+	ColumnsTables []ColumnsTable `json:"columnsTables"` // Columns tables
+	AlgorithmID   uint32         // Computed from Loader
 }
 
 // TransactionInstructionsResponse represents the API response
@@ -205,13 +205,13 @@ func (c *Cache) GetMetadataTable(className string) (string, error) {
 	return derived, nil
 }
 
-// GetIndexTables returns the index tables for a class
-func (c *Cache) GetIndexTables(className string) ([]IndexTable, error) {
+// GetColumnsTables returns the columns tables for a class
+func (c *Cache) GetColumnsTables(className string) ([]ColumnsTable, error) {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
 
 	if t, ok := c.types[className]; ok {
-		return t.Indexes, nil
+		return t.ColumnsTables, nil
 	}
 
 	return nil, fmt.Errorf("type not found: %s", className)

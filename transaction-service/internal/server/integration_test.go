@@ -32,7 +32,7 @@ func TestIntegration_FullTransactionFlow(t *testing.T) {
 						Loader:    "EmbeddedEntityRepository",
 						MainTable: "test_entity_main",
 						DataTable: "test_entity_data",
-						Indexes:   []metamodel.IndexTable{},
+						ColumnsTables: []metamodel.ColumnsTable{},
 					},
 				},
 			},
