@@ -241,7 +241,9 @@ public class EnrichmentService {
                 continue;
             }
 
-            if (relation.type() != RelationType.GLOBAL_LINK && relation.type() != RelationType.EMBEDDED_SET) {
+            if (relation.type() != RelationType.GLOBAL_LINK
+                    && relation.type() != RelationType.GLOBAL_ITEM
+                    && relation.type() != RelationType.EMBEDDED_SET) {
                 throw new IllegalArgumentException("Relation type is not supported yet in enricher-service: [" + relation.type() + "]");
             }
 
@@ -300,13 +302,34 @@ public class EnrichmentService {
         ).increment();
 
         if (relation.type() == RelationType.GLOBAL_LINK) {
-            Long linkGlobalId = extractGlobalLinkId(currentObject, relation);
+            Long linkGlobalId = extractRelationGlobalId(currentObject, relation);
             if (linkGlobalId == null) {
                 log.debug("Relation GLOBAL_LINK is null: path=[{}]", path);
                 return NullNode.getInstance();
             }
 
             JsonNode relatedObject = fetchByGlobalId(context, relation.targetClass(), linkGlobalId);
+            if (relationNode.children.isEmpty()) {
+                return relatedObject;
+            }
+            return buildObjectProjection(
+                    relation.targetClass(),
+                    relatedObject,
+                    relationNode,
+                    context,
+                    depth,
+                    path
+            );
+        }
+
+        if (relation.type() == RelationType.GLOBAL_ITEM) {
+            Long relationGlobalId = extractGlobalItemRelationGlobalId(currentObject, relation);
+            if (relationGlobalId == null) {
+                log.debug("Relation GLOBAL_ITEM id is null: path=[{}]", path);
+                return NullNode.getInstance();
+            }
+
+            JsonNode relatedObject = fetchByGlobalItem(context, relation, relationGlobalId);
             if (relationNode.children.isEmpty()) {
                 return relatedObject;
             }
@@ -400,6 +423,33 @@ public class EnrichmentService {
         return value;
     }
 
+    private JsonNode fetchByGlobalItem(RuntimeContext context, RelationDef relation, long relationGlobalId) {
+        requireGlobalItemMetadata(relation);
+        String idFieldName = globalItemIdFieldName(relation);
+        String roleFieldName = globalItemRoleFieldName(relation);
+        String key = relation.targetClass().sourceValueNormalized()
+                + "|" + idFieldName
+                + "|" + roleFieldName
+                + "|" + relation.roleValue()
+                + "|" + relationGlobalId;
+        JsonNode cached = context.globalItemCache.get(key);
+        if (cached != null) {
+            log.debug("Global-item object found in enrichment context cache: targetClass=[{}], relationGlobalId=[{}]",
+                    relation.targetClass().sourceValue(), relationGlobalId);
+            return cached;
+        }
+        JsonNode value = searchServiceClient.getObjectByGlobalItem(
+                relationGlobalId,
+                idFieldName,
+                roleFieldName,
+                relation.roleValue()
+        );
+        context.globalItemCache.put(key, value);
+        log.debug("Global-item object loaded from search-service: targetClass=[{}], relationGlobalId=[{}]",
+                relation.targetClass().sourceValue(), relationGlobalId);
+        return value;
+    }
+
     private ObjectClassInfo resolveActualClass(JsonNode object, ObjectClassInfo fallbackRootClass) {
         String objectClassValue = null;
         if (object != null && object.has("objectClass") && object.get("objectClass").isTextual()) {
@@ -427,7 +477,7 @@ public class EnrichmentService {
         projected.fields().forEachRemaining(entry -> target.set(entry.getKey(), entry.getValue()));
     }
 
-    private Long extractGlobalLinkId(JsonNode object, RelationDef relation) {
+    private Long extractRelationGlobalId(JsonNode object, RelationDef relation) {
         if (object == null || object.isNull()) {
             return null;
         }
@@ -443,6 +493,13 @@ public class EnrichmentService {
         if (relation.name() != null && !relation.name().isBlank()) {
             candidates.add(relation.name());
         }
+        if (relation.idFieldName() != null && !relation.idFieldName().isBlank()) {
+            candidates.add(relation.idFieldName());
+            candidates.add(toCamelCase(relation.idFieldName()));
+        }
+        if (relation.jsonIdFieldName() != null && !relation.jsonIdFieldName().isBlank()) {
+            candidates.add(relation.jsonIdFieldName());
+        }
 
         for (String candidate : candidates) {
             JsonNode value = readFieldValue(object, candidate);
@@ -452,6 +509,34 @@ public class EnrichmentService {
             }
         }
         return null;
+    }
+
+    private Long extractGlobalItemRelationGlobalId(JsonNode object, RelationDef relation) {
+        Long relationGlobalId = extractRelationGlobalId(object, relation);
+        if (relationGlobalId != null) {
+            return relationGlobalId;
+        }
+        return toLong(readFieldValue(object, "globalId"));
+    }
+
+    private void requireGlobalItemMetadata(RelationDef relation) {
+        if (globalItemIdFieldName(relation) == null || globalItemIdFieldName(relation).isBlank()) {
+            throw new IllegalArgumentException("GLOBAL_ITEM relation requires jsonIdFieldName: [" + relation.name() + "]");
+        }
+        if (globalItemRoleFieldName(relation) == null || globalItemRoleFieldName(relation).isBlank()) {
+            throw new IllegalArgumentException("GLOBAL_ITEM relation requires jsonRoleFieldName: [" + relation.name() + "]");
+        }
+        if (relation.roleValue() == null || relation.roleValue().isBlank()) {
+            throw new IllegalArgumentException("GLOBAL_ITEM relation requires roleValue: [" + relation.name() + "]");
+        }
+    }
+
+    private String globalItemIdFieldName(RelationDef relation) {
+        return relation.jsonIdFieldName();
+    }
+
+    private String globalItemRoleFieldName(RelationDef relation) {
+        return relation.jsonRoleFieldName();
     }
 
     private Long extractObjectId(JsonNode object) {
@@ -646,6 +731,7 @@ public class EnrichmentService {
 
     private static final class RuntimeContext {
         private final Map<String, JsonNode> globalCache = new HashMap<>();
+        private final Map<String, JsonNode> globalItemCache = new HashMap<>();
         private final Map<String, JsonNode> idCache = new HashMap<>();
         private final Map<String, ArrayNode> parentCache = new HashMap<>();
     }

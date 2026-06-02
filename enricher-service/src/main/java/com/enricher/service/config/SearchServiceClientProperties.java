@@ -5,6 +5,7 @@ public class SearchServiceClientProperties {
     private String globalEndpoint;
     private String revisionEndpoint;
     private String parentEndpoint;
+    private String globalItemEndpoint;
 
     public String baseUrl() {
         return baseUrl;
@@ -28,6 +29,14 @@ public class SearchServiceClientProperties {
 
     public void setParentEndpoint(String parentEndpoint) {
         this.parentEndpoint = parentEndpoint;
+    }
+
+    public String globalItemEndpoint() {
+        return globalItemEndpoint;
+    }
+
+    public void setGlobalItemEndpoint(String globalItemEndpoint) {
+        this.globalItemEndpoint = globalItemEndpoint;
     }
 
     public String revisionEndpoint() {

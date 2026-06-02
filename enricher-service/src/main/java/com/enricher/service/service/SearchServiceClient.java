@@ -28,6 +28,7 @@ public class SearchServiceClient {
     private final ObjectMapper objectMapper;
     private final MeterRegistry meterRegistry;
     private final RequestMetricNames globalMetrics;
+    private final RequestMetricNames globalItemMetrics;
     private final RequestMetricNames revisionMetrics;
     private final RequestMetricNames parentMetrics;
 
@@ -40,6 +41,7 @@ public class SearchServiceClient {
         this.objectMapper = objectMapper;
         this.meterRegistry = meterRegistry;
         this.globalMetrics = metricNames("enricher.search.global");
+        this.globalItemMetrics = metricNames("enricher.search.global_item");
         this.revisionMetrics = metricNames("enricher.search.revision");
         this.parentMetrics = metricNames("enricher.search.parent");
     }
@@ -114,6 +116,56 @@ public class SearchServiceClient {
                     }
                 },
                 "object_class", normalizeTag(objectClass)
+        );
+    }
+
+    public JsonNode getObjectByGlobalItem(long relationGlobalId,
+                                          String idFieldName,
+                                          String roleFieldName,
+                                          String role) {
+        requireNonBlank(idFieldName, "idFieldName");
+        requireNonBlank(roleFieldName, "roleFieldName");
+        requireNonBlank(role, "role");
+
+        log.info("Search-service global-item request: relationGlobalId=[{}], idFieldName=[{}], roleFieldName=[{}], role=[{}]",
+                relationGlobalId, idFieldName, roleFieldName, role);
+        return recordRequest(
+                globalItemMetrics,
+                () -> {
+                    URI uri = buildUri(
+                            globalItemEndpoint(),
+                            Map.of(
+                                    "relationGlobalId", relationGlobalId,
+                                    "idFieldName", idFieldName,
+                                    "roleFieldName", roleFieldName,
+                                    "role", role
+                            )
+                    );
+                    try {
+                        ResponseEntity<String> response = restTemplate.getForEntity(uri, String.class);
+                        if (!response.getStatusCode().is2xxSuccessful() || response.getBody() == null || response.getBody().isBlank()) {
+                            throw new NotFoundException("Global item object not found: relationGlobalId=[" + relationGlobalId
+                                    + "], idFieldName=[" + idFieldName + "], roleFieldName=[" + roleFieldName + "], role=[" + role + "]");
+                        }
+                        log.info("Search-service global-item response: relationGlobalId=[{}], idFieldName=[{}], roleFieldName=[{}], role=[{}], status=[{}]",
+                                relationGlobalId, idFieldName, roleFieldName, role, response.getStatusCode().value());
+                        return objectMapper.readTree(response.getBody());
+                    } catch (HttpClientErrorException.NotFound ex) {
+                        log.info("Search-service global-item response not found: relationGlobalId=[{}], idFieldName=[{}], roleFieldName=[{}], role=[{}]",
+                                relationGlobalId, idFieldName, roleFieldName, role);
+                        throw new NotFoundException("Global item object not found: relationGlobalId=[" + relationGlobalId
+                                + "], idFieldName=[" + idFieldName + "], roleFieldName=[" + roleFieldName + "], role=[" + role + "]");
+                    } catch (NotFoundException ex) {
+                        throw ex;
+                    } catch (Exception ex) {
+                        log.warn("Search-service global-item request failed: relationGlobalId=[{}], idFieldName=[{}], roleFieldName=[{}], role=[{}]",
+                                relationGlobalId, idFieldName, roleFieldName, role, ex);
+                        throw new IllegalStateException("Failed to call search-service getObjectByGlobalItem", ex);
+                    }
+                },
+                "id_field", normalizeTag(idFieldName),
+                "role_field", normalizeTag(roleFieldName),
+                "role", normalizeTag(role)
         );
     }
 
@@ -215,6 +267,14 @@ public class SearchServiceClient {
         return endpoint;
     }
 
+    private String globalItemEndpoint() {
+        String endpoint = properties.globalItemEndpoint();
+        if (endpoint == null || endpoint.isBlank()) {
+            throw new IllegalStateException("enricher.search-service.global-item-endpoint is not configured");
+        }
+        return endpoint;
+    }
+
     private String revisionEndpoint() {
         String endpoint = properties.revisionEndpoint();
         if (endpoint == null || endpoint.isBlank()) {
@@ -228,5 +288,11 @@ public class SearchServiceClient {
                 .fromUriString(baseUrl() + endpointTemplate)
                 .buildAndExpand(uriVariables)
                 .toUri();
+    }
+
+    private void requireNonBlank(String value, String name) {
+        if (value == null || value.isBlank()) {
+            throw new IllegalArgumentException("Search-service global-item request requires " + name);
+        }
     }
 }

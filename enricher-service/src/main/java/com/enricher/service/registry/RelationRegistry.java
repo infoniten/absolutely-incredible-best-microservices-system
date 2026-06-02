@@ -103,6 +103,11 @@ public class RelationRegistry {
                 normalizeBlank(relationConfig.alias()),
                 normalizeBlank(relationConfig.sourceFieldName()),
                 normalizeBlank(relationConfig.sourceJsonName()),
+                normalizeBlank(relationConfig.idFieldName()),
+                normalizeBlank(relationConfig.jsonIdFieldName()),
+                normalizeBlank(relationConfig.roleFieldName()),
+                normalizeBlank(relationConfig.jsonRoleFieldName()),
+                normalizeBlank(relationConfig.roleValue()),
                 sourceClass,
                 targetClass
         );
@@ -155,6 +160,11 @@ public class RelationRegistry {
                               String alias,
                               String sourceFieldName,
                               String sourceJsonName,
+                              String idFieldName,
+                              String jsonIdFieldName,
+                              String roleFieldName,
+                              String jsonRoleFieldName,
+                              String roleValue,
                               ObjectClassInfo sourceClass,
                               ObjectClassInfo targetClass) {
         String matchToken() {
