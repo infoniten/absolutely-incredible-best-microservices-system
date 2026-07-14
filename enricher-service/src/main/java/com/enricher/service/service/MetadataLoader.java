@@ -4,8 +4,9 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.MapperFeature;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.enricher.service.config.MetadataProperties;
-import com.enricher.service.domain.MetadataExportV2;
+import com.enricher.service.domain.MetadataExportV3;
 import com.enricher.service.dto.MetadataConfigInfo;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.io.Resource;
 import org.springframework.core.io.ResourceLoader;
 import org.springframework.http.ResponseEntity;
@@ -21,6 +22,7 @@ import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 
 @Component
+@Slf4j
 public class MetadataLoader {
     private final MetadataProperties properties;
     private final ObjectMapper objectMapper;
@@ -38,17 +40,20 @@ public class MetadataLoader {
         this.resourceLoader = resourceLoader;
     }
 
-    public MetadataExportV2 load() {
+    public MetadataExportV3 load() {
         LoadedMetadata remote = loadRemote();
         if (remote != null) {
-            MetadataConfigInfo configInfo = buildInfo(remote.source(), remote.location(), remote.config());
-            info = configInfo;
-            return remote.config();
+            return activate(remote);
         }
-        LoadedMetadata local = loadLocal();
-        MetadataConfigInfo configInfo = buildInfo(local.source(), local.location(), local.config());
+        return activate(loadLocal());
+    }
+
+    private MetadataExportV3 activate(LoadedMetadata loaded) {
+        MetadataConfigInfo configInfo = buildInfo(loaded.source(), loaded.location(), loaded.config());
         info = configInfo;
-        return local.config();
+        log.info("Metadata config loaded: source=[{}], location=[{}], hash=[{}], classes=[{}]",
+                configInfo.source(), configInfo.location(), configInfo.hash(), configInfo.config().classes().size());
+        return loaded.config();
     }
 
     public MetadataConfigInfo info() {
@@ -62,16 +67,20 @@ public class MetadataLoader {
     private LoadedMetadata loadRemote() {
         String url = properties.url();
         if (url == null || url.isBlank()) {
+            log.info("Remote metadata URL is not configured; loading local metadata config");
             return null;
         }
         try {
             ResponseEntity<String> response = restTemplate.getForEntity(URI.create(url), String.class);
             if (!response.getStatusCode().is2xxSuccessful() || response.getBody() == null || response.getBody().isBlank()) {
+                log.warn("Remote metadata response is empty or unsuccessful: url=[{}], status=[{}]; falling back to local metadata config",
+                        url, response.getStatusCode().value());
                 return null;
             }
-            MetadataExportV2 config = validate(objectMapper.readValue(response.getBody(), MetadataExportV2.class));
+            MetadataExportV3 config = validate(objectMapper.readValue(response.getBody(), MetadataExportV3.class));
             return new LoadedMetadata("remote", url, config);
         } catch (Exception ex) {
+            log.warn("Failed to load remote metadata config: url=[{}]; falling back to local metadata config", url, ex);
             return null;
         }
     }
@@ -88,21 +97,21 @@ public class MetadataLoader {
         }
 
         try (InputStream in = resource.getInputStream()) {
-            MetadataExportV2 config = validate(objectMapper.readValue(in, MetadataExportV2.class));
+            MetadataExportV3 config = validate(objectMapper.readValue(in, MetadataExportV3.class));
             return new LoadedMetadata("local", location, config);
         } catch (IOException ex) {
             throw new IllegalStateException("Failed to load metadata file: [" + location + "]", ex);
         }
     }
 
-    private MetadataConfigInfo buildInfo(String source, String location, MetadataExportV2 config) {
+    private MetadataConfigInfo buildInfo(String source, String location, MetadataExportV3 config) {
         String canonical = canonicalJson(config);
         String hash = sha256Hex(canonical);
         OffsetDateTime loadedAt = OffsetDateTime.now(ZoneOffset.UTC);
         return new MetadataConfigInfo(source, location, hash, loadedAt, config);
     }
 
-    private String canonicalJson(MetadataExportV2 config) {
+    private String canonicalJson(MetadataExportV3 config) {
         try {
             ObjectMapper mapper = objectMapper.copy();
             mapper.configure(MapperFeature.SORT_PROPERTIES_ALPHABETICALLY, true);
@@ -128,7 +137,7 @@ public class MetadataLoader {
         }
     }
 
-    private MetadataExportV2 validate(MetadataExportV2 metadata) {
+    private MetadataExportV3 validate(MetadataExportV3 metadata) {
         if (metadata == null || metadata.classes() == null || metadata.classes().isEmpty()) {
             throw new IllegalStateException("Metadata is empty: classes are required");
         }
@@ -141,6 +150,6 @@ public class MetadataLoader {
         return metadata;
     }
 
-    private record LoadedMetadata(String source, String location, MetadataExportV2 config) {
+    private record LoadedMetadata(String source, String location, MetadataExportV3 config) {
     }
 }

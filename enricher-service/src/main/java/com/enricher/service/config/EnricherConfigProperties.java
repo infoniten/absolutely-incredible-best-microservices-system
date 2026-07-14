@@ -1,6 +1,6 @@
 package com.enricher.service.config;
 
-import com.enricher.service.domain.MetadataExportV2;
+import com.enricher.service.domain.MetadataExportV3;
 import com.enricher.service.service.MetadataLoader;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.context.annotation.Bean;
@@ -31,7 +31,7 @@ public class EnricherConfigProperties {
     }
 
     @Bean
-    public MetadataExportV2 metadataExportV2(MetadataLoader metadataLoader) {
+    public MetadataExportV3 metadataExportV3(MetadataLoader metadataLoader) {
         return metadataLoader.load();
     }
 }

@@ -12,11 +12,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.MediaType;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
@@ -136,11 +132,12 @@ public class EnrichmentController {
         return enrichmentService.enrich(objectClass, globalId, outputFields);
     }
 
-    @GetMapping(value = "/{objectClass}/revisions/{id}", produces = MediaType.APPLICATION_JSON_VALUE)
+    @PostMapping(value = "/{objectClass}/revisions", produces = MediaType.APPLICATION_JSON_VALUE, consumes = MediaType.APPLICATION_JSON_VALUE)
     @Operation(
-            summary = "Получить обогащенный объект по id (revision)",
+            summary = "Получить обогащенный объект по списку id (revision)",
             description = """
-                    Сначала получает root-объект из search-service по revision id, затем рекурсивно обогащает relation-поля.
+                    Принимает список revision id в теле запроса и для каждого получает root-объект от Search Service, 
+                    затем рекурсивно обогащает relation-поля.
                     Поддерживаемые типы связей: GLOBAL_LINK и EMBEDDED_SET.
                     Если outputField не передан, возвращается полный JSON root-объекта.
                     Если outputField передан, возвращается проекция: root-поля на верхнем уровне, связанные сущности вложенными JSON.
@@ -148,7 +145,7 @@ public class EnrichmentController {
             responses = {
                     @ApiResponse(
                             responseCode = "200",
-                            description = "Обогащенный объект",
+                            description = "Массив обогащенных объектов",
                             content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE, schema = @Schema(implementation = Object.class))
                     ),
                     @ApiResponse(
@@ -168,17 +165,17 @@ public class EnrichmentController {
             )
             @PathVariable String objectClass,
             @Parameter(
-                    description = "ID записи (revision id)",
-                    example = "12345"
-            )
-            @PathVariable long id,
-            @Parameter(
                     description = "Список полей для возврата. Формат source.path, поддержка цепочек relations. Если не передан, возвращается полный JSON объекта"
             )
-            @RequestParam(name = "outputField", required = false) List<String> outputFields
+            @RequestParam(name = "outputField", required = false) List<String> outputFields,
+            @Parameter(
+                    description = "Список ID записей (revision id)",
+                    example = "[12345, 12346]"
+            )
+            @RequestBody List<Long> ids
     ) {
         log.info("Enriched object revision request: objectClass=[{}], id=[{}], outputFields=[{}]",
-                objectClass, id, outputFields);
-        return enrichmentService.enrichRevision(objectClass, id, outputFields);
+                objectClass, ids, outputFields);
+        return enrichmentService.enrichRevision(objectClass, ids, outputFields);
     }
 }

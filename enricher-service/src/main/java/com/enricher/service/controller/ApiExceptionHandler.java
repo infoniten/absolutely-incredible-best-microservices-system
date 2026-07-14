@@ -1,9 +1,11 @@
 package com.enricher.service.controller;
 
 import com.enricher.service.dto.ResultStructure;
+import com.enricher.service.util.DownstreamServiceException;
 import com.enricher.service.util.NotFoundException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.BindException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -26,6 +28,25 @@ public class ApiExceptionHandler {
         log.warn("Not found: {}", ex.getMessage());
         return ResponseEntity.status(HttpStatus.NOT_FOUND)
                 .body(ResultStructure.error(404, ex.getMessage()));
+    }
+
+    @ExceptionHandler(DownstreamServiceException.class)
+    public ResponseEntity<ResultStructure> handleDownstreamFailure(DownstreamServiceException ex) {
+        HttpStatus status = switch (ex.failureType()) {
+            case TIMEOUT -> HttpStatus.GATEWAY_TIMEOUT;
+            case UNAVAILABLE -> HttpStatus.SERVICE_UNAVAILABLE;
+            case RATE_LIMITED -> HttpStatus.TOO_MANY_REQUESTS;
+            case BAD_RESPONSE -> HttpStatus.BAD_GATEWAY;
+        };
+        log.warn("Downstream request failed: type=[{}], upstreamStatus=[{}], message=[{}]",
+                ex.failureType(), ex.upstreamStatus(), ex.getMessage());
+
+        ResponseEntity.BodyBuilder response = ResponseEntity.status(status);
+        if (ex.failureType() == DownstreamServiceException.FailureType.RATE_LIMITED
+                && ex.retryAfter() != null && !ex.retryAfter().isBlank()) {
+            response.header(HttpHeaders.RETRY_AFTER, ex.retryAfter());
+        }
+        return response.body(ResultStructure.error(status.value(), ex.getMessage()));
     }
 
     @ExceptionHandler(IllegalStateException.class)

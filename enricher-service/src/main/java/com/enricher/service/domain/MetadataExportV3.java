@@ -6,11 +6,13 @@ import java.util.List;
 import java.util.Map;
 
 @JsonIgnoreProperties(ignoreUnknown = true)
-public record MetadataExportV2(
+public record MetadataExportV3(
         List<ClassConfig> classes,
         Map<String, FieldsConfig> fields,
         HierarchyConfig hierarchy,
-        Map<String, List<RelationConfig>> relations
+        Map<String, List<ColumnsSourceConfig>> columnsSources,
+        Map<String, List<RelationConfig>> relations,
+        Map<String, List<String>> enumTypes
 ) {
     @JsonIgnoreProperties(ignoreUnknown = true)
     public record ClassConfig(
@@ -19,22 +21,43 @@ public record MetadataExportV2(
             boolean isAbstract,
             String rootType,
             String mainTable,
+            String columnsTable,
             String dataTable
     ) {
     }
 
     @JsonIgnoreProperties(ignoreUnknown = true)
     public record FieldsConfig(
-            List<FieldConfig> mainFields,
-            List<FieldConfig> declaredFields
+            List<MainFieldConfig> mainFields,
+            List<ColumnsFieldConfig> columnsFields,
+            List<DeclaredFieldConfig> declaredFields
     ) {
     }
 
     @JsonIgnoreProperties(ignoreUnknown = true)
-    public record FieldConfig(
+    public record MainFieldConfig(
             String name,
             String db,
-            String type
+            String type,
+            String enumTypeName,
+            Boolean calculated
+    ) {
+    }
+
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    public record ColumnsFieldConfig(
+            String name,
+            String db,
+            String type,
+            String enumTypeName
+    ) {
+    }
+
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    public record DeclaredFieldConfig(
+            String name,
+            String type,
+            String enumTypeName
     ) {
     }
 
@@ -43,6 +66,14 @@ public record MetadataExportV2(
             Map<String, List<String>> parentsOrSelf,
             Map<String, String> rootUnderBase,
             Map<String, List<String>> actualClassesForRoot
+    ) {
+    }
+
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    public record ColumnsSourceConfig(
+            String source,
+            String table,
+            String columnsRef
     ) {
     }
 

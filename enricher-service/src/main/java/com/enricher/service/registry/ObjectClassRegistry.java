@@ -1,6 +1,6 @@
 package com.enricher.service.registry;
 
-import com.enricher.service.domain.MetadataExportV2;
+import com.enricher.service.domain.MetadataExportV3;
 import com.enricher.service.domain.ObjectClassInfo;
 import com.enricher.service.util.NormalizeUtils;
 import org.springframework.stereotype.Component;
@@ -16,7 +16,7 @@ public class ObjectClassRegistry {
     private final Map<String, ObjectClassInfo> byName;
     private final Map<String, ObjectClassInfo> bySource;
 
-    public ObjectClassRegistry(MetadataExportV2 metadata) {
+    public ObjectClassRegistry(MetadataExportV3 metadata) {
         this.byName = new HashMap<>();
         this.bySource = new HashMap<>();
 
@@ -24,7 +24,7 @@ public class ObjectClassRegistry {
             return;
         }
 
-        for (MetadataExportV2.ClassConfig classConfig : metadata.classes()) {
+        for (MetadataExportV3.ClassConfig classConfig : metadata.classes()) {
             if (classConfig == null) {
                 continue;
             }
