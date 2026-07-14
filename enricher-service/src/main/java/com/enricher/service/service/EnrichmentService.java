@@ -17,13 +17,16 @@ import io.micrometer.core.instrument.MeterRegistry;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
+import java.lang.reflect.Array;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 import java.util.function.Supplier;
 
 @Service
@@ -62,6 +65,8 @@ public class EnrichmentService {
         this.projectionDepthCountMetric = "enricher.projection.depth.count";
     }
 
+    // TODO: Добавить настраиваемые ограничения количества outputField и глубины селектора,
+    // чтобы ограничить рост числа вызовов downstream-сервисов.
     public JsonNode enrich(String objectClassValue, long globalId, List<String> outputFields) {
         log.info("Enrichment request: objectClass=[{}], globalId=[{}], outputFields=[{}]",
                 objectClassValue, globalId, outputFields);
@@ -74,12 +79,22 @@ public class EnrichmentService {
         );
     }
 
-    public JsonNode enrichRevision(String objectClassValue, long id, List<String> outputFields) {
-        log.info("Enrichment revision request: objectClass=[{}], id=[{}], outputFields=[{}]",
-                objectClassValue, id, outputFields);
+    // TODO: Добавить настраиваемые ограничения размера batch ревизий, количества outputField и глубины селектора.
+    public JsonNode enrichRevision(String objectClassValue, List<Long> ids, List<String> outputFields) {
+        log.info("Enrichment revision request: objectClass=[{}], ids=[{}], outputFields=[{}]",
+                objectClassValue, ids, outputFields);
+        if (ids == null || ids.isEmpty()){
+            throw new IllegalArgumentException("Revision IDs list must not be empty");
+        }
+
+        for (Long id: ids){
+            if (id == null){
+                throw new IllegalArgumentException("revision id must not be null");
+            }
+        }
         return recordRequest(
                 enrichMetrics,
-                () -> doEnrichRevision(objectClassValue, id, outputFields),
+                () -> doEnrichRevision(objectClassValue, ids, outputFields),
                 "object_class", normalizeTag(objectClassValue),
                 "mode", outputFields == null || outputFields.isEmpty() ? "full" : "projection",
                 "output_fields_size", listSizeBucket(outputFields)
@@ -93,33 +108,44 @@ public class EnrichmentService {
         }
 
         RuntimeContext context = new RuntimeContext();
+        ParsedSelectors selectors = prepareSelectors(rootClass, outputFields);
         JsonNode rootObject = fetchByGlobalId(context, rootClass, globalId);
         log.info("Root object loaded: objectClass=[{}], globalId=[{}]", rootClass.sourceValue(), globalId);
-        return projectResponse(context, rootClass, rootObject, outputFields,
+        return projectResponse(context, rootClass, rootObject, outputFields, selectors,
                 "Enrichment full response prepared: objectClass=[{}], globalId=[{}]",
                 "Enrichment projection prepared: rootClass=[{}], actualClass=[{}], globalId=[{}], outputFields=[{}], depth=[{}]",
                 Long.toString(globalId));
     }
 
-    private JsonNode doEnrichRevision(String objectClassValue, long id, List<String> outputFields) {
+    private JsonNode doEnrichRevision(String objectClassValue, List<Long> ids, List<String> outputFields) {
         ObjectClassInfo rootClass = objectClassRegistry.fromSourceValueOrName(objectClassValue);
         if (rootClass == null) {
             throw new IllegalArgumentException("Invalid objectClass: [" + objectClassValue + "]");
         }
 
         RuntimeContext context = new RuntimeContext();
-        JsonNode rootObject = fetchById(context, rootClass, id);
-        log.info("Root revision loaded: objectClass=[{}], id=[{}]", rootClass.sourceValue(), id);
-        return projectResponse(context, rootClass, rootObject, outputFields,
-                "Enrichment revision full response prepared: objectClass=[{}], id=[{}]",
-                "Enrichment revision projection prepared: rootClass=[{}], actualClass=[{}], id=[{}], outputFields=[{}], depth=[{}]",
-                Long.toString(id));
+        ParsedSelectors selectors = prepareSelectors(rootClass, outputFields);
+        ArrayNode rootObjects = fetchByIds(rootClass, ids);
+        log.info("Root revision loaded: objectClass=[{}], id=[{}], count=[{}]", rootClass.sourceValue(), ids, rootObjects.size());
+
+        ArrayNode result = jsonUtils.createArrayNode();
+
+        for(JsonNode rootObject: rootObjects){
+            Long id = extractObjectId(rootObject);
+            result.add(projectResponse(context, rootClass, rootObject, outputFields, selectors,
+                    "Enrichment revision full response prepared: objectClass=[{}], id=[{}]",
+                    "Enrichment revision projection prepared: rootClass=[{}], actualClass=[{}], id=[{}], outputFields=[{}], depth=[{}]",
+                    id == null ? "null" : Long.toString(id)));
+        }
+
+        return result;
     }
 
     private JsonNode projectResponse(RuntimeContext context,
                                      ObjectClassInfo rootClass,
                                      JsonNode rootObject,
                                      List<String> outputFields,
+                                     ParsedSelectors selectors,
                                      String fullLogTemplate,
                                      String projectionLogTemplate,
                                      String lookupIdValue) {
@@ -128,8 +154,6 @@ public class EnrichmentService {
             return rootObject;
         }
 
-        ParsedSelectors selectors = parseSelectors(rootClass, outputFields);
-        validateSelectorRelations(selectors.sourceNodes());
         meterRegistry.counter(
                 projectionDepthCountMetric,
                 "object_class", normalizeTag(rootClass.sourceValue()),
@@ -161,6 +185,73 @@ public class EnrichmentService {
         log.info(projectionLogTemplate,
                 rootClass.sourceValue(), actualClass.sourceValue(), lookupIdValue, outputFields, selectors.maxDepth());
         return result;
+    }
+
+    private ParsedSelectors prepareSelectors(ObjectClassInfo rootClass, List<String> outputFields) {
+        if (outputFields == null || outputFields.isEmpty()) {
+            return null;
+        }
+
+        List<SelectorCandidate> validSelectors = new ArrayList<>();
+        for (String outputField : outputFields) {
+            try {
+                ParsedSelectors selector = parseSelectors(rootClass, Collections.singletonList(outputField));
+                validateSelectorRelations(selector.sourceNodes());
+                validSelectors.add(new SelectorCandidate(outputField, selector));
+            } catch (IllegalArgumentException ex) {
+                log.warn("Skipping invalid outputField: selector=[{}], reason=[{}]", outputField, ex.getMessage());
+            }
+        }
+
+        validSelectors.sort((left, right) -> Integer.compare(
+                right.selectors().maxDepth(),
+                left.selectors().maxDepth()
+        ));
+
+        Map<ObjectClassInfo, SelectorNode> validSourceNodes = new LinkedHashMap<>();
+        int maxDepth = 0;
+        for (SelectorCandidate candidate : validSelectors) {
+            try {
+                mergeSelectors(validSourceNodes, candidate.selectors().sourceNodes());
+                maxDepth = Math.max(maxDepth, candidate.selectors().maxDepth());
+            } catch (IllegalArgumentException ex) {
+                log.warn("Skipping conflicting outputField: selector=[{}], reason=[{}]",
+                        candidate.value(), ex.getMessage());
+            }
+        }
+        return new ParsedSelectors(
+                Collections.unmodifiableMap(new LinkedHashMap<>(validSourceNodes)),
+                maxDepth
+        );
+    }
+
+    private void mergeSelectors(Map<ObjectClassInfo, SelectorNode> target,
+                                Map<ObjectClassInfo, SelectorNode> source) {
+        for (Map.Entry<ObjectClassInfo, SelectorNode> entry : source.entrySet()) {
+            SelectorNode targetNode = target.computeIfAbsent(entry.getKey(), ignored -> new SelectorNode());
+            ensureMergeCompatible(targetNode, entry.getValue(), entry.getKey().sourceValue());
+            mergeSelectorNode(targetNode, entry.getValue());
+        }
+    }
+
+    private void ensureMergeCompatible(SelectorNode target, SelectorNode source, String path) {
+        if ((target.terminal && !source.children.isEmpty()) || (source.terminal && !target.children.isEmpty())) {
+            throw new IllegalArgumentException("Cannot request both full relation and nested fields: [" + path + "]");
+        }
+        for (Map.Entry<String, SelectorNode> entry : source.children.entrySet()) {
+            SelectorNode existingChild = target.children.get(entry.getKey());
+            if (existingChild != null) {
+                ensureMergeCompatible(existingChild, entry.getValue(), path + "." + entry.getKey());
+            }
+        }
+    }
+
+    private void mergeSelectorNode(SelectorNode target, SelectorNode source) {
+        target.terminal = target.terminal || source.terminal;
+        for (Map.Entry<String, SelectorNode> entry : source.children.entrySet()) {
+            SelectorNode targetChild = target.children.computeIfAbsent(entry.getKey(), ignored -> new SelectorNode());
+            mergeSelectorNode(targetChild, entry.getValue());
+        }
     }
 
     private ParsedSelectors parseSelectors(ObjectClassInfo rootClass, List<String> outputFields) {
@@ -206,15 +297,15 @@ public class EnrichmentService {
 
     private void validateSelectorRelations(Map<ObjectClassInfo, SelectorNode> sourceNodes) {
         for (Map.Entry<ObjectClassInfo, SelectorNode> entry : sourceNodes.entrySet()) {
-            validateSelectorRelations(entry.getKey(), entry.getValue(), entry.getKey().sourceValue(), false);
+            validateSelectorRelations(Set.of(entry.getKey()), entry.getValue(), entry.getKey().sourceValue(), false);
         }
     }
 
-    private void validateSelectorRelations(ObjectClassInfo currentClass,
+    private void validateSelectorRelations(Set<ObjectClassInfo> possibleClassRoots,
                                            SelectorNode node,
                                            String pathPrefix,
-                                           boolean allowParentRelationLookup) {
-        if (currentClass == null || node == null || node.children.isEmpty()) {
+                                           boolean polymorphicLookup) {
+        if (possibleClassRoots == null || possibleClassRoots.isEmpty() || node == null || node.children.isEmpty()) {
             return;
         }
 
@@ -223,32 +314,56 @@ public class EnrichmentService {
             SelectorNode childNode = childEntry.getValue();
             String path = pathPrefix + "." + segment;
 
-            RelationDef relation = allowParentRelationLookup
-                    ? relationRegistry.resolveInHierarchy(currentClass, segment)
-                    : relationRegistry.resolve(currentClass, segment);
+            Map<ObjectClassInfo, RelationDef> relationsByActualClass = new HashMap<>();
+            for (ObjectClassInfo possibleClassRoot : possibleClassRoots) {
+                if (polymorphicLookup) {
+                    relationsByActualClass.putAll(relationRegistry.resolvePolymorphic(possibleClassRoot, segment));
+                } else {
+                    RelationDef relation = relationRegistry.resolve(possibleClassRoot, segment);
+                    if (relation != null) {
+                        relationsByActualClass.put(possibleClassRoot, relation);
+                    }
+                }
+            }
+            Set<RelationDef> relations = new HashSet<>(relationsByActualClass.values());
 
-            if (relation == null) {
+            if (relations.isEmpty()) {
                 if (!childNode.children.isEmpty()) {
                     throw new IllegalArgumentException("Nested path is not supported for non-relation field: [" + path + "]");
                 }
-                boolean allowParentFieldLookup = allowParentRelationLookup;
-                boolean fieldExists = allowParentFieldLookup
-                        ? fieldRegistry.hasFieldInHierarchy(currentClass, segment)
-                        : fieldRegistry.hasField(currentClass, segment);
+                boolean fieldExists = possibleClassRoots.stream()
+                        .anyMatch(possibleClassRoot -> polymorphicLookup
+                                ? fieldRegistry.hasFieldInPolymorphicHierarchy(possibleClassRoot, segment)
+                                : fieldRegistry.hasField(possibleClassRoot, segment));
                 if (!fieldExists) {
                     throw new IllegalArgumentException("Unknown field in outputField path: [" + path + "]");
                 }
                 continue;
             }
 
-            if (relation.type() != RelationType.GLOBAL_LINK && relation.type() != RelationType.EMBEDDED_SET) {
-                throw new IllegalArgumentException("Relation type is not supported yet in enricher-service: [" + relation.type() + "]");
+            RelationDef unsupportedRelation = relations.stream()
+                    .filter(relation -> !isSupportedRelation(relation))
+                    .findFirst()
+                    .orElse(null);
+            if (unsupportedRelation != null) {
+                throw new IllegalArgumentException("Relation type is not supported yet in enricher-service: ["
+                        + unsupportedRelation.type() + "]");
             }
 
             if (!childNode.children.isEmpty()) {
-                validateSelectorRelations(relation.targetClass(), childNode, path, true);
+                Set<ObjectClassInfo> targetClassRoots = new HashSet<>();
+                for (RelationDef relation : relations) {
+                    targetClassRoots.add(relation.targetClass());
+                }
+                validateSelectorRelations(targetClassRoots, childNode, path, true);
             }
         }
+    }
+
+    private boolean isSupportedRelation(RelationDef relation) {
+        return relation.type() == RelationType.GLOBAL_LINK
+                || relation.type() == RelationType.GLOBAL_ITEM
+                || relation.type() == RelationType.EMBEDDED_SET;
     }
 
     private JsonNode buildObjectProjection(ObjectClassInfo currentClass,
@@ -276,7 +391,11 @@ public class EnrichmentService {
                 value = buildRelationValue(relation, currentObject, childNode, context, depth + 1, path);
             } else {
                 if (!childNode.children.isEmpty()) {
-                    throw new IllegalArgumentException("Nested path is not supported for non-relation field: [" + path + "]");
+                    // Связь может быть объявлена только у другого наследника полиморфного target-класса.
+                    // Статическая валидация уже проверила путь по всем возможным наследникам.
+                    value = NullNode.getInstance();
+                    out.set(segment, value);
+                    continue;
                 }
                 value = readFieldValue(currentObject, segment);
             }
@@ -300,7 +419,7 @@ public class EnrichmentService {
         ).increment();
 
         if (relation.type() == RelationType.GLOBAL_LINK) {
-            Long linkGlobalId = extractGlobalLinkId(currentObject, relation);
+            Long linkGlobalId = extractRelationGlobalId(currentObject, relation);
             if (linkGlobalId == null) {
                 log.debug("Relation GLOBAL_LINK is null: path=[{}]", path);
                 return NullNode.getInstance();
@@ -311,7 +430,28 @@ public class EnrichmentService {
                 return relatedObject;
             }
             return buildObjectProjection(
-                    relation.targetClass(),
+                    resolveActualClass(relatedObject, relation.targetClass()),
+                    relatedObject,
+                    relationNode,
+                    context,
+                    depth,
+                    path
+            );
+        }
+
+        if (relation.type() == RelationType.GLOBAL_ITEM) {
+            Long relationGlobalId = extractGlobalItemRelationGlobalId(currentObject, relation);
+            if (relationGlobalId == null) {
+                log.debug("Relation GLOBAL_ITEM id is null: path=[{}]", path);
+                return NullNode.getInstance();
+            }
+
+            JsonNode relatedObject = fetchByGlobalItem(context, relation, relationGlobalId);
+            if (relationNode.children.isEmpty()) {
+                return relatedObject;
+            }
+            return buildObjectProjection(
+                    resolveActualClass(relatedObject, relation.targetClass()),
                     relatedObject,
                     relationNode,
                     context,
@@ -335,7 +475,7 @@ public class EnrichmentService {
             ArrayNode projected = jsonUtils.createArrayNode();
             for (JsonNode item : collection) {
                 projected.add(buildObjectProjection(
-                        relation.targetClass(),
+                        resolveActualClass(item, relation.targetClass()),
                         item,
                         relationNode,
                         context,
@@ -385,29 +525,62 @@ public class EnrichmentService {
         return arrayNode;
     }
 
-    private JsonNode fetchById(RuntimeContext context, ObjectClassInfo objectClass, long id) {
-        String key = objectClass.sourceValueNormalized() + "|" + id;
-        JsonNode cached = context.idCache.get(key);
+    private ArrayNode fetchByIds(ObjectClassInfo objectClass, List<Long> ids) {
+        JsonNode value = searchServiceClient.getObjectRevisionByIds(objectClass.sourceValue(), ids);
+        if (value == null || !value.isArray()){
+            log.debug("Revision collection is empty: objectClass=[{}], ids=[{}]", objectClass.sourceValue(), ids);
+            return jsonUtils.createArrayNode();
+        }
+
+        ArrayNode arrayNode = (ArrayNode)value;
+
+        log.debug("Revision loaded from search-service: objectClass=[{}], ids=[{}], count=[{}]",
+                objectClass.sourceValue(), ids, arrayNode.size());
+        return arrayNode;
+    }
+
+    private JsonNode fetchByGlobalItem(RuntimeContext context, RelationDef relation, long relationGlobalId) {
+        requireGlobalItemMetadata(relation);
+        String idFieldName = globalItemIdFieldName(relation);
+        String roleFieldName = globalItemRoleFieldName(relation);
+        String key = relation.targetClass().sourceValueNormalized()
+                + "|" + idFieldName
+                + "|" + roleFieldName
+                + "|" + relation.roleValue()
+                + "|" + relationGlobalId;
+        JsonNode cached = context.globalItemCache.get(key);
         if (cached != null) {
-            log.debug("Revision found in enrichment context cache: objectClass=[{}], id=[{}]",
-                    objectClass.sourceValue(), id);
+            log.debug("Global-item object found in enrichment context cache: targetClass=[{}], relationGlobalId=[{}]",
+                    relation.targetClass().sourceValue(), relationGlobalId);
             return cached;
         }
-        JsonNode value = searchServiceClient.getObjectRevisionById(objectClass.sourceValue(), id);
-        context.idCache.put(key, value);
-        log.debug("Revision loaded from search-service: objectClass=[{}], id=[{}]",
-                objectClass.sourceValue(), id);
+        JsonNode value = searchServiceClient.getObjectByGlobalItem(
+                relation.targetClass().sourceValue(),
+                relationGlobalId,
+                idFieldName,
+                roleFieldName,
+                relation.roleValue()
+        );
+        context.globalItemCache.put(key, value);
+        log.debug("Global-item object loaded from search-service: targetClass=[{}], relationGlobalId=[{}]",
+                relation.targetClass().sourceValue(), relationGlobalId);
         return value;
     }
 
     private ObjectClassInfo resolveActualClass(JsonNode object, ObjectClassInfo fallbackRootClass) {
-        String objectClassValue = null;
         if (object != null && object.has("objectClass") && object.get("objectClass").isTextual()) {
-            objectClassValue = object.get("objectClass").asText();
+            ObjectClassInfo actualClass = objectClassRegistry.fromSourceValueOrName(object.get("objectClass").asText());
+            if (actualClass != null) {
+                return actualClass;
+            }
         }
-        ObjectClassInfo actualClass = objectClassRegistry.fromSourceValueOrName(objectClassValue);
-        if (actualClass != null) {
-            return actualClass;
+
+        // TODO: Удалить fallback на objectType после миграции legacy-ответов search-service на objectClass.
+        if (object != null && object.has("objectType") && object.get("objectType").isTextual()) {
+            ObjectClassInfo actualClass = objectClassRegistry.fromSourceValueOrName(object.get("objectType").asText());
+            if (actualClass != null) {
+                return actualClass;
+            }
         }
         return fallbackRootClass;
     }
@@ -427,7 +600,7 @@ public class EnrichmentService {
         projected.fields().forEachRemaining(entry -> target.set(entry.getKey(), entry.getValue()));
     }
 
-    private Long extractGlobalLinkId(JsonNode object, RelationDef relation) {
+    private Long extractRelationGlobalId(JsonNode object, RelationDef relation) {
         if (object == null || object.isNull()) {
             return null;
         }
@@ -443,6 +616,13 @@ public class EnrichmentService {
         if (relation.name() != null && !relation.name().isBlank()) {
             candidates.add(relation.name());
         }
+        if (relation.idFieldName() != null && !relation.idFieldName().isBlank()) {
+            candidates.add(relation.idFieldName());
+            candidates.add(toCamelCase(relation.idFieldName()));
+        }
+        if (relation.jsonIdFieldName() != null && !relation.jsonIdFieldName().isBlank()) {
+            candidates.add(relation.jsonIdFieldName());
+        }
 
         for (String candidate : candidates) {
             JsonNode value = readFieldValue(object, candidate);
@@ -452,6 +632,34 @@ public class EnrichmentService {
             }
         }
         return null;
+    }
+
+    private Long extractGlobalItemRelationGlobalId(JsonNode object, RelationDef relation) {
+        Long relationGlobalId = extractRelationGlobalId(object, relation);
+        if (relationGlobalId != null) {
+            return relationGlobalId;
+        }
+        return toLong(readFieldValue(object, "globalId"));
+    }
+
+    private void requireGlobalItemMetadata(RelationDef relation) {
+        if (globalItemIdFieldName(relation) == null || globalItemIdFieldName(relation).isBlank()) {
+            throw new IllegalArgumentException("GLOBAL_ITEM relation requires jsonIdFieldName: [" + relation.name() + "]");
+        }
+        if (globalItemRoleFieldName(relation) == null || globalItemRoleFieldName(relation).isBlank()) {
+            throw new IllegalArgumentException("GLOBAL_ITEM relation requires jsonRoleFieldName: [" + relation.name() + "]");
+        }
+        if (relation.roleValue() == null || relation.roleValue().isBlank()) {
+            throw new IllegalArgumentException("GLOBAL_ITEM relation requires roleValue: [" + relation.name() + "]");
+        }
+    }
+
+    private String globalItemIdFieldName(RelationDef relation) {
+        return relation.jsonIdFieldName();
+    }
+
+    private String globalItemRoleFieldName(RelationDef relation) {
+        return relation.jsonRoleFieldName();
     }
 
     private Long extractObjectId(JsonNode object) {
@@ -639,6 +847,9 @@ public class EnrichmentService {
     private record ParsedSelectors(Map<ObjectClassInfo, SelectorNode> sourceNodes, int maxDepth) {
     }
 
+    private record SelectorCandidate(String value, ParsedSelectors selectors) {
+    }
+
     private static final class SelectorNode {
         private final Map<String, SelectorNode> children = new LinkedHashMap<>();
         private boolean terminal;
@@ -646,6 +857,7 @@ public class EnrichmentService {
 
     private static final class RuntimeContext {
         private final Map<String, JsonNode> globalCache = new HashMap<>();
+        private final Map<String, JsonNode> globalItemCache = new HashMap<>();
         private final Map<String, JsonNode> idCache = new HashMap<>();
         private final Map<String, ArrayNode> parentCache = new HashMap<>();
     }

@@ -18,8 +18,9 @@ enricher:
   search-service:
     base-url: http://localhost:8081
     global-endpoint: /api/objects/{objectClass}?globalId={globalId}
-    revision-endpoint: /api/objects/{objectClass}/revisions/{id}
+    revision-endpoint: /api/objects/{objectClass}/revisions
     parent-endpoint: /api/objects/{objectClass}/parent/{parentId}
+    global-item-endpoint: /api/v2/objects/{objectClass}/global-item?relationGlobalId={relationGlobalId}&idFieldName={idFieldName}&roleFieldName={roleFieldName}&role={role}
   metadata:
-    url: http://localhost:8083/api/search-service/metadata/v2
-    local-file: ""
+    url: http://localhost:8083/api/search-service/metadata/v3
+    local-file: classpath:domain-config.json

@@ -1,6 +1,6 @@
 package com.enricher.service.registry;
 
-import com.enricher.service.domain.MetadataExportV2;
+import com.enricher.service.domain.MetadataExportV3;
 import com.enricher.service.domain.ObjectClassInfo;
 import com.enricher.service.util.NormalizeUtils;
 import org.springframework.stereotype.Component;
@@ -16,28 +16,44 @@ public class FieldRegistry {
     private static final Set<String> IMPLICIT_FIELDS = Set.of("id", "globalid", "objectclass");
 
     private final Map<ObjectClassInfo, Set<String>> declaredFieldsByClass;
-    private final ObjectClassHierarchyRegistry hierarchyRegistry;
+    private final Map<ObjectClassInfo, Set<String>> fieldsInHierarchyByClass;
+    private final Map<ObjectClassInfo, Set<String>> polymorphicFieldsByClass;
 
-    public FieldRegistry(MetadataExportV2 metadata,
+    public FieldRegistry(MetadataExportV3 metadata,
                          ObjectClassRegistry objectClassRegistry,
                          ObjectClassHierarchyRegistry hierarchyRegistry) {
         this.declaredFieldsByClass = new HashMap<>();
-        this.hierarchyRegistry = hierarchyRegistry;
+        this.fieldsInHierarchyByClass = new HashMap<>();
+        this.polymorphicFieldsByClass = new HashMap<>();
 
-        if (metadata == null || metadata.fields() == null) {
-            return;
+        if (metadata != null && metadata.fields() != null) {
+            for (Map.Entry<String, MetadataExportV3.FieldsConfig> entry : metadata.fields().entrySet()) {
+                ObjectClassInfo objectClass = objectClassRegistry.byName(entry.getKey());
+                if (objectClass == null || entry.getValue() == null) {
+                    continue;
+                }
+
+                Set<String> fields = new HashSet<>();
+                addFields(fields, entry.getValue().declaredFields());
+                fields.addAll(IMPLICIT_FIELDS);
+                declaredFieldsByClass.put(objectClass, Set.copyOf(fields));
+            }
         }
 
-        for (Map.Entry<String, MetadataExportV2.FieldsConfig> entry : metadata.fields().entrySet()) {
-            ObjectClassInfo objectClass = objectClassRegistry.byName(entry.getKey());
-            if (objectClass == null || entry.getValue() == null) {
-                continue;
-            }
-
+        for (ObjectClassInfo objectClass : objectClassRegistry.all()) {
             Set<String> fields = new HashSet<>();
-            addFields(fields, entry.getValue().declaredFields());
-            fields.addAll(IMPLICIT_FIELDS);
-            declaredFieldsByClass.put(objectClass, Set.copyOf(fields));
+            for (ObjectClassInfo parentOrSelf : hierarchyRegistry.parentsOrSelfOrdered(objectClass)) {
+                fields.addAll(declaredFieldsByClass.getOrDefault(parentOrSelf, Set.of()));
+            }
+            fieldsInHierarchyByClass.put(objectClass, Set.copyOf(fields));
+        }
+
+        for (ObjectClassInfo objectClass : objectClassRegistry.all()) {
+            Set<String> fields = new HashSet<>();
+            for (ObjectClassInfo descendantOrSelf : hierarchyRegistry.descendantsOrSelf(objectClass)) {
+                fields.addAll(fieldsInHierarchyByClass.getOrDefault(descendantOrSelf, Set.of()));
+            }
+            polymorphicFieldsByClass.put(objectClass, Set.copyOf(fields));
         }
     }
 
@@ -56,19 +72,23 @@ public class FieldRegistry {
         if (objectClass == null || field == null || field.isBlank()) {
             return false;
         }
-        for (ObjectClassInfo candidate : hierarchyRegistry.parentsOrSelfOrdered(objectClass)) {
-            if (hasField(candidate, field)) {
-                return true;
-            }
-        }
-        return false;
+        Set<String> fields = fieldsInHierarchyByClass.get(objectClass);
+        return fields != null && fields.contains(NormalizeUtils.lowerTrim(field));
     }
 
-    private void addFields(Set<String> sink, List<MetadataExportV2.FieldConfig> fields) {
+    public boolean hasFieldInPolymorphicHierarchy(ObjectClassInfo objectClass, String field) {
+        if (objectClass == null || field == null || field.isBlank()) {
+            return false;
+        }
+        Set<String> fields = polymorphicFieldsByClass.get(objectClass);
+        return fields != null && fields.contains(NormalizeUtils.lowerTrim(field));
+    }
+
+    private void addFields(Set<String> sink, List<MetadataExportV3.DeclaredFieldConfig> fields) {
         if (fields == null || fields.isEmpty()) {
             return;
         }
-        for (MetadataExportV2.FieldConfig field : fields) {
+        for (MetadataExportV3.DeclaredFieldConfig field : fields) {
             if (field == null || field.name() == null || field.name().isBlank()) {
                 continue;
             }
